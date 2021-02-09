@@ -1,0 +1,12 @@
+import "DifferentialRobot.idsl";
+
+Component pioneer
+{
+    Communications
+    {
+        implements DifferentialRobot;
+
+    };
+    language Cpp11;
+};
+
