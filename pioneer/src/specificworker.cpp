@@ -57,6 +57,19 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 void SpecificWorker::initialize(int period)
 {
 	std::cout << "Initialize worker" << std::endl;
+
+	Aria::init();
+
+    ArArgumentParser parser(&builder);
+    parser.loadDefaultArguments();
+    ArRobotConnector robotConnector(&parser, &robot);
+
+    if(!robotConnector.connectRobot())
+    {
+        qInfo()<<"SimpleMotionCommands: Could not connect to the robot.";
+        std::terminate();
+    }
+
 	this->Period = period;
 	if(this->startup_check_flag)
 	{

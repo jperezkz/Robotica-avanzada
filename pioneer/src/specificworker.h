@@ -28,6 +28,7 @@
 #define SPECIFICWORKER_H
 
 #include <genericworker.h>
+#include </usr/local/Aria/include/Aria.h>
 #include <innermodel/innermodel.h>
 
 class SpecificWorker : public GenericWorker
@@ -55,6 +56,9 @@ public slots:
 private:
 	std::shared_ptr < InnerModel > innerModel;
 	bool startup_check_flag;
+	//Aria
+    ArRobot robot;
+    ArArgumentBuilder builder;
 
 };
 
