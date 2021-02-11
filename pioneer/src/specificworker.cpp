@@ -59,7 +59,6 @@ void SpecificWorker::initialize(int period)
 	std::cout << "Initialize worker" << std::endl;
 
 	Aria::init();
-
     ArArgumentParser parser(&builder);
     parser.loadDefaultArguments();
     ArRobotConnector robotConnector(&parser, &robot);
@@ -69,6 +68,15 @@ void SpecificWorker::initialize(int period)
         qInfo()<<"SimpleMotionCommands: Could not connect to the robot.";
         std::terminate();
     }
+
+    if (!Aria::parseArgs())
+    {
+        Aria::logOptions();
+        Aria::exit(1);
+        std::terminate();
+    }
+
+    robot.runAsync(true);
 
 	this->Period = period;
 	if(this->startup_check_flag)
@@ -84,7 +92,7 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
-	//computeCODE
+    //computeCODE
 	//QMutexLocker locker(mutex);
 	//try
 	//{
@@ -96,8 +104,8 @@ void SpecificWorker::compute()
 	//{
 	//  std::cout << "Error reading from Camera" << e << std::endl;
 	//}
-	
-	
+	moveWheels();
+
 }
 
 int SpecificWorker::startup_check()
@@ -105,6 +113,83 @@ int SpecificWorker::startup_check()
 	std::cout << "Startup check" << std::endl;
 	QTimer::singleShot(200, qApp, SLOT(quit()));
 	return 0;
+}
+
+void SpecificWorker::moveWheels(){
+
+    robot.lock();
+    ArLog::log(ArLog::Normal, "Robot: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f, Battery=%.2fV",
+               robot.getX(), robot.getY(), robot.getTh(), robot.getVel(), robot.getRotVel(), robot.getBatteryVoltage());
+    robot.unlock();
+
+    // Sleep for 3 seconds.
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Will start driving in 3 seconds...");
+    ArUtil::sleep(3000);
+
+    //Set forward velocity to 50 mm/s
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Driving forward at 250 mm/s for 5 sec...");
+    robot.lock();
+    robot.enableMotors();
+    robot.setVel(250);
+    robot.unlock();
+    ArUtil::sleep(5000);
+
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Stopping.");
+    robot.lock();
+    robot.stop();
+    robot.unlock();
+    ArUtil::sleep(1000);
+
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Rotating at 10 deg/s for 5 sec...");
+    robot.lock();
+    robot.setRotVel(10);
+    robot.unlock();
+    ArUtil::sleep(5000);
+
+
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Rotating at -10 deg/s for 10 sec...");
+    robot.lock();
+    robot.setRotVel(-10);
+    robot.unlock();
+    ArUtil::sleep(10000);
+
+
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Driving forward at 150 mm/s for 5 sec...");
+    robot.lock();
+    robot.setRotVel(0);
+    robot.setVel(150);
+    robot.unlock();
+    ArUtil::sleep(5000);
+
+
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Stopping.");
+    robot.lock();
+    robot.stop();
+    robot.unlock();
+    ArUtil::sleep(1000);
+
+
+    // Other motion command functions include move(), setHeading(),
+    // setDeltaHeading().  You can also adjust acceleration and deceleration
+    // values used by the robot with setAccel(), setDecel(), setRotAccel(),
+    // setRotDecel().  See the ArRobot class documentation for more.
+
+
+    robot.lock();
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f, Battery=%.2fV",
+               robot.getX(), robot.getY(), robot.getTh(), robot.getVel(), robot.getRotVel(), robot.getBatteryVoltage());
+    robot.unlock();
+
+
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Ending robot thread...");
+    robot.stopRunning();
+
+    // wait for the thread to stop
+    robot.waitForRunExit();
+
+    // exit
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Exiting.");
+    Aria::exit(0);
 }
 
 

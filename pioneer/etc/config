@@ -1,7 +1,7 @@
-CommonBehavior.Endpoints=tcp -p 10000
+CommonBehavior.Endpoints=tcp -p 10040
 
 # Endpoints for implements interfaces
-DifferentialRobot.Endpoints=tcp -p 0
+DifferentialRobot.Endpoints=tcp -p 10004
 
 
 

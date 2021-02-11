@@ -47,6 +47,7 @@ public:
 	void DifferentialRobot_setOdometerPose(int x, int z, float alpha);
 	void DifferentialRobot_setSpeedBase(float adv, float rot);
 	void DifferentialRobot_stopBase();
+	void moveWheels();
 
 
 public slots:
@@ -56,6 +57,7 @@ public slots:
 private:
 	std::shared_ptr < InnerModel > innerModel;
 	bool startup_check_flag;
+
 	//Aria
     ArRobot robot;
     ArArgumentBuilder builder;
