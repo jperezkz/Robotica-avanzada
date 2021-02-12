@@ -39,6 +39,7 @@ public:
 	~SpecificWorker();
 	bool setParams(RoboCompCommonBehavior::ParameterList params);
 
+    RoboCompBatteryStatus::TBattery BatteryStatus_getBatteryState();
 	void DifferentialRobot_correctOdometer(int x, int z, float alpha);
 	void DifferentialRobot_getBasePose(int &x, int &z, float &alpha);
 	void DifferentialRobot_getBaseState(RoboCompGenericBase::TBaseState &state);
@@ -54,11 +55,16 @@ public slots:
 	void compute();
 	int startup_check();
 	void initialize(int period);
+
 private:
 	std::shared_ptr < InnerModel > innerModel;
 	bool startup_check_flag;
 
-	//Aria
+	// Pioneer
+    const float MAX_ADV = 1000.f;
+    const float MAX_ROT = 1.f;
+
+	// Aria
     ArRobot robot;
     ArArgumentBuilder builder;
 

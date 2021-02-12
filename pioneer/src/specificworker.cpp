@@ -32,25 +32,22 @@ SpecificWorker::SpecificWorker(TuplePrx tprx, bool startup_check) : GenericWorke
 SpecificWorker::~SpecificWorker()
 {
 	std::cout << "Destroying SpecificWorker" << std::endl;
+    robot.lock();
+        robot.disableMotors();
+    robot.unlock();
+    ArLog::log(ArLog::Normal, "Ending robot thread...");
+    robot.stopRunning();
+
+    // wait for the thread to stop
+    robot.waitForRunExit();
+
+    // exit
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Exiting.");
+    Aria::exit(0);
 }
 
 bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 {
-//	THE FOLLOWING IS JUST AN EXAMPLE
-//	To use innerModelPath parameter you should uncomment specificmonitor.cpp readConfig method content
-//	try
-//	{
-//		RoboCompCommonBehavior::Parameter par = params.at("InnerModelPath");
-//		std::string innermodel_path = par.value;
-//		innerModel = std::make_shared(innermodel_path);
-//	}
-//	catch(const std::exception &e) { qFatal("Error reading config params"); }
-
-
-
-
-
-
 	return true;
 }
 
@@ -77,8 +74,11 @@ void SpecificWorker::initialize(int period)
     }
 
     robot.runAsync(true);
+    robot.lock();
+        robot.enableMotors();
+    robot.unlock();
 
-	this->Period = period;
+    this->Period = period;
 	if(this->startup_check_flag)
 	{
 		this->startup_check();
@@ -92,31 +92,11 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
-    //computeCODE
-	//QMutexLocker locker(mutex);
-	//try
-	//{
-	//  camera_proxy->getYImage(0,img, cState, bState);
-	//  memcpy(image_gray.data, &img[0], m_width*m_height*sizeof(uchar));
-	//  searchTags(image_gray);
-	//}
-	//catch(const Ice::Exception &e)
-	//{
-	//  std::cout << "Error reading from Camera" << e << std::endl;
-	//}
-	moveWheels();
-
+	//moveWheels();
 }
 
-int SpecificWorker::startup_check()
+void SpecificWorker::moveWheels()
 {
-	std::cout << "Startup check" << std::endl;
-	QTimer::singleShot(200, qApp, SLOT(quit()));
-	return 0;
-}
-
-void SpecificWorker::moveWheels(){
-
     robot.lock();
     ArLog::log(ArLog::Normal, "Robot: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f, Battery=%.2fV",
                robot.getX(), robot.getY(), robot.getTh(), robot.getVel(), robot.getRotVel(), robot.getBatteryVoltage());
@@ -146,13 +126,11 @@ void SpecificWorker::moveWheels(){
     robot.unlock();
     ArUtil::sleep(5000);
 
-
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Rotating at -10 deg/s for 10 sec...");
     robot.lock();
     robot.setRotVel(-10);
     robot.unlock();
     ArUtil::sleep(10000);
-
 
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Driving forward at 150 mm/s for 5 sec...");
     robot.lock();
@@ -161,89 +139,103 @@ void SpecificWorker::moveWheels(){
     robot.unlock();
     ArUtil::sleep(5000);
 
-
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Stopping.");
     robot.lock();
     robot.stop();
     robot.unlock();
     ArUtil::sleep(1000);
 
-
     // Other motion command functions include move(), setHeading(),
     // setDeltaHeading().  You can also adjust acceleration and deceleration
     // values used by the robot with setAccel(), setDecel(), setRotAccel(),
     // setRotDecel().  See the ArRobot class documentation for more.
-
 
     robot.lock();
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f, Battery=%.2fV",
                robot.getX(), robot.getY(), robot.getTh(), robot.getVel(), robot.getRotVel(), robot.getBatteryVoltage());
     robot.unlock();
 
-
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Ending robot thread...");
-    robot.stopRunning();
-
-    // wait for the thread to stop
-    robot.waitForRunExit();
-
-    // exit
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Exiting.");
-    Aria::exit(0);
 }
 
+/////////////////////////////////////////////////////////////////////////////////
+/// SERVANTS
+/////////////////////////////////////////////////////////////////////////////////
+
+
+RoboCompBatteryStatus::TBattery SpecificWorker::BatteryStatus_getBatteryState()
+{
+    RoboCompBatteryStatus::TBattery battery;
+    robot.lock();
+        battery.percentage = robot.getBatteryVoltageNow();
+    robot.unlock();
+    return battery;
+}
+
+//////////////////////////////////////
 
 void SpecificWorker::DifferentialRobot_correctOdometer(int x, int z, float alpha)
-{
-//implementCODE
-
-}
+{}
 
 void SpecificWorker::DifferentialRobot_getBasePose(int &x, int &z, float &alpha)
 {
-//implementCODE
-
+    robot.lock();
+        x = robot.getX();
+        z = robot.getY();
+        alpha = robot.getTh();
+    robot.unlock();
 }
 
 void SpecificWorker::DifferentialRobot_getBaseState(RoboCompGenericBase::TBaseState &state)
 {
-//implementCODE
+    robot.lock();
+        state.x = robot.getX();
+        state.z = robot.getY();
+        state.alpha = robot.getTh();
+        state.advVz = robot.getVel();
+        state.rotV = robot.getRotVel();
+    robot.unlock();
+    ArLog::log(ArLog::Normal, "simpleMotionCommands: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f",
+               state.x, state.z, state.alpha, state.advVz, state.rotV);
 
 }
 
 void SpecificWorker::DifferentialRobot_resetOdometer()
-{
-//implementCODE
-
-}
+{}
 
 void SpecificWorker::DifferentialRobot_setOdometer(RoboCompGenericBase::TBaseState state)
-{
-//implementCODE
-
-}
+{}
 
 void SpecificWorker::DifferentialRobot_setOdometerPose(int x, int z, float alpha)
-{
-//implementCODE
-
-}
+{}
 
 void SpecificWorker::DifferentialRobot_setSpeedBase(float adv, float rot)
 {
-//implementCODE
-
+    if( adv < MAX_ADV and adv > -MAX_ADV and rot > -MAX_ROT and rot < MAX_ROT)
+    {
+        robot.lock();
+        robot.setVel(adv);
+        robot.setRotVel(rot);
+        robot.unlock();
+    }
+    else
+        std::cout << __FUNCTION__ << "Commanded velocity out of bounds " << adv << " mm/s " << rot << " rads/sg" << std::endl;
 }
 
 void SpecificWorker::DifferentialRobot_stopBase()
 {
-//implementCODE
-
+    robot.lock();
+    robot.setVel(0);
+    robot.setRotVel(0);
+    robot.unlock();
 }
-
-
 
 /**************************************/
 // From the RoboCompDifferentialRobot you can use this types:
 // RoboCompDifferentialRobot::TMechParams
 
+int SpecificWorker::startup_check()
+{
+    std::cout << "Startup check" << std::endl;
+    QTimer::singleShot(200, qApp, SLOT(quit()));
+    return 0;
+}
