@@ -39,7 +39,7 @@ public:
 	~SpecificWorker();
 	bool setParams(RoboCompCommonBehavior::ParameterList params);
 
-    RoboCompBatteryStatus::TBattery BatteryStatus_getBatteryState();
+    //RoboCompBatteryStatus::TBattery BatteryStatus_getBatteryState();
 	void DifferentialRobot_correctOdometer(int x, int z, float alpha);
 	void DifferentialRobot_getBasePose(int &x, int &z, float &alpha);
 	void DifferentialRobot_getBaseState(RoboCompGenericBase::TBaseState &state);

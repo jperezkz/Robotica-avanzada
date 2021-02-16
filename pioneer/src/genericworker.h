@@ -24,7 +24,6 @@
 #include <qlog/qlog.h>
 #include <CommonBehavior.h>
 
-#include <BatteryStatus.h>
 #include <DifferentialRobot.h>
 #include <GenericBase.h>
 
@@ -50,7 +49,6 @@ public:
 
 
 
-	virtual RoboCompBatteryStatus::TBattery BatteryStatus_getBatteryState() = 0;
 	virtual void DifferentialRobot_correctOdometer(int x, int z, float alpha) = 0;
 	virtual void DifferentialRobot_getBasePose(int &x, int &z, float &alpha) = 0;
 	virtual void DifferentialRobot_getBaseState(RoboCompGenericBase::TBaseState &state) = 0;

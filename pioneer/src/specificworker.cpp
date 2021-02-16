@@ -54,30 +54,30 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 void SpecificWorker::initialize(int period)
 {
 	std::cout << "Initialize worker" << std::endl;
-
+    qInfo()<<"ANTES DE BUILDER-----------------------------------------";
 	Aria::init();
     ArArgumentParser parser(&builder);
+    parser.addDefaultArgumentFile("/home/robolab/software/Aria/params/p2at.p");
     parser.loadDefaultArguments();
     ArRobotConnector robotConnector(&parser, &robot);
-
+    qInfo()<<"Antes de robot connector-----------------------------------------";
     if(!robotConnector.connectRobot())
     {
         qInfo()<<"SimpleMotionCommands: Could not connect to the robot.";
         std::terminate();
     }
-
     if (!Aria::parseArgs())
     {
         Aria::logOptions();
         Aria::exit(1);
         std::terminate();
     }
-
+    qInfo()<<"Antes de robot async-----------------------------------------";
     robot.runAsync(true);
+    qInfo()<<"Async-----------------------------------------";
     robot.lock();
         robot.enableMotors();
     robot.unlock();
-
     this->Period = period;
 	if(this->startup_check_flag)
 	{
@@ -87,12 +87,17 @@ void SpecificWorker::initialize(int period)
 	{
 		timer.start(Period);
 	}
-
+    qInfo()<<"FIN-----------------------------------------";
 }
 
 void SpecificWorker::compute()
 {
 	//moveWheels();
+    qInfo()<<"compute-----------------------------------------";
+   /* robot.lock();
+    robot.enableMotors();
+    robot.setVel(250);
+    robot.unlock();*/
 }
 
 void SpecificWorker::moveWheels()
@@ -162,14 +167,14 @@ void SpecificWorker::moveWheels()
 /////////////////////////////////////////////////////////////////////////////////
 
 
-RoboCompBatteryStatus::TBattery SpecificWorker::BatteryStatus_getBatteryState()
+/*RoboCompBatteryStatus::TBattery SpecificWorker::BatteryStatus_getBatteryState()
 {
     RoboCompBatteryStatus::TBattery battery;
     robot.lock();
         battery.percentage = robot.getBatteryVoltageNow();
     robot.unlock();
     return battery;
-}
+}*/
 
 //////////////////////////////////////
 

@@ -1,11 +1,11 @@
 import "DifferentialRobot.idsl";
-import "BatteryStatus.idsl";
+//import "BatteryStatus.idsl";
 
 Component pioneer
 {
     Communications
     {
-        implements DifferentialRobot, BatteryStatus;
+        implements DifferentialRobot;
     };
     language Cpp11;
 };
