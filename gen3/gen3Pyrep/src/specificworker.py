@@ -32,6 +32,7 @@ from pyrep.objects.dummy import Dummy
 from pyrep.objects.shape import Shape
 from pyrep.objects.shape import Object
 from pyrep.objects.joint import Joint
+from pyrep.backend import simConst
 import numpy as np
 import numpy_indexed as npi
 from itertools import zip_longest
@@ -78,9 +79,10 @@ class SpecificWorker(GenericWorker):
         start = time.time()
         while True:
             self.pr.step()
-            #self.read_joystick()
+            self.read_joystick()
             self.read_camera(self.cameras[self.camera_arm_name])
 
+            #self.pr.simExtCallScriptFunction("open()", local)
             elapsed = time.time()-start
             if elapsed < 0.05:
                 time.sleep(0.05-elapsed)
@@ -119,8 +121,8 @@ class SpecificWorker(GenericWorker):
         else:
             elapsed = time.time() - self.last_received_data_time
             if elapsed > 2 and elapsed < 3:
-                self.robot.set_base_angular_velocites([0, 0, 0])
-
+                #self.robot.set_base_angular_velocites([0, 0, 0])
+                pass
     
     def update_joystick(self, datos):
         adv = 0.0
@@ -128,15 +130,27 @@ class SpecificWorker(GenericWorker):
         side = 0.0
         #linear_vel, ang_vel = self.robot_object.get_velocity()
         for x in datos.axes:
-            if x.name == "advance":
+            print(x.name + "" + str(x.value))
+            if x.name == "X_axis":
                 adv = x.value if np.abs(x.value) > 1 else 0
-            if x.name == "rotate":
+            if x.name == "Y_axis":
                 rot = x.value if np.abs(x.value) > 0.01 else 0
-            if x.name == "side":
+            if x.name == "Z_axis":
                 side = x.value if np.abs(x.value) > 1 else 0
+            if x.name == "gripper":
+                if x.value > 1:
+                    self.pr.script_call("open@RG2", 1)
+                    print("abriendo")
+                if x.value < -1:
+                    print("cerrando")
+                    self.pr.script_call("close@RG2", 1)
 
-        print("Joystick ", [adv, side, rot], converted)
         #self.robot.set_base_angular_velocites(converted)
+        dummy = Dummy("target")
+        parent_frame_object = None
+        position = dummy.get_position()
+        dummy.set_position([position[0]+adv/1000, position[1]+rot/1000, position[2]+side/1000], parent_frame_object)
+        # dummy.set_orientation([pose.rx, pose.ry, pose.rz], parent_frame_object)
 
 
     ##################################################################################

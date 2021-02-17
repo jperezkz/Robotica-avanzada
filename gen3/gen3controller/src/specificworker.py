@@ -60,6 +60,8 @@ class SpecificWorker(GenericWorker):
         print('SpecificWorker.compute...')
         all = self.camerargbdsimple_proxy.getAll(self.camera_name)
         self.draw_image(all.image)
+        #procesar imagen
+        #enviar cambio a la pinza
 
         return True
 

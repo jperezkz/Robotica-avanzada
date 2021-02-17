@@ -1,4 +1,4 @@
-# Install script for directory: /home/pbustos/robocomp/components/Robotica-avanzada/gen3/gen3Pyrep/src
+# Install script for directory: /home/robo02/robocomp/components/Robotica-avanzada/gen3/gen3Pyrep/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
