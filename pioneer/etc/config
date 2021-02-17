@@ -2,10 +2,12 @@ CommonBehavior.Endpoints=tcp -p 10040
 
 # Endpoints for implements interfaces
 DifferentialRobot.Endpoints=tcp -p 10004
+
 # Endpoints for subscriptions interfaces
 JoystickAdapterTopic.Endpoints=tcp -p 11231
 
-
+# This property is used by the clients to connect to IceStorm.
+TopicManager.Proxy=IceStorm/TopicManager:default -p 999
 
 InnerModelPath = innermodel.xml
 

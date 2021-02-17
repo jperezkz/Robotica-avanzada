@@ -55,7 +55,6 @@ void SpecificWorker::initialize(int period)
 {
 
 	std::cout << "Initialize worker" << std::endl;
-    qInfo()<<"ANTES DE BUILDER-----------------------------------------";
 	Aria::init();
 
     robot = new ArRobot();
@@ -79,9 +78,9 @@ void SpecificWorker::initialize(int period)
         Aria::exit(1);
         std::terminate();
     }*/
-    qInfo()<<"Antes de robot async-----------------------------------------";
+
     robot->runAsync(true);
-    qInfo()<<"Async-----------------------------------------";
+
     robot->lock();
         robot->enableMotors();
     robot->unlock();
@@ -94,17 +93,11 @@ void SpecificWorker::initialize(int period)
 	{
 		timer.start(Period);
 	}
-    qInfo()<<"FIN-----------------------------------------";
 }
 
 void SpecificWorker::compute()
 {
 	moveWheels();
-    //qInfo()<<"compute-----------------------------------------";
-   /* robot->lock();
-    robot->enableMotors();
-    robot->setVel(250);
-    robot->unlock();*/
 }
 
 void SpecificWorker::moveWheels()
@@ -252,6 +245,11 @@ int SpecificWorker::startup_check()
     return 0;
 }
 
+/**************************************/
+// From the RoboCompJoystickAdapter you can use this types:
+// RoboCompJoystickAdapter::AxisParams
+// RoboCompJoystickAdapter::ButtonParams
+// RoboCompJoystickAdapter::TData
 
 //SUBSCRIPTION to sendData method from JoystickAdapter interface
 void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data)
