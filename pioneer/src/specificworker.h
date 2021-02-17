@@ -49,6 +49,7 @@ public:
 	void DifferentialRobot_setSpeedBase(float adv, float rot);
 	void DifferentialRobot_stopBase();
 	void moveWheels();
+    void JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data);
 
 
 public slots:
@@ -65,8 +66,8 @@ private:
     const float MAX_ROT = 1.f;
 
 	// Aria
-    ArRobot robot;
-    ArArgumentBuilder builder;
+    ArRobot *robot;
+    ArRobotConnector *conn;
 
 };
 

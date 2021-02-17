@@ -25,6 +25,7 @@ SET ( SOURCES
   commonbehaviorI.cpp
   genericworker.cpp
   differentialrobotI.cpp
+  joystickadapterI.cpp
 )
 
 
@@ -35,8 +36,8 @@ FIND_PACKAGE( Ice REQUIRED COMPONENTS Ice++11 IceStorm++11)
 
 #ROBOCOMP
 ROBOCOMP_INITIALIZE( $ENV{ROBOCOMP}/ )
-ROBOCOMP_IDSL_TO_ICE( CommonBehavior DifferentialRobot GenericBase)
-ROBOCOMP_ICE_TO_SRC( CommonBehavior DifferentialRobot GenericBase)
+ROBOCOMP_IDSL_TO_ICE( CommonBehavior DifferentialRobot GenericBase JoystickAdapter)
+ROBOCOMP_ICE_TO_SRC( CommonBehavior DifferentialRobot GenericBase JoystickAdapter)
 SET (EXECUTABLE_OUTPUT_PATH ${RC_COMPONENT_DEVEL_PATH}/bin)
 
 

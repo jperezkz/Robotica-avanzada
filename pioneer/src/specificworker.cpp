@@ -32,14 +32,14 @@ SpecificWorker::SpecificWorker(TuplePrx tprx, bool startup_check) : GenericWorke
 SpecificWorker::~SpecificWorker()
 {
 	std::cout << "Destroying SpecificWorker" << std::endl;
-    robot.lock();
-        robot.disableMotors();
-    robot.unlock();
+    robot->lock();
+        robot->disableMotors();
+    robot->unlock();
     ArLog::log(ArLog::Normal, "Ending robot thread...");
-    robot.stopRunning();
+    robot->stopRunning();
 
     // wait for the thread to stop
-    robot.waitForRunExit();
+    robot->waitForRunExit();
 
     // exit
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Exiting.");
@@ -53,31 +53,38 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 
 void SpecificWorker::initialize(int period)
 {
+
 	std::cout << "Initialize worker" << std::endl;
     qInfo()<<"ANTES DE BUILDER-----------------------------------------";
 	Aria::init();
-    ArArgumentParser parser(&builder);
-    parser.addDefaultArgumentFile("/home/robolab/software/Aria/params/p2at.p");
-    parser.loadDefaultArguments();
-    ArRobotConnector robotConnector(&parser, &robot);
+
+    robot = new ArRobot();
+    ArArgumentBuilder *args = new ArArgumentBuilder(); //  never freed
+    ArArgumentParser *argparser = new ArArgumentParser(args); // Warning never freed
+    argparser->loadDefaultArguments(); // adds any arguments given in /etc/Aria.args.  Useful on robots with unusual serial port or baud rate (e.g. pioneer lx)
+
+    //parser.addDefaultArgumentFile("/home/robolab/software/Aria/params/p2at.p");
+
+    conn = new ArRobotConnector(argparser, robot); // warning never freed
+    //ArRobotConnector robotConnector(argparser, robot);
     qInfo()<<"Antes de robot connector-----------------------------------------";
-    if(!robotConnector.connectRobot())
+    if(!conn->connectRobot())
     {
-        qInfo()<<"SimpleMotionCommands: Could not connect to the robot.";
+        qInfo()<<"SimpleMotionCommands: Could not connect to the robot->";
         std::terminate();
-    }
+    }/*
     if (!Aria::parseArgs())
     {
         Aria::logOptions();
         Aria::exit(1);
         std::terminate();
-    }
+    }*/
     qInfo()<<"Antes de robot async-----------------------------------------";
-    robot.runAsync(true);
+    robot->runAsync(true);
     qInfo()<<"Async-----------------------------------------";
-    robot.lock();
-        robot.enableMotors();
-    robot.unlock();
+    robot->lock();
+        robot->enableMotors();
+    robot->unlock();
     this->Period = period;
 	if(this->startup_check_flag)
 	{
@@ -92,20 +99,20 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
-	//moveWheels();
-    qInfo()<<"compute-----------------------------------------";
-   /* robot.lock();
-    robot.enableMotors();
-    robot.setVel(250);
-    robot.unlock();*/
+	moveWheels();
+    //qInfo()<<"compute-----------------------------------------";
+   /* robot->lock();
+    robot->enableMotors();
+    robot->setVel(250);
+    robot->unlock();*/
 }
 
 void SpecificWorker::moveWheels()
 {
-    robot.lock();
+    robot->lock();
     ArLog::log(ArLog::Normal, "Robot: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f, Battery=%.2fV",
-               robot.getX(), robot.getY(), robot.getTh(), robot.getVel(), robot.getRotVel(), robot.getBatteryVoltage());
-    robot.unlock();
+               robot->getX(), robot->getY(), robot->getTh(), robot->getVel(), robot->getRotVel(), robot->getBatteryVoltage());
+    robot->unlock();
 
     // Sleep for 3 seconds.
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Will start driving in 3 seconds...");
@@ -113,41 +120,41 @@ void SpecificWorker::moveWheels()
 
     //Set forward velocity to 50 mm/s
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Driving forward at 250 mm/s for 5 sec...");
-    robot.lock();
-    robot.enableMotors();
-    robot.setVel(250);
-    robot.unlock();
+    robot->lock();
+    robot->enableMotors();
+    robot->setVel(250);
+    robot->unlock();
     ArUtil::sleep(5000);
 
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Stopping.");
-    robot.lock();
-    robot.stop();
-    robot.unlock();
+    robot->lock();
+    robot->stop();
+    robot->unlock();
     ArUtil::sleep(1000);
 
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Rotating at 10 deg/s for 5 sec...");
-    robot.lock();
-    robot.setRotVel(10);
-    robot.unlock();
+    robot->lock();
+    robot->setRotVel(10);
+    robot->unlock();
     ArUtil::sleep(5000);
 
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Rotating at -10 deg/s for 10 sec...");
-    robot.lock();
-    robot.setRotVel(-10);
-    robot.unlock();
+    robot->lock();
+    robot->setRotVel(-10);
+    robot->unlock();
     ArUtil::sleep(10000);
 
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Driving forward at 150 mm/s for 5 sec...");
-    robot.lock();
-    robot.setRotVel(0);
-    robot.setVel(150);
-    robot.unlock();
+    robot->lock();
+    robot->setRotVel(0);
+    robot->setVel(150);
+    robot->unlock();
     ArUtil::sleep(5000);
 
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Stopping.");
-    robot.lock();
-    robot.stop();
-    robot.unlock();
+    robot->lock();
+    robot->stop();
+    robot->unlock();
     ArUtil::sleep(1000);
 
     // Other motion command functions include move(), setHeading(),
@@ -155,10 +162,10 @@ void SpecificWorker::moveWheels()
     // values used by the robot with setAccel(), setDecel(), setRotAccel(),
     // setRotDecel().  See the ArRobot class documentation for more.
 
-    robot.lock();
+    robot->lock();
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f, Battery=%.2fV",
-               robot.getX(), robot.getY(), robot.getTh(), robot.getVel(), robot.getRotVel(), robot.getBatteryVoltage());
-    robot.unlock();
+               robot->getX(), robot->getY(), robot->getTh(), robot->getVel(), robot->getRotVel(), robot->getBatteryVoltage());
+    robot->unlock();
 
 }
 
@@ -170,9 +177,9 @@ void SpecificWorker::moveWheels()
 /*RoboCompBatteryStatus::TBattery SpecificWorker::BatteryStatus_getBatteryState()
 {
     RoboCompBatteryStatus::TBattery battery;
-    robot.lock();
-        battery.percentage = robot.getBatteryVoltageNow();
-    robot.unlock();
+    robot->lock();
+        battery.percentage = robot->getBatteryVoltageNow();
+    robot->unlock();
     return battery;
 }*/
 
@@ -183,22 +190,22 @@ void SpecificWorker::DifferentialRobot_correctOdometer(int x, int z, float alpha
 
 void SpecificWorker::DifferentialRobot_getBasePose(int &x, int &z, float &alpha)
 {
-    robot.lock();
-        x = robot.getX();
-        z = robot.getY();
-        alpha = robot.getTh();
-    robot.unlock();
+    robot->lock();
+        x = robot->getX();
+        z = robot->getY();
+        alpha = robot->getTh();
+    robot->unlock();
 }
 
 void SpecificWorker::DifferentialRobot_getBaseState(RoboCompGenericBase::TBaseState &state)
 {
-    robot.lock();
-        state.x = robot.getX();
-        state.z = robot.getY();
-        state.alpha = robot.getTh();
-        state.advVz = robot.getVel();
-        state.rotV = robot.getRotVel();
-    robot.unlock();
+    robot->lock();
+        state.x = robot->getX();
+        state.z = robot->getY();
+        state.alpha = robot->getTh();
+        state.advVz = robot->getVel();
+        state.rotV = robot->getRotVel();
+    robot->unlock();
     ArLog::log(ArLog::Normal, "simpleMotionCommands: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f",
                state.x, state.z, state.alpha, state.advVz, state.rotV);
 
@@ -217,10 +224,10 @@ void SpecificWorker::DifferentialRobot_setSpeedBase(float adv, float rot)
 {
     if( adv < MAX_ADV and adv > -MAX_ADV and rot > -MAX_ROT and rot < MAX_ROT)
     {
-        robot.lock();
-        robot.setVel(adv);
-        robot.setRotVel(rot);
-        robot.unlock();
+        robot->lock();
+        robot->setVel(adv);
+        robot->setRotVel(rot);
+        robot->unlock();
     }
     else
         std::cout << __FUNCTION__ << "Commanded velocity out of bounds " << adv << " mm/s " << rot << " rads/sg" << std::endl;
@@ -228,10 +235,10 @@ void SpecificWorker::DifferentialRobot_setSpeedBase(float adv, float rot)
 
 void SpecificWorker::DifferentialRobot_stopBase()
 {
-    robot.lock();
-    robot.setVel(0);
-    robot.setRotVel(0);
-    robot.unlock();
+    robot->lock();
+    robot->setVel(0);
+    robot->setRotVel(0);
+    robot->unlock();
 }
 
 /**************************************/
@@ -244,3 +251,15 @@ int SpecificWorker::startup_check()
     QTimer::singleShot(200, qApp, SLOT(quit()));
     return 0;
 }
+
+
+//SUBSCRIPTION to sendData method from JoystickAdapter interface
+void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data)
+{
+    //subscribesToCODE
+  //  for(auto a : data.axes)
+  //      std::cout << a.name << std::endl;
+
+}
+
+

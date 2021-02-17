@@ -26,6 +26,7 @@
 
 #include <DifferentialRobot.h>
 #include <GenericBase.h>
+#include <JoystickAdapter.h>
 
 
 #define CHECK_PERIOD 5000
@@ -57,6 +58,7 @@ public:
 	virtual void DifferentialRobot_setOdometerPose(int x, int z, float alpha) = 0;
 	virtual void DifferentialRobot_setSpeedBase(float adv, float rot) = 0;
 	virtual void DifferentialRobot_stopBase() = 0;
+	virtual void JoystickAdapter_sendData (RoboCompJoystickAdapter::TData data) = 0;
 
 protected:
 

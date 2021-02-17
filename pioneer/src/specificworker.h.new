@@ -47,6 +47,7 @@ public:
 	void DifferentialRobot_setSpeedBase(float adv, float rot);
 	void DifferentialRobot_stopBase();
 
+	void JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data);
 
 public slots:
 	void compute();

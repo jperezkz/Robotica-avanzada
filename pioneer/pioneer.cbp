@@ -231,6 +231,12 @@
 		<Unit filename="/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/GenericBase.h">
 			<Option target="pioneer"/>
 		</Unit>
+		<Unit filename="/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/JoystickAdapter.cpp">
+			<Option target="pioneer"/>
+		</Unit>
+		<Unit filename="/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/JoystickAdapter.cpp.rule">
+			<Option target="pioneer"/>
+		</Unit>
 		<Unit filename="/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/commonbehaviorI.cpp">
 			<Option target="pioneer"/>
 		</Unit>
@@ -253,6 +259,12 @@
 			<Option target="pioneer"/>
 		</Unit>
 		<Unit filename="/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/genericworker.h">
+			<Option target="pioneer"/>
+		</Unit>
+		<Unit filename="/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/joystickadapterI.cpp">
+			<Option target="pioneer"/>
+		</Unit>
+		<Unit filename="/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/joystickadapterI.h">
 			<Option target="pioneer"/>
 		</Unit>
 		<Unit filename="/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/main.cpp">

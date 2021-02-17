@@ -7,6 +7,7 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CommonBehavior.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/CommonBehavior.cpp.o"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/DifferentialRobot.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/DifferentialRobot.cpp.o"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/GenericBase.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/GenericBase.cpp.o"
+  "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/JoystickAdapter.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.o"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/commonbehaviorI.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/commonbehaviorI.cpp.o"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/differentialrobotI.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/differentialrobotI.cpp.o"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/genericmonitor.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/genericmonitor.cpp.o"
@@ -14,6 +15,7 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/home/robocomp/robocomp/classes/qlog/qlog.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/qlog/qlog.cpp.o"
   "/home/robocomp/robocomp/classes/rapplication/rapplication.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/rapplication/rapplication.cpp.o"
   "/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.o"
+  "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/joystickadapterI.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.o"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/main.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/main.cpp.o"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/pioneer_autogen/mocs_compilation.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/pioneer_autogen/mocs_compilation.cpp.o"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/specificmonitor.cpp" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/specificmonitor.cpp.o"
@@ -63,6 +65,7 @@ set(CMAKE_MULTIPLE_OUTPUT_PAIRS
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CommonBehavior.h" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CommonBehavior.cpp"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/DifferentialRobot.h" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/DifferentialRobot.cpp"
   "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/GenericBase.h" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/GenericBase.cpp"
+  "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/JoystickAdapter.h" "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/JoystickAdapter.cpp"
   )
 
 

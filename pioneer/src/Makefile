@@ -302,6 +302,33 @@ GenericBase.cpp.s:
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/pioneer.dir/build.make src/CMakeFiles/pioneer.dir/GenericBase.cpp.s
 .PHONY : GenericBase.cpp.s
 
+JoystickAdapter.o: JoystickAdapter.cpp.o
+
+.PHONY : JoystickAdapter.o
+
+# target to build an object file
+JoystickAdapter.cpp.o:
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/pioneer.dir/build.make src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.o
+.PHONY : JoystickAdapter.cpp.o
+
+JoystickAdapter.i: JoystickAdapter.cpp.i
+
+.PHONY : JoystickAdapter.i
+
+# target to preprocess a source file
+JoystickAdapter.cpp.i:
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/pioneer.dir/build.make src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.i
+.PHONY : JoystickAdapter.cpp.i
+
+JoystickAdapter.s: JoystickAdapter.cpp.s
+
+.PHONY : JoystickAdapter.s
+
+# target to generate assembly for a file
+JoystickAdapter.cpp.s:
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/pioneer.dir/build.make src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.s
+.PHONY : JoystickAdapter.cpp.s
+
 commonbehaviorI.o: commonbehaviorI.cpp.o
 
 .PHONY : commonbehaviorI.o
@@ -491,6 +518,33 @@ home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.s:
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/pioneer.dir/build.make src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.s
 .PHONY : home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.s
 
+joystickadapterI.o: joystickadapterI.cpp.o
+
+.PHONY : joystickadapterI.o
+
+# target to build an object file
+joystickadapterI.cpp.o:
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/pioneer.dir/build.make src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.o
+.PHONY : joystickadapterI.cpp.o
+
+joystickadapterI.i: joystickadapterI.cpp.i
+
+.PHONY : joystickadapterI.i
+
+# target to preprocess a source file
+joystickadapterI.cpp.i:
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/pioneer.dir/build.make src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.i
+.PHONY : joystickadapterI.cpp.i
+
+joystickadapterI.s: joystickadapterI.cpp.s
+
+.PHONY : joystickadapterI.s
+
+# target to generate assembly for a file
+joystickadapterI.cpp.s:
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/pioneer.dir/build.make src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.s
+.PHONY : joystickadapterI.cpp.s
+
 main.o: main.cpp.o
 
 .PHONY : main.o
@@ -623,6 +677,9 @@ help:
 	@echo "... GenericBase.o"
 	@echo "... GenericBase.i"
 	@echo "... GenericBase.s"
+	@echo "... JoystickAdapter.o"
+	@echo "... JoystickAdapter.i"
+	@echo "... JoystickAdapter.s"
 	@echo "... commonbehaviorI.o"
 	@echo "... commonbehaviorI.i"
 	@echo "... commonbehaviorI.s"
@@ -644,6 +701,9 @@ help:
 	@echo "... home/robocomp/robocomp/classes/sigwatch/sigwatch.o"
 	@echo "... home/robocomp/robocomp/classes/sigwatch/sigwatch.i"
 	@echo "... home/robocomp/robocomp/classes/sigwatch/sigwatch.s"
+	@echo "... joystickadapterI.o"
+	@echo "... joystickadapterI.i"
+	@echo "... joystickadapterI.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

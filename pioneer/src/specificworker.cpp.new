@@ -143,9 +143,22 @@ void SpecificWorker::DifferentialRobot_stopBase()
 
 }
 
+//SUBSCRIPTION to sendData method from JoystickAdapter interface
+void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data)
+{
+//subscribesToCODE
+
+}
+
 
 
 /**************************************/
 // From the RoboCompDifferentialRobot you can use this types:
 // RoboCompDifferentialRobot::TMechParams
+
+/**************************************/
+// From the RoboCompJoystickAdapter you can use this types:
+// RoboCompJoystickAdapter::AxisParams
+// RoboCompJoystickAdapter::ButtonParams
+// RoboCompJoystickAdapter::TData
 

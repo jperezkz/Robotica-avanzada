@@ -98,9 +98,16 @@ src/GenericBase.cpp:
 src/GenericBase.h: src/GenericBase.cpp
 	@$(CMAKE_COMMAND) -E touch_nocreate src/GenericBase.h
 
+src/JoystickAdapter.cpp:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Generating JoystickAdapter.h and JoystickAdapter.cpp from JoystickAdapter.ice"
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && slice2cpp JoystickAdapter.ice -I. --output-dir .
+
+src/JoystickAdapter.h: src/JoystickAdapter.cpp
+	@$(CMAKE_COMMAND) -E touch_nocreate src/JoystickAdapter.h
+
 src/CMakeFiles/pioneer.dir/pioneer_autogen/mocs_compilation.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/pioneer_autogen/mocs_compilation.cpp.o: src/pioneer_autogen/mocs_compilation.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object src/CMakeFiles/pioneer.dir/pioneer_autogen/mocs_compilation.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object src/CMakeFiles/pioneer.dir/pioneer_autogen/mocs_compilation.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/pioneer_autogen/mocs_compilation.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/pioneer_autogen/mocs_compilation.cpp
 
 src/CMakeFiles/pioneer.dir/pioneer_autogen/mocs_compilation.cpp.i: cmake_force
@@ -113,7 +120,7 @@ src/CMakeFiles/pioneer.dir/pioneer_autogen/mocs_compilation.cpp.s: cmake_force
 
 src/CMakeFiles/pioneer.dir/specificworker.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/specificworker.cpp.o: src/specificworker.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object src/CMakeFiles/pioneer.dir/specificworker.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object src/CMakeFiles/pioneer.dir/specificworker.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/specificworker.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/specificworker.cpp
 
 src/CMakeFiles/pioneer.dir/specificworker.cpp.i: cmake_force
@@ -126,7 +133,7 @@ src/CMakeFiles/pioneer.dir/specificworker.cpp.s: cmake_force
 
 src/CMakeFiles/pioneer.dir/specificmonitor.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/specificmonitor.cpp.o: src/specificmonitor.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object src/CMakeFiles/pioneer.dir/specificmonitor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object src/CMakeFiles/pioneer.dir/specificmonitor.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/specificmonitor.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/specificmonitor.cpp
 
 src/CMakeFiles/pioneer.dir/specificmonitor.cpp.i: cmake_force
@@ -139,7 +146,7 @@ src/CMakeFiles/pioneer.dir/specificmonitor.cpp.s: cmake_force
 
 src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/rapplication/rapplication.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/rapplication/rapplication.cpp.o: /home/robocomp/robocomp/classes/rapplication/rapplication.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/rapplication/rapplication.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/rapplication/rapplication.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/rapplication/rapplication.cpp.o -c /home/robocomp/robocomp/classes/rapplication/rapplication.cpp
 
 src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/rapplication/rapplication.cpp.i: cmake_force
@@ -152,7 +159,7 @@ src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/rapplication/rapplicat
 
 src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.o: /home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.o -c /home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp
 
 src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.i: cmake_force
@@ -165,7 +172,7 @@ src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/sigwatch/sigwatch.cpp.
 
 src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/qlog/qlog.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/qlog/qlog.cpp.o: /home/robocomp/robocomp/classes/qlog/qlog.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/qlog/qlog.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/qlog/qlog.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/qlog/qlog.cpp.o -c /home/robocomp/robocomp/classes/qlog/qlog.cpp
 
 src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/qlog/qlog.cpp.i: cmake_force
@@ -178,7 +185,7 @@ src/CMakeFiles/pioneer.dir/home/robocomp/robocomp/classes/qlog/qlog.cpp.s: cmake
 
 src/CMakeFiles/pioneer.dir/main.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/main.cpp.o: src/main.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object src/CMakeFiles/pioneer.dir/main.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object src/CMakeFiles/pioneer.dir/main.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/main.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/main.cpp
 
 src/CMakeFiles/pioneer.dir/main.cpp.i: cmake_force
@@ -191,7 +198,7 @@ src/CMakeFiles/pioneer.dir/main.cpp.s: cmake_force
 
 src/CMakeFiles/pioneer.dir/genericmonitor.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/genericmonitor.cpp.o: src/genericmonitor.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object src/CMakeFiles/pioneer.dir/genericmonitor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object src/CMakeFiles/pioneer.dir/genericmonitor.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/genericmonitor.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/genericmonitor.cpp
 
 src/CMakeFiles/pioneer.dir/genericmonitor.cpp.i: cmake_force
@@ -204,7 +211,7 @@ src/CMakeFiles/pioneer.dir/genericmonitor.cpp.s: cmake_force
 
 src/CMakeFiles/pioneer.dir/commonbehaviorI.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/commonbehaviorI.cpp.o: src/commonbehaviorI.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object src/CMakeFiles/pioneer.dir/commonbehaviorI.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object src/CMakeFiles/pioneer.dir/commonbehaviorI.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/commonbehaviorI.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/commonbehaviorI.cpp
 
 src/CMakeFiles/pioneer.dir/commonbehaviorI.cpp.i: cmake_force
@@ -217,7 +224,7 @@ src/CMakeFiles/pioneer.dir/commonbehaviorI.cpp.s: cmake_force
 
 src/CMakeFiles/pioneer.dir/genericworker.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/genericworker.cpp.o: src/genericworker.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object src/CMakeFiles/pioneer.dir/genericworker.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object src/CMakeFiles/pioneer.dir/genericworker.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/genericworker.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/genericworker.cpp
 
 src/CMakeFiles/pioneer.dir/genericworker.cpp.i: cmake_force
@@ -230,7 +237,7 @@ src/CMakeFiles/pioneer.dir/genericworker.cpp.s: cmake_force
 
 src/CMakeFiles/pioneer.dir/differentialrobotI.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/differentialrobotI.cpp.o: src/differentialrobotI.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object src/CMakeFiles/pioneer.dir/differentialrobotI.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object src/CMakeFiles/pioneer.dir/differentialrobotI.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/differentialrobotI.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/differentialrobotI.cpp
 
 src/CMakeFiles/pioneer.dir/differentialrobotI.cpp.i: cmake_force
@@ -241,9 +248,22 @@ src/CMakeFiles/pioneer.dir/differentialrobotI.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/pioneer.dir/differentialrobotI.cpp.s"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/differentialrobotI.cpp -o CMakeFiles/pioneer.dir/differentialrobotI.cpp.s
 
+src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
+src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.o: src/joystickadapterI.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.o"
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/joystickadapterI.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/joystickadapterI.cpp
+
+src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/pioneer.dir/joystickadapterI.cpp.i"
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/joystickadapterI.cpp > CMakeFiles/pioneer.dir/joystickadapterI.cpp.i
+
+src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/pioneer.dir/joystickadapterI.cpp.s"
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/joystickadapterI.cpp -o CMakeFiles/pioneer.dir/joystickadapterI.cpp.s
+
 src/CMakeFiles/pioneer.dir/CommonBehavior.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/CommonBehavior.cpp.o: src/CommonBehavior.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object src/CMakeFiles/pioneer.dir/CommonBehavior.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object src/CMakeFiles/pioneer.dir/CommonBehavior.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/CommonBehavior.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CommonBehavior.cpp
 
 src/CMakeFiles/pioneer.dir/CommonBehavior.cpp.i: cmake_force
@@ -256,7 +276,7 @@ src/CMakeFiles/pioneer.dir/CommonBehavior.cpp.s: cmake_force
 
 src/CMakeFiles/pioneer.dir/DifferentialRobot.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/DifferentialRobot.cpp.o: src/DifferentialRobot.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object src/CMakeFiles/pioneer.dir/DifferentialRobot.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object src/CMakeFiles/pioneer.dir/DifferentialRobot.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/DifferentialRobot.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/DifferentialRobot.cpp
 
 src/CMakeFiles/pioneer.dir/DifferentialRobot.cpp.i: cmake_force
@@ -269,7 +289,7 @@ src/CMakeFiles/pioneer.dir/DifferentialRobot.cpp.s: cmake_force
 
 src/CMakeFiles/pioneer.dir/GenericBase.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
 src/CMakeFiles/pioneer.dir/GenericBase.cpp.o: src/GenericBase.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object src/CMakeFiles/pioneer.dir/GenericBase.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object src/CMakeFiles/pioneer.dir/GenericBase.cpp.o"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/GenericBase.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/GenericBase.cpp
 
 src/CMakeFiles/pioneer.dir/GenericBase.cpp.i: cmake_force
@@ -279,6 +299,19 @@ src/CMakeFiles/pioneer.dir/GenericBase.cpp.i: cmake_force
 src/CMakeFiles/pioneer.dir/GenericBase.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/pioneer.dir/GenericBase.cpp.s"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/GenericBase.cpp -o CMakeFiles/pioneer.dir/GenericBase.cpp.s
+
+src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.o: src/CMakeFiles/pioneer.dir/flags.make
+src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.o: src/JoystickAdapter.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.o"
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/pioneer.dir/JoystickAdapter.cpp.o -c /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/JoystickAdapter.cpp
+
+src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/pioneer.dir/JoystickAdapter.cpp.i"
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/JoystickAdapter.cpp > CMakeFiles/pioneer.dir/JoystickAdapter.cpp.i
+
+src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/pioneer.dir/JoystickAdapter.cpp.s"
+	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/JoystickAdapter.cpp -o CMakeFiles/pioneer.dir/JoystickAdapter.cpp.s
 
 # Object files for target pioneer
 pioneer_OBJECTS = \
@@ -293,9 +326,11 @@ pioneer_OBJECTS = \
 "CMakeFiles/pioneer.dir/commonbehaviorI.cpp.o" \
 "CMakeFiles/pioneer.dir/genericworker.cpp.o" \
 "CMakeFiles/pioneer.dir/differentialrobotI.cpp.o" \
+"CMakeFiles/pioneer.dir/joystickadapterI.cpp.o" \
 "CMakeFiles/pioneer.dir/CommonBehavior.cpp.o" \
 "CMakeFiles/pioneer.dir/DifferentialRobot.cpp.o" \
-"CMakeFiles/pioneer.dir/GenericBase.cpp.o"
+"CMakeFiles/pioneer.dir/GenericBase.cpp.o" \
+"CMakeFiles/pioneer.dir/JoystickAdapter.cpp.o"
 
 # External object files for target pioneer
 pioneer_EXTERNAL_OBJECTS =
@@ -311,9 +346,11 @@ bin/pioneer: src/CMakeFiles/pioneer.dir/genericmonitor.cpp.o
 bin/pioneer: src/CMakeFiles/pioneer.dir/commonbehaviorI.cpp.o
 bin/pioneer: src/CMakeFiles/pioneer.dir/genericworker.cpp.o
 bin/pioneer: src/CMakeFiles/pioneer.dir/differentialrobotI.cpp.o
+bin/pioneer: src/CMakeFiles/pioneer.dir/joystickadapterI.cpp.o
 bin/pioneer: src/CMakeFiles/pioneer.dir/CommonBehavior.cpp.o
 bin/pioneer: src/CMakeFiles/pioneer.dir/DifferentialRobot.cpp.o
 bin/pioneer: src/CMakeFiles/pioneer.dir/GenericBase.cpp.o
+bin/pioneer: src/CMakeFiles/pioneer.dir/JoystickAdapter.cpp.o
 bin/pioneer: src/CMakeFiles/pioneer.dir/build.make
 bin/pioneer: /usr/lib/x86_64-linux-gnu/libQt5Sql.so.5.12.8
 bin/pioneer: /usr/lib/x86_64-linux-gnu/libQt5OpenGL.so.5.12.8
@@ -328,7 +365,7 @@ bin/pioneer: /usr/lib/x86_64-linux-gnu/libQt5Gui.so.5.12.8
 bin/pioneer: /usr/lib/x86_64-linux-gnu/libQt5Network.so.5.12.8
 bin/pioneer: /usr/lib/x86_64-linux-gnu/libQt5Core.so.5.12.8
 bin/pioneer: src/CMakeFiles/pioneer.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Linking CXX executable ../bin/pioneer"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/robolab/robocomp/components/Robotica-avanzada/pioneer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Linking CXX executable ../bin/pioneer"
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/pioneer.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -346,6 +383,8 @@ src/CMakeFiles/pioneer.dir/depend: src/DifferentialRobot.cpp
 src/CMakeFiles/pioneer.dir/depend: src/DifferentialRobot.h
 src/CMakeFiles/pioneer.dir/depend: src/GenericBase.cpp
 src/CMakeFiles/pioneer.dir/depend: src/GenericBase.h
+src/CMakeFiles/pioneer.dir/depend: src/JoystickAdapter.cpp
+src/CMakeFiles/pioneer.dir/depend: src/JoystickAdapter.h
 	cd /home/robolab/robocomp/components/Robotica-avanzada/pioneer && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/robolab/robocomp/components/Robotica-avanzada/pioneer /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src /home/robolab/robocomp/components/Robotica-avanzada/pioneer /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src /home/robolab/robocomp/components/Robotica-avanzada/pioneer/src/CMakeFiles/pioneer.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : src/CMakeFiles/pioneer.dir/depend
 

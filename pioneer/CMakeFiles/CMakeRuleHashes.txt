@@ -3,3 +3,4 @@
 7791522308935121c58273c657696dc8 src/CommonBehavior.cpp
 72fb707a998ea79ff29323e6ccbf1b0e src/DifferentialRobot.cpp
 2d14532590207c18e9039236c3150726 src/GenericBase.cpp
+f8c9d10c7ba658e428badaf43ba7fcf7 src/JoystickAdapter.cpp
