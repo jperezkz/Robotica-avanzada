@@ -218,8 +218,8 @@ void SpecificWorker::DifferentialRobot_setSpeedBase(float adv, float rot)
     if( adv < MAX_ADV and adv > -MAX_ADV and rot > -MAX_ROT and rot < MAX_ROT)
     {
         robot->lock();
-        robot->setVel(adv);
-        robot->setRotVel(rot);
+            robot->setVel(adv);
+            robot->setRotVel(rot);
         robot->unlock();
     }
     else
@@ -229,8 +229,8 @@ void SpecificWorker::DifferentialRobot_setSpeedBase(float adv, float rot)
 void SpecificWorker::DifferentialRobot_stopBase()
 {
     robot->lock();
-    robot->setVel(0);
-    robot->setRotVel(0);
+        robot->setVel(0);
+        robot->setRotVel(0);
     robot->unlock();
 }
 
