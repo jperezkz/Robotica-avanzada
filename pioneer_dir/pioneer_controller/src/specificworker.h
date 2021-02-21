@@ -34,9 +34,6 @@
 #include <QGraphicsLineItem>
 #include <myscene.h>
 #include <doublebuffer/DoubleBuffer.h>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
 
 class SpecificWorker : public GenericWorker
 {
@@ -107,18 +104,26 @@ class SpecificWorker : public GenericWorker
             }
         };
         std::shared_ptr<Robot> robot;
-        RoboCompGenericBase::TBaseState read_base();
+        RoboCompGenericBase::TBaseState read_base(Robot2DScene *scene);
         float sigmoid(float t);
         float exponential(float value, float xValue, float yValue, float min);
         void check_target( std::shared_ptr<Robot> robot);
+        struct LaserPoint{ float dist; float angle;};
+        std::vector<LaserPoint>  get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata,
+                                                      Robot2DScene *scene,
+                                                      bool draw,
+                                                      unsigned short subsampling);
+        using Point = std::pair<float, float>;
+        QPolygonF filter_laser(const std::vector<SpecificWorker::LaserPoint> &ldata);
+        void ramer_douglas_peucker(const std::vector<Point> &pointList, double epsilon, std::vector<Point> &out);
 
         // 2d scene
-        MyScene scene;
-        QGraphicsItem *robot_polygon = nullptr;
-        void draw_target(QGraphicsScene *scene, std::shared_ptr<Robot> robot, const Target &target);
+        Robot2DScene scene;
+        void draw_target(Robot2DScene *scene, std::shared_ptr<Robot> robot, const Target &target);
+        void draw_laser(Robot2DScene *scene, QPolygonF &laser_poly); // robot coordinates
 
         // cameras
-        void read_rgbd_camera();
+        RoboCompCameraRGBDSimple::TRGBD read_rgbd_camera(bool draw);
 };
 
 #endif

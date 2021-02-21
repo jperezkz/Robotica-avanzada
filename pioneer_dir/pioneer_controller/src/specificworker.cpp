@@ -17,6 +17,13 @@
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "specificworker.h"
+#include <cppitertools/enumerate.hpp>
+#include <cppitertools/sliding_window.hpp>
+//#include <ranges>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <Eigen/Dense>
 
 /**
 * \brief Default constructor
@@ -54,7 +61,7 @@ void SpecificWorker::initialize(int period)
     // draw
     QFileInfo info1("../etc/escuela.simscene.xml");
     QFileInfo info2("../etc/escuela.json");
-    qInfo() << info2.lastModified().toSecsSinceEpoch() - info1.lastModified().toSecsSinceEpoch();
+    //qInfo() << info2.lastModified().toSecsSinceEpoch() - info1.lastModified().toSecsSinceEpoch();
 
     //    qInfo() << info.lastModified().toSecsSinceEpoch();
     //    if (QDateTime::currentDateTime().toSecsSinceEpoch() - info.lastModified().toSecsSinceEpoch() < 3000)
@@ -73,7 +80,7 @@ void SpecificWorker::initialize(int period)
                         //out.ang = -atan2(t.x() - r.x(), t.y() - r.y()); //target ang in the direction or line joining robot-target
                     });
             };
-    robot_polygon = scene.initialize(graphicsView, target_slot, robot_polygon, ROBOT_WIDTH, ROBOT_LONG, FILE_NAME);
+    scene.initialize(graphicsView, target_slot, ROBOT_WIDTH, ROBOT_LONG, FILE_NAME);
     robot = std::make_shared<Robot>(innerModel);
 
 	this->Period = period;
@@ -85,9 +92,9 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
-    read_base();
-    read_rgbd_camera();
-    // compute_coastal_map();
+    read_base(&scene);
+    auto cdata = read_rgbd_camera(false);
+    auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
     check_target(robot);
 }
 
@@ -104,7 +111,7 @@ float SpecificWorker::exponential(float value, float xValue, float yValue, float
     float res = exp(-fabs(value) / landa);
     return std::max(res, min);
 }
-RoboCompGenericBase::TBaseState SpecificWorker::read_base()
+RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
 {
     RoboCompGenericBase::TBaseState bState;
     try
@@ -113,30 +120,33 @@ RoboCompGenericBase::TBaseState SpecificWorker::read_base()
         // bState.alpha is corrected to comply with InnerModel convention
         innerModel->updateTransformValues("robot", bState.x, 0, bState.z, 0, -bState.alpha, 0);
         robot->update_state(Robot::State{bState.x, bState.z, bState.alpha});
-        robot_polygon->setRotation(qRadiansToDegrees(bState.alpha));
-        robot_polygon->setPos(bState.x, bState.z);
+        scene->robot_polygon->setRotation(qRadiansToDegrees(bState.alpha));
+        scene->robot_polygon->setPos(bState.x, bState.z);
     }
     catch(const Ice::Exception &e)
     { std::cout << "Error reading from DifferentialRobot" << e.what() << std::endl; }
     return bState;
 }
-void SpecificWorker::read_rgbd_camera()
+RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
 {
     auto cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_sensor");
-    cv::Mat img(cdata.image.height, cdata.image.width, CV_8UC3, const_cast<std::vector<uint8_t> &>(cdata.image.image).data());
-    cv::imshow("rgb", img);
-    const std::vector<uint8_t> &tmp = cdata.depth.depth;
-    float *depth_array = (float *)cdata.depth.depth.data();
-    const auto STEP = sizeof(float);
-    std::vector<std::uint8_t> gray_image(tmp.size() / STEP);
-    for (std::size_t i = 0; i < tmp.size() / STEP; i++)
-        gray_image[i] = (int) (depth_array[i] * 15);  // ONLY VALID FOR SHORT RANGE, INDOOR SCENES
-    cv::Mat depth(cdata.depth.height, cdata.depth.width, CV_8UC1, const_cast<std::vector<uint8_t> &>(gray_image).data());
-    cv::imshow("depth", depth);
-    //cv::waitKey(0);
-
+    if(draw)
+    {
+        cv::Mat img(cdata.image.height, cdata.image.width, CV_8UC3, const_cast<std::vector<uint8_t> &>(cdata.image.image).data());
+        cv::imshow("rgb", img);
+        const std::vector<uint8_t> &tmp = cdata.depth.depth;
+        float *depth_array = (float *) cdata.depth.depth.data();
+        const auto STEP = sizeof(float);
+        std::vector<std::uint8_t> gray_image(tmp.size() / STEP);
+        for (std::size_t i = 0; i < tmp.size() / STEP; i++)
+            gray_image[i] = (int) (depth_array[i] * 15);  // ONLY VALID FOR SHORT RANGE, INDOOR SCENES
+        cv::Mat depth(cdata.depth.height, cdata.depth.width, CV_8UC1, const_cast<std::vector<uint8_t> &>(gray_image).data());
+        cv::imshow("depth", depth);
+        cv::waitKey(1);
+    }
+    return cdata;
 }
-void SpecificWorker::draw_target(QGraphicsScene *scene, std::shared_ptr<Robot> robot, const Target &target)
+void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> robot, const Target &target)
 {
     static QGraphicsEllipseItem *target_draw = nullptr;
 
@@ -182,8 +192,148 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
         { std::cout << e.what() << std::endl; };
     }
 }
-//////////////////////////////////////////////////////////////////////////////////////
+std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata,
+                                                                              Robot2DScene *scene,
+                                                                              bool draw,
+                                                                              unsigned short subsampling )
+{
+    if (subsampling == 0 or subsampling > 10)
+    {
+        qWarning("SpecificWorker::get_laser_from_rgbd: subsampling parameter < 1 or > than 10");
+        return std::vector<LaserPoint>();
+    }
+    const std::vector<uint8_t> &tmp = cdata.depth.depth;
+    float *depth_array = (float *) cdata.depth.depth.data();  // cast to float
+    const int WIDTH = cdata.depth.width;
+    const int HEIGHT = cdata.depth.height;
+    int FOCAL = cdata.depth.focalx;
+    FOCAL = (int) ((WIDTH / 2) / atan(0.52));  // para angulo de 60º
+    int STEP = subsampling;
+    float X, Y, Z;
+    int cols, rows;
+    std::size_t SIZE = tmp.size() / sizeof(float);
+    const int MAX_LASER_BINS = 200;
+    //const float TOTAL_HOR_ANGLE = atan2(WIDTH / 2.f, FOCAL) * 2.f;
+    const float TOTAL_HOR_ANGLE = 1.0472;  // para 60º
+    using Point = std::tuple< float, float, float>;
+    auto cmp = [](Point a, Point b) { return true; };
+    std::vector<std::set<Point, decltype(cmp)>> hor_bins(MAX_LASER_BINS);
+    for (std::size_t i = 0; i < SIZE; i += STEP)
+    {
+        cols = (i % WIDTH) - (WIDTH / 2);
+        rows = (HEIGHT / 2) - (i / WIDTH);
+        // compute axis coordinates according to the camera's coordinate system (Y outwards and Z up)
+        Y = depth_array[i] * 1000; // we transform measurements to millimeters
+        X = cols * Y / FOCAL;
+        Z = rows * Y / FOCAL;
+        // accumulate in bins of equal horizontal angle from optical axis
+        float hor_angle = atan2(cols, FOCAL);
+        // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
+        int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
+        hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
+        // result[i] = std::make_tuple(X, Y, Z);
+    }
+    std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
+    uint i=0;
+    for(auto &bin : hor_bins)
+    {
+        const auto &[X,Y,Z] = *bin.cbegin();
+        laser_data[i] = LaserPoint{sqrt(X*X+Y*Y+Z*Z), (i-MAX_LASER_BINS/2.f)/(MAX_LASER_BINS/TOTAL_HOR_ANGLE)};
+        i++;
+    }
+    auto laser_poly = filter_laser(laser_data);
+    if(draw)
+        draw_laser(scene, laser_poly);
+    return laser_data;
+}
+void SpecificWorker::draw_laser(Robot2DScene *scene, QPolygonF &laser_poly)
+{
+    static QGraphicsItem *laser_polygon = nullptr;
+    if (laser_polygon != nullptr)
+        scene->removeItem(laser_polygon);
 
+    QColor color("LightGreen");
+    color.setAlpha(40);
+    laser_polygon = scene->addPolygon(scene->robot_polygon->mapToScene(laser_poly), QPen(QColor("DarkGreen"), 30), QBrush(color));
+    laser_polygon->setZValue(3);
+}
+QPolygonF SpecificWorker::filter_laser(const std::vector<SpecificWorker::LaserPoint> &ldata)
+{
+    static const float MAX_RDP_DEVIATION_mm  =  70;
+    static const float MAX_SPIKING_ANGLE_rads = 0.2;
+    QPolygonF laser_poly;
+    try
+    {
+        // Simplify laser contour with Ramer-Douglas-Peucker
+        std::vector<Point> plist(ldata.size()+1);
+        plist[0]=std::make_pair(0,0);
+        std::generate(plist.begin()+1, plist.end(), [ldata, k=0]() mutable
+            { auto &l = ldata[k++]; return std::make_pair(l.dist * sin(l.angle), l.dist * cos(l.angle));});
+        vector<Point> pointListOut;
+        ramer_douglas_peucker(plist, MAX_RDP_DEVIATION_mm, pointListOut);
+        laser_poly.resize(pointListOut.size());
+        std::generate(laser_poly.begin(), laser_poly.end(), [pointListOut, this, k=0]() mutable
+            { auto &p = pointListOut[k++]; return QPointF(p.first, p.second);});
+        laser_poly << QPointF(0,0);
+
+        // Filter out spikes. If the angle between two line segments is less than to the specified maximum angle
+        std::vector<QPointF> removed;
+        for(auto &&[k, ps] : iter::sliding_window(laser_poly,3) | iter::enumerate)
+            if( MAX_SPIKING_ANGLE_rads > acos(QVector2D::dotProduct( QVector2D(ps[0] - ps[1]).normalized(), QVector2D(ps[2] - ps[1]).normalized())))
+                removed.push_back(ps[1]);
+        for(auto &&r : removed)
+            laser_poly.erase(std::remove_if(laser_poly.begin(), laser_poly.end(), [r](auto &p) { return p == r; }), laser_poly.end());
+    }
+    catch(const Ice::Exception &e)
+    { std::cout << "Error reading from Laser" << e << std::endl;}
+    laser_poly.pop_back();
+    return laser_poly;  // robot coordinates
+}
+void SpecificWorker::ramer_douglas_peucker(const std::vector<Point> &pointList, double epsilon, std::vector<Point> &out)
+{
+    if(pointList.size()<2)
+    {
+        qWarning() << "Not enough points to simplify";
+        return;
+    }
+    // Find the point with the maximum distance from line between start and end
+    auto line = Eigen::ParametrizedLine<float, 2>::Through(Eigen::Vector2f(pointList.front().first, pointList.front().second),
+                                                           Eigen::Vector2f(pointList.back().first, pointList.back().second));
+    auto max = std::max_element(pointList.begin()+1, pointList.end(), [line](auto &a, auto &b)
+            { return line.distance(Eigen::Vector2f(a.first, a.second)) < line.distance(Eigen::Vector2f(b.first, b.second));});
+    float dmax =  line.distance(Eigen::Vector2f((*max).first, (*max).second));
+
+    // If max distance is greater than epsilon, recursively simplify
+    if(dmax > epsilon)
+    {
+        // Recursive call
+        vector<Point> recResults1;
+        vector<Point> recResults2;
+        vector<Point> firstLine(pointList.begin(), max + 1);
+        vector<Point> lastLine(max, pointList.end());
+
+        ramer_douglas_peucker(firstLine, epsilon, recResults1);
+        ramer_douglas_peucker(lastLine, epsilon, recResults2);
+
+        // Build the result list
+        out.assign(recResults1.begin(), recResults1.end() - 1);
+        out.insert(out.end(), recResults2.begin(), recResults2.end());
+        if (out.size() < 2)
+        {
+            qWarning() << "Problem assembling output";
+            return;
+        }
+    }
+    else
+    {
+        //Just return start and end points
+        out.clear();
+        out.push_back(pointList.front());
+        out.push_back(pointList.back());
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////
 int SpecificWorker::startup_check()
 {
 	std::cout << "Startup check" << std::endl;
