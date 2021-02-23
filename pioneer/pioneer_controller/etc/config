@@ -4,7 +4,7 @@ CommonBehavior.Endpoints=tcp -p 10300
 CameraRGBDSimpleProxy = camerargbdsimple:tcp -h localhost -p 10096
 DifferentialRobotProxy = differentialrobot:tcp -h localhost -p 10004
 
-InnerModelPath = ../etc/simpleworldomni.xml
+InnerModelPath = ../../etc/simpleworldomni.xml
 
 Ice.Warn.Connections=0
 Ice.Trace.Network=0

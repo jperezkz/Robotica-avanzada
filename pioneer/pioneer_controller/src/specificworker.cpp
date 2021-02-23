@@ -59,8 +59,8 @@ void SpecificWorker::initialize(int period)
     std::cout << "Initialize worker" << std::endl;
 
     // draw
-    QFileInfo info1("../etc/escuela.simscene.xml");
-    QFileInfo info2("../etc/escuela.json");
+    QFileInfo info1("../../etc/escuela.simscene.xml");
+    QFileInfo info2("../../etc/escuela.json");
     //qInfo() << info2.lastModified().toSecsSinceEpoch() - info1.lastModified().toSecsSinceEpoch();
 
     //    qInfo() << info.lastModified().toSecsSinceEpoch();
@@ -93,8 +93,8 @@ void SpecificWorker::initialize(int period)
 void SpecificWorker::compute()
 {
     read_base(&scene);
-    auto cdata = read_rgbd_camera(false);
-    auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
+    auto cdata = read_rgbd_camera(true);
+    //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
     check_target(robot);
 }
 
@@ -132,8 +132,9 @@ RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
     auto cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_sensor");
     if(draw)
     {
-        cv::Mat img(cdata.image.height, cdata.image.width, CV_8UC3, const_cast<std::vector<uint8_t> &>(cdata.image.image).data());
-        cv::imshow("rgb", img);
+        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image.image).data();
+        cv::Mat img(cdata.image.height, cdata.image.width, CV_8UC3, rgb_img_data);
+        //cv::imshow("rgb", img);
         const std::vector<uint8_t> &tmp = cdata.depth.depth;
         float *depth_array = (float *) cdata.depth.depth.data();
         const auto STEP = sizeof(float);
@@ -141,8 +142,10 @@ RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
         for (std::size_t i = 0; i < tmp.size() / STEP; i++)
             gray_image[i] = (int) (depth_array[i] * 15);  // ONLY VALID FOR SHORT RANGE, INDOOR SCENES
         cv::Mat depth(cdata.depth.height, cdata.depth.width, CV_8UC1, const_cast<std::vector<uint8_t> &>(gray_image).data());
-        cv::imshow("depth", depth);
-        cv::waitKey(1);
+        //cv::imshow("depth", depth);
+        //cv::waitKey(1);
+        auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.image.width, cdata.image.height, QImage::Format_RGB888));
+        label_rgb->setPixmap(pix);
     }
     return cdata;
 }
