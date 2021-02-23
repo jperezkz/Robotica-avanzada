@@ -124,6 +124,7 @@ class SpecificWorker : public GenericWorker
 
         // cameras
         RoboCompCameraRGBDSimple::TRGBD read_rgbd_camera(bool draw);
+    RoboCompCameraRGBDSimple::TImage read_rgb_camera(bool draw);
 };
 
 #endif
