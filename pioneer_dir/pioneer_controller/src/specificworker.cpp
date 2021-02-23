@@ -269,7 +269,7 @@ QPolygonF SpecificWorker::filter_laser(const std::vector<SpecificWorker::LaserPo
         plist[0]=std::make_pair(0,0);
         std::generate(plist.begin()+1, plist.end(), [ldata, k=0]() mutable
             { auto &l = ldata[k++]; return std::make_pair(l.dist * sin(l.angle), l.dist * cos(l.angle));});
-        vector<Point> pointListOut;
+        std::vector<Point> pointListOut;
         ramer_douglas_peucker(plist, MAX_RDP_DEVIATION_mm, pointListOut);
         laser_poly.resize(pointListOut.size());
         std::generate(laser_poly.begin(), laser_poly.end(), [pointListOut, this, k=0]() mutable
