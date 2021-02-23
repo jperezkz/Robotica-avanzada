@@ -61,29 +61,20 @@ void SpecificWorker::initialize(int period)
     ArArgumentBuilder *args = new ArArgumentBuilder(); //  never freed
     ArArgumentParser *argparser = new ArArgumentParser(args); // Warning never freed
     argparser->loadDefaultArguments(); // adds any arguments given in /etc/Aria.args.  Useful on robots with unusual serial port or baud rate (e.g. pioneer lx)
-
-    //parser.addDefaultArgumentFile("/home/robolab/software/Aria/params/p2at.p");
-
     conn = new ArRobotConnector(argparser, robot); // warning never freed
     //ArRobotConnector robotConnector(argparser, robot);
-    qInfo()<<"Antes de robot connector-----------------------------------------";
     if(!conn->connectRobot())
     {
         qInfo()<<"SimpleMotionCommands: Could not connect to the robot->";
         std::terminate();
-    }/*
-    if (!Aria::parseArgs())
-    {
-        Aria::logOptions();
-        Aria::exit(1);
-        std::terminate();
-    }*/
+    }
 
     robot->runAsync(true);
-
     robot->lock();
         robot->enableMotors();
+        robot->disableSonar();
     robot->unlock();
+
     this->Period = period;
 	if(this->startup_check_flag)
 	{
@@ -97,68 +88,6 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
-	moveWheels();
-}
-
-void SpecificWorker::moveWheels()
-{
-    robot->lock();
-    ArLog::log(ArLog::Normal, "Robot: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f, Battery=%.2fV",
-               robot->getX(), robot->getY(), robot->getTh(), robot->getVel(), robot->getRotVel(), robot->getBatteryVoltage());
-    robot->unlock();
-
-    // Sleep for 3 seconds.
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Will start driving in 3 seconds...");
-    ArUtil::sleep(3000);
-
-    //Set forward velocity to 50 mm/s
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Driving forward at 250 mm/s for 5 sec...");
-    robot->lock();
-    robot->enableMotors();
-    robot->setVel(250);
-    robot->unlock();
-    ArUtil::sleep(5000);
-
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Stopping.");
-    robot->lock();
-    robot->stop();
-    robot->unlock();
-    ArUtil::sleep(1000);
-
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Rotating at 10 deg/s for 5 sec...");
-    robot->lock();
-    robot->setRotVel(10);
-    robot->unlock();
-    ArUtil::sleep(5000);
-
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Rotating at -10 deg/s for 10 sec...");
-    robot->lock();
-    robot->setRotVel(-10);
-    robot->unlock();
-    ArUtil::sleep(10000);
-
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Driving forward at 150 mm/s for 5 sec...");
-    robot->lock();
-    robot->setRotVel(0);
-    robot->setVel(150);
-    robot->unlock();
-    ArUtil::sleep(5000);
-
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Stopping.");
-    robot->lock();
-    robot->stop();
-    robot->unlock();
-    ArUtil::sleep(1000);
-
-    // Other motion command functions include move(), setHeading(),
-    // setDeltaHeading().  You can also adjust acceleration and deceleration
-    // values used by the robot with setAccel(), setDecel(), setRotAccel(),
-    // setRotDecel().  See the ArRobot class documentation for more.
-
-    robot->lock();
-    ArLog::log(ArLog::Normal, "simpleMotionCommands: Pose=(%.2f,%.2f,%.2f), Trans. Vel=%.2f, Rot. Vel=%.2f, Battery=%.2fV",
-               robot->getX(), robot->getY(), robot->getTh(), robot->getVel(), robot->getRotVel(), robot->getBatteryVoltage());
-    robot->unlock();
 
 }
 
@@ -229,8 +158,7 @@ void SpecificWorker::DifferentialRobot_setSpeedBase(float adv, float rot)
 void SpecificWorker::DifferentialRobot_stopBase()
 {
     robot->lock();
-        robot->setVel(0);
-        robot->setRotVel(0);
+        robot->stop();
     robot->unlock();
 }
 
@@ -254,10 +182,20 @@ int SpecificWorker::startup_check()
 //SUBSCRIPTION to sendData method from JoystickAdapter interface
 void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data)
 {
-    //subscribesToCODE
-  //  for(auto a : data.axes)
-  //      std::cout << a.name << std::endl;
-
+    float adv_speed = 0;
+    float rot_speed = 0;
+    for(auto a : data.axes)
+    {
+        if(a.name == "advance")
+            adv_speed = std::clamp(a.value, -1000.f, 1000.f);
+        if(a.name == "turn")
+            rot_speed = std::clamp(a.value, -100.f, 100.f);
+    }
+    robot->lock();
+    qInfo() << adv_speed;
+    robot->setVel(adv_speed);
+    robot->setRotVel(rot_speed);
+    robot->unlock();
 }
 
 
