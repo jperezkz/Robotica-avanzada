@@ -92,10 +92,18 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
+
     read_base(&scene);
+    //camara
     auto cdata = read_rgb_camera(true);
+    //bateria
+    battery=batterystatus_proxy->getBatteryState();
+    lcdNumber_bat->display(battery.percentage);
+    //conexion
+    con->display(3);
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
     //check_target(robot);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -362,6 +370,14 @@ int SpecificWorker::startup_check()
 	QTimer::singleShot(200, qApp, SLOT(quit()));
 	return 0;
 }
+
+/**************************************/
+// From the RoboCompBatteryStatus you can call this methods:
+// this->batterystatus_proxy->getBatteryState(...)
+
+/**************************************/
+// From the RoboCompBatteryStatus you can use this types:
+// RoboCompBatteryStatus::TBattery
 
 /**************************************/
 // From the RoboCompCameraRGBDSimple you can call this methods:

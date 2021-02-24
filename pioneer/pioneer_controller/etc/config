@@ -1,6 +1,7 @@
 CommonBehavior.Endpoints=tcp -p 10300
 
 # Proxies for required interfaces
+BatteryStatusProxy = batterystatus:tcp -h 158.49.247.155 -p 10014
 CameraRGBDSimpleProxy = camerargbdsimple:tcp -h 158.49.247.155 -p 10178
 DifferentialRobotProxy = differentialrobot:tcp -h 158.49.247.155 -p 10004
 

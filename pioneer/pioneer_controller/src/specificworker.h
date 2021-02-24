@@ -58,6 +58,8 @@ class SpecificWorker : public GenericWorker
         std::shared_ptr < InnerModel > innerModel;
         bool startup_check_flag;
         RoboCompCommonBehavior::ParameterList confParams;
+        //bateria
+        RoboCompBatteryStatus::TBattery battery;
 
         // Target
         struct Target
@@ -124,7 +126,7 @@ class SpecificWorker : public GenericWorker
 
         // cameras
         RoboCompCameraRGBDSimple::TRGBD read_rgbd_camera(bool draw);
-    RoboCompCameraRGBDSimple::TImage read_rgb_camera(bool draw);
+        RoboCompCameraRGBDSimple::TImage read_rgb_camera(bool draw);
 };
 
 #endif
