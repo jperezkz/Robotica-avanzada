@@ -130,11 +130,28 @@ int ::pioneer_controller::run(int argc, char* argv[])
 
 	int status=EXIT_SUCCESS;
 
+	RoboCompBatteryStatus::BatteryStatusPrxPtr batterystatus_proxy;
 	RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr camerargbdsimple_proxy;
 	RoboCompDifferentialRobot::DifferentialRobotPrxPtr differentialrobot_proxy;
 
 	string proxy, tmp;
 	initialize();
+
+	try
+	{
+		if (not GenericMonitor::configGetString(communicator(), prefix, "BatteryStatusProxy", proxy, ""))
+		{
+			cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy BatteryStatusProxy\n";
+		}
+		batterystatus_proxy = Ice::uncheckedCast<RoboCompBatteryStatus::BatteryStatusPrx>( communicator()->stringToProxy( proxy ) );
+	}
+	catch(const Ice::Exception& ex)
+	{
+		cout << "[" << PROGRAM_NAME << "]: Exception creating proxy BatteryStatus: " << ex;
+		return EXIT_FAILURE;
+	}
+	rInfo("BatteryStatusProxy initialized Ok!");
+
 
 	try
 	{
@@ -168,7 +185,7 @@ int ::pioneer_controller::run(int argc, char* argv[])
 	rInfo("DifferentialRobotProxy initialized Ok!");
 
 
-	tprx = std::make_tuple(camerargbdsimple_proxy,differentialrobot_proxy);
+	tprx = std::make_tuple(batterystatus_proxy,camerargbdsimple_proxy,differentialrobot_proxy);
 	SpecificWorker *worker = new SpecificWorker(tprx, startup_check_flag);
 	//Monitor thread
 	SpecificMonitor *monitor = new SpecificMonitor(worker,communicator());

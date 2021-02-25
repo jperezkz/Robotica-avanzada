@@ -68,7 +68,7 @@ class SpecificWorker(GenericWorker):
 
     def setParams(self, params):
         
-        SCENE_FILE = '../../etc/pioneer.ttt'
+        SCENE_FILE = '../../etc/informatica.ttt'
 
         self.pr = PyRep()
         self.pr.launch(SCENE_FILE, headless=False)
@@ -182,18 +182,14 @@ class SpecificWorker(GenericWorker):
         pose = self.robot_object.get_pose()
         linear_vel, ang_vel = self.robot_object.get_velocity()
         # print("Veld:", linear_vel, ang_vel)
-        try:
-            isMoving = np.abs(linear_vel[0]) > 0.01 or np.abs(linear_vel[1]) > 0.01 or np.abs(ang_vel[2]) > 0.01
-            self.bState = RoboCompGenericBase.TBaseState(x=pose[0] * 1000,
+        isMoving = np.abs(linear_vel[0]) > 0.01 or np.abs(linear_vel[1]) > 0.01 or np.abs(ang_vel[2]) > 0.01
+        self.bState = RoboCompGenericBase.TBaseState(x=pose[0] * 1000,
                                                          z=pose[1] * 1000,
                                                          alpha=pose[2],
                                                          advVx=linear_vel[0] * 1000,
                                                          advVz=linear_vel[1] * 1000,
                                                          rotV=ang_vel[2],
                                                          isMoving=isMoving)
-            self.omnirobotpub_proxy.pushBaseState(self.bState)
-        except Ice.Exception as e:
-            print(e)
 
     ###########################################
     ### MOVE ROBOT from Omnirobot interface
@@ -220,20 +216,20 @@ class SpecificWorker(GenericWorker):
     # getAll
     #
     def CameraRGBDSimple_getAll(self, camera):
-        if self.cameras.has_key(camera):
+        if camera in self.cameras.keys():
             return RoboCompCameraRGBDSimple.TRGBD(self.cameras[camera]["rgb"], self.cameras[camera]["depth"])
 
     #
     # getDepth
     #
     def CameraRGBDSimple_getDepth(self, camera):
-        if self.cameras.has_key(camera):
+        if camera in self.cameras.keys():
             return self.cameras[camera]["depth"]
     #
     # getImage
     #
     def CameraRGBDSimple_getImage(self, camera):
-        if self.cameras.has_key(camera):
+        if camera in self.cameras.keys():
             return self.cameras[camera]["rgb"]
 
     ##############################################
@@ -243,13 +239,13 @@ class SpecificWorker(GenericWorker):
     #
     # correctOdometer
     #
-    def OmniRobot_correctOdometer(self, x, z, alpha):
+    def DifferentialRobot_correctOdometer(self, x, z, alpha):
         pass
 
     #
     # getBasePose
     #
-    def OmniRobot_getBasePose(self):
+    def DifferentialRobot_getBasePose(self):
         #
         # implementCODE
         #
@@ -261,37 +257,37 @@ class SpecificWorker(GenericWorker):
     #
     # getBaseState
     #
-    def OmniRobot_getBaseState(self):
+    def DifferentialRobot_getBaseState(self):
         return self.bState
 
     #
     # resetOdometer
     #
-    def OmniRobot_resetOdometer(self):
+    def DifferentialRobot_resetOdometer(self):
         pass
 
     #
     # setOdometer
     #
-    def OmniRobot_setOdometer(self, state):
+    def DifferentialRobot_setOdometer(self, state):
         pass
 
     #
     # setOdometerPose
     #
-    def OmniRobot_setOdometerPose(self, x, z, alpha):
+    def DifferentialRobot_setOdometerPose(self, x, z, alpha):
         pass
 
     #
     # setSpeedBase
     #
-    def OmniRobot_setSpeedBase(self, advx, advz, rot):
-        self.speed_robot = self.convert_base_speed_to_radians(advz, advx, rot)
+    def DifferentialRobot_setSpeedBase(self, advz, rot):
+        self.speed_robot = self.convert_base_speed_to_radians(advz, rot)
 
     #
     # stopBase
     #
-    def OmniRobot_stopBase(self):
+    def DifferentialRobot_stopBase(self):
         pass
 
     # ===================================================================

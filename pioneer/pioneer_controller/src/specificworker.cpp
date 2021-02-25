@@ -59,8 +59,8 @@ void SpecificWorker::initialize(int period)
     std::cout << "Initialize worker" << std::endl;
 
     // draw
-    QFileInfo info1("../../etc/escuela.simscene.xml");
-    QFileInfo info2("../../etc/escuela.json");
+    QFileInfo info1("../../etc/informatica.simscene.xml");
+    QFileInfo info2("../../etc/informatica.json");
     //qInfo() << info2.lastModified().toSecsSinceEpoch() - info1.lastModified().toSecsSinceEpoch();
 
     //    qInfo() << info.lastModified().toSecsSinceEpoch();
@@ -92,8 +92,15 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
+
     read_base(&scene);
-    auto cdata = read_rgbd_camera(true);
+    //camara
+    auto cdata = read_rgb_camera(true);
+    //bateria
+    //battery = batterystatus_proxy->getBatteryState();
+    //lcdNumber_bat->display(battery.percentage);
+    //conexion
+    //con->display(3);
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
     //check_target(robot);
 }
@@ -134,14 +141,16 @@ RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image.image).data();
         cv::Mat img(cdata.image.height, cdata.image.width, CV_8UC3, rgb_img_data);
+        cv::flip(img, img, 0);
+        cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
         //cv::imshow("rgb", img);
-        const std::vector<uint8_t> &tmp = cdata.depth.depth;
-        float *depth_array = (float *) cdata.depth.depth.data();
-        const auto STEP = sizeof(float);
-        std::vector<std::uint8_t> gray_image(tmp.size() / STEP);
+        //const std::vector<uint8_t> &tmp = cdata.depth.depth;
+        //float *depth_array = (float *) cdata.depth.depth.data();
+        //const auto STEP = sizeof(float);
+        /*std::vector<std::uint8_t> gray_image(tmp.size() / STEP);
         for (std::size_t i = 0; i < tmp.size() / STEP; i++)
             gray_image[i] = (int) (depth_array[i] * 15);  // ONLY VALID FOR SHORT RANGE, INDOOR SCENES
-        cv::Mat depth(cdata.depth.height, cdata.depth.width, CV_8UC1, const_cast<std::vector<uint8_t> &>(gray_image).data());
+        cv::Mat depth(cdata.depth.height, cdata.depth.width, CV_8UC1, const_cast<std::vector<uint8_t> &>(gray_image).data());*/
         //cv::imshow("depth", depth);
         //cv::waitKey(1);
         auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.image.width, cdata.image.height, QImage::Format_RGB888));
@@ -149,6 +158,21 @@ RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
     }
     return cdata;
 }
+RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
+{
+    auto cdata = camerargbdsimple_proxy->getImage("pioneer_head_camera_sensor");
+    if(draw)
+    {
+        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
+        cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
+        //cv::flip(img, img, 0);
+        cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
+        auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.width, cdata.height, QImage::Format_RGB888));
+        label_rgb->setPixmap(pix);
+    }
+    return cdata;
+}
+
 void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> robot, const Target &target)
 {
     static QGraphicsEllipseItem *target_draw = nullptr;
@@ -200,7 +224,7 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
 std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata, Robot2DScene *scene,bool draw,unsigned short subsampling )
 {
     const int MAX_LASER_BINS = 200;
-  /*  if (subsampling == 0 or subsampling > 10)
+    /*if (subsampling == 0 or subsampling > 10)
     {
         qWarning("SpecificWorker::get_laser_from_rgbd: subsampling parameter < 1 or > than 10");
         return std::vector<LaserPoint>();
@@ -214,8 +238,8 @@ std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( co
     int STEP = subsampling;
     float X, Y, Z;
     int cols, rows;
-    std::size_t SIZE = tmp.size() / sizeof(float);
-    const int MAX_LASER_BINS = 200;
+    std::size_t SIZE = tmp.size() / sizeof(float);*/
+    /*
     //const float TOTAL_HOR_ANGLE = atan2(WIDTH / 2.f, FOCAL) * 2.f;
     const float TOTAL_HOR_ANGLE = 1.0472;  // para 60º
     using Point = std::tuple< float, float, float>;
@@ -236,7 +260,7 @@ std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( co
         hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
         // result[i] = std::make_tuple(X, Y, Z);
     }*/
-    std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
+    //std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
     /*uint i=0;
     for(auto &bin : hor_bins)
     {
@@ -343,6 +367,14 @@ int SpecificWorker::startup_check()
 	QTimer::singleShot(200, qApp, SLOT(quit()));
 	return 0;
 }
+
+/**************************************/
+// From the RoboCompBatteryStatus you can call this methods:
+// this->batterystatus_proxy->getBatteryState(...)
+
+/**************************************/
+// From the RoboCompBatteryStatus you can use this types:
+// RoboCompBatteryStatus::TBattery
 
 /**************************************/
 // From the RoboCompCameraRGBDSimple you can call this methods:

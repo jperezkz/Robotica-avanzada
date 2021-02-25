@@ -1,12 +1,14 @@
 import "DifferentialRobot.idsl";
 import "CameraRGBDSimple.idsl";
-
+import "BatteryStatus.idsl";
+import "FullPoseEstimation.idsl";
 
 Component pioneer_controller
 {
     Communications
     {
-        requires DifferentialRobot, CameraRGBDSimple;
+        requires DifferentialRobot, CameraRGBDSimple, BatteryStatus;
+        subscribesTo FullPoseEstimation;
     };
     language Cpp11;
     gui Qt(QWidget);
