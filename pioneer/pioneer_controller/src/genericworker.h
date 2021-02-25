@@ -31,6 +31,7 @@
 #include <ui_mainUI.h>
 #include <CommonBehavior.h>
 
+#include <BatteryStatus.h>
 #include <CameraRGBDSimple.h>
 #include <DifferentialRobot.h>
 #include <GenericBase.h>
@@ -40,7 +41,7 @@
 #define BASIC_PERIOD 100
 
 
-using TuplePrx = std::tuple<RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr,RoboCompDifferentialRobot::DifferentialRobotPrxPtr>;
+using TuplePrx = std::tuple<RoboCompBatteryStatus::BatteryStatusPrxPtr,RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr,RoboCompDifferentialRobot::DifferentialRobotPrxPtr>;
 
 
 class GenericWorker : public QWidget, public Ui_guiDlg
@@ -56,6 +57,7 @@ public:
 	QMutex *mutex;
 
 
+	RoboCompBatteryStatus::BatteryStatusPrxPtr batterystatus_proxy;
 	RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr camerargbdsimple_proxy;
 	RoboCompDifferentialRobot::DifferentialRobotPrxPtr differentialrobot_proxy;
 

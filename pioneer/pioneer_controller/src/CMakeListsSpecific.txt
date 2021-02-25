@@ -1,3 +1,6 @@
+find_package (Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
 # Sources set
 SET ( SOURCES
   specificworker.cpp
@@ -12,7 +15,7 @@ SET ( HEADERS
 )
 
 INCLUDE( $ENV{ROBOCOMP}/cmake/modules/opencv4.cmake )
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 add_definitions(-O3 -march=native  -fmax-errors=5 )
 SET (LIBS ${LIBS}  )
 
