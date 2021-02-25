@@ -42,18 +42,14 @@ Ice.loadSlice("-I ./src/ --all ./src/Laser.ice")
 import RoboCompLaser 
 Ice.loadSlice("-I ./src/ --all ./src/LaserPub.ice")
 import RoboCompLaserPub 
-Ice.loadSlice("-I ./src/ --all ./src/OmniRobot.ice")
-import RoboCompOmniRobot
-Ice.loadSlice("-I ./src/ --all ./src/OmniRobotPub.ice")
-import RoboCompOmniRobotPub
+Ice.loadSlice("-I ./src/ --all ./src/DifferentialRobot.ice")
+import RoboCompDifferentialRobot
 Ice.loadSlice("-I ./src/ --all ./src/CoppeliaUtils.ice")
 import RoboCompCoppeliaUtils
 
-
-
 import camerargbdsimpleI 
 import laserI 
-import omnirobotI 
+import differentialrobotI
 import joystickadapterI
 import coppeliautilsI
 
@@ -66,4 +62,4 @@ class GenericWorker():
 
         self.camerargbdsimplepub_proxy = mprx["CameraRGBDSimplePubPub"]
         self.laserpub_proxy = mprx["LaserPubPub"]
-        self.omnirobotpub_proxy = mprx["OmniRobotPubPub"]
+

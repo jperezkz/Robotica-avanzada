@@ -79,7 +79,7 @@ class SpecificWorker : public GenericWorker
         const float ROBOT_WIDTH = 400;
         const float ROBOT_LONG = 450;
         //const std::string FILE_NAME_XML = "../etc/escuela.simscene.json";
-        const std::string FILE_NAME = "../../etc/escuela.json";
+        const std::string FILE_NAME = "../../etc/informatica.json";
         struct Robot
         {
             float TARGET_THRESHOLD_DISTANCE = 100.f;

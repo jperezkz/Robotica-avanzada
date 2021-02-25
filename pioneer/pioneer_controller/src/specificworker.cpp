@@ -97,10 +97,10 @@ void SpecificWorker::compute()
     //camara
     auto cdata = read_rgb_camera(true);
     //bateria
-    battery=batterystatus_proxy->getBatteryState();
-    lcdNumber_bat->display(battery.percentage);
+    //battery = batterystatus_proxy->getBatteryState();
+    //lcdNumber_bat->display(battery.percentage);
     //conexion
-    con->display(3);
+    //con->display(3);
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
     //check_target(robot);
 
@@ -147,7 +147,7 @@ RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
         //cv::imshow("rgb", img);
         //const std::vector<uint8_t> &tmp = cdata.depth.depth;
         //float *depth_array = (float *) cdata.depth.depth.data();
-        const auto STEP = sizeof(float);
+        //const auto STEP = sizeof(float);
         /*std::vector<std::uint8_t> gray_image(tmp.size() / STEP);
         for (std::size_t i = 0; i < tmp.size() / STEP; i++)
             gray_image[i] = (int) (depth_array[i] * 15);  // ONLY VALID FOR SHORT RANGE, INDOOR SCENES
@@ -166,7 +166,7 @@ RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
         cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
-        cv::flip(img, img, 0);
+        //cv::flip(img, img, 0);
         cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
         auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.width, cdata.height, QImage::Format_RGB888));
         label_rgb->setPixmap(pix);
