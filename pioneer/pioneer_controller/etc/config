@@ -4,6 +4,7 @@ CommonBehavior.Endpoints=tcp -p 10300
 BatteryStatusProxy = batterystatus:tcp -h 158.49.247.155 -p 10014
 CameraRGBDSimpleProxy = camerargbdsimple:tcp -h 158.49.247.155 -p 10178
 DifferentialRobotProxy = differentialrobot:tcp -h 158.49.247.155 -p 10004
+FullPoseEstimationProxy = fullposeestimation:tcp -h localhost -p 10696
 
 InnerModelPath = ../../etc/simpleworldomni.xml
 

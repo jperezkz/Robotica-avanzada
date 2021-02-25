@@ -41,6 +41,7 @@ class SpecificWorker : public GenericWorker
         ~SpecificWorker();
         bool setParams(RoboCompCommonBehavior::ParameterList params);
 
+
     public slots:
         void compute();
         int startup_check();
@@ -50,6 +51,20 @@ class SpecificWorker : public GenericWorker
         void resizeEvent(QResizeEvent * event)
         {
             graphicsView->fitInView(scene.sceneRect(), Qt::KeepAspectRatio);
+        }
+        void wheelEvent(QWheelEvent* event)
+        {
+            qreal factor;
+            if (event->angleDelta().y() > 0)
+              factor = 1.1;
+            else
+              factor = 0.9;
+            auto view_pos = event->pos();
+            auto scene_pos = graphicsView->mapToScene(view_pos);
+            graphicsView->centerOn(scene_pos);
+            graphicsView->scale(factor, factor);
+            auto delta = graphicsView->mapToScene(view_pos) - graphicsView->mapToScene(graphicsView->viewport()->rect().center());
+            graphicsView->centerOn(scene_pos - delta);
         }
 
     private:
@@ -105,6 +120,7 @@ class SpecificWorker : public GenericWorker
         };
         std::shared_ptr<Robot> robot;
         RoboCompGenericBase::TBaseState read_base(Robot2DScene *scene);
+        void read_robot_pose();
         float sigmoid(float t);
         float exponential(float value, float xValue, float yValue, float min);
         void check_target( std::shared_ptr<Robot> robot);

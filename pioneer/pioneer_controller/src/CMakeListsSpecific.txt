@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 find_package (Eigen3  REQUIRED)
-=======
-find_package (Eigen3 REQUIRED)
->>>>>>> 65c032c214a840456564ff8580d968304568dc34
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Sources set

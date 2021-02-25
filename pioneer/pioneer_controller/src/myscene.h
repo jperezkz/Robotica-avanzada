@@ -130,7 +130,7 @@ class Robot2DScene : public QGraphicsScene
             for (auto &t : walls)
             {
                 QVariantList object = t.toList();
-                auto box = this->addRect(QRectF(-object[2].toFloat() / 2, -object[3].toFloat() / 2, object[2].toFloat(), object[3].toFloat()), QPen(QColor("LightGreen")), QBrush(QColor("LightGreen")));
+                auto box = this->addRect(QRectF(-object[2].toFloat() / 2, -object[3].toFloat() / 2, object[2].toFloat(), object[3].toFloat()), QPen(QColor("Green")), QBrush(QColor("Green")));
                 box->setPos(object[4].toFloat(), object[5].toFloat());
                 box->setRotation(object[6].toFloat()*180/M_PI);
                 boxes.push_back(box);

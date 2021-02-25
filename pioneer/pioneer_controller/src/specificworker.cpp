@@ -94,11 +94,15 @@ void SpecificWorker::compute()
 {
 
     read_base(&scene);
-    //camara
+    read_robot_pose();
+
+    // camara
     auto cdata = read_rgb_camera(true);
-    //bateria
-    //battery = batterystatus_proxy->getBatteryState();
-    //lcdNumber_bat->display(battery.percentage);
+
+    // bateria
+    battery = batterystatus_proxy->getBatteryState();
+    lcdNumber_bat->display(battery.percentage);
+
     //conexion
     //con->display(3);
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
@@ -106,6 +110,15 @@ void SpecificWorker::compute()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
+void SpecificWorker::read_robot_pose()
+{
+    try
+    {
+        auto pose = fullposeestimation_proxy->getFullPose();
+        //Info() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+    }
+    catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;};
+}
 float SpecificWorker::sigmoid(float t)
 {
     return 2.f / (1.f + exp(-t * 1.4)) - 1.f;
@@ -118,7 +131,7 @@ float SpecificWorker::exponential(float value, float xValue, float yValue, float
     float res = exp(-fabs(value) / landa);
     return std::max(res, min);
 }
-RoboCompGenericBase::TBaseState SpecificWorker::gitread_base(Robot2DScene *scene)
+RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
 {
     RoboCompGenericBase::TBaseState bState;
     try
@@ -165,7 +178,7 @@ RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
         cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
-        //cv::flip(img, img, 0);
+        cv::flip(img, img, 0);
         cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
         auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.width, cdata.height, QImage::Format_RGB888));
         label_rgb->setPixmap(pix);
@@ -260,7 +273,7 @@ std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( co
         hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
         // result[i] = std::make_tuple(X, Y, Z);
     }*/
-    //std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
+    std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
     /*uint i=0;
     for(auto &bin : hor_bins)
     {
