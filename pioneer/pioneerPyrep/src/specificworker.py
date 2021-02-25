@@ -68,7 +68,7 @@ class SpecificWorker(GenericWorker):
 
     def setParams(self, params):
         
-        SCENE_FILE = '../../etc/pioneer.ttt'
+        SCENE_FILE = '../../etc/informatica.ttt'
 
         self.pr = PyRep()
         self.pr.launch(SCENE_FILE, headless=False)

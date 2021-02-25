@@ -59,8 +59,8 @@ void SpecificWorker::initialize(int period)
     std::cout << "Initialize worker" << std::endl;
 
     // draw
-    QFileInfo info1("../../etc/escuela.simscene.xml");
-    QFileInfo info2("../../etc/escuela.json");
+    QFileInfo info1("../../etc/informatica.simscene.xml");
+    QFileInfo info2("../../etc/informatica.json");
     //qInfo() << info2.lastModified().toSecsSinceEpoch() - info1.lastModified().toSecsSinceEpoch();
 
     //    qInfo() << info.lastModified().toSecsSinceEpoch();
