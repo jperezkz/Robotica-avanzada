@@ -95,7 +95,7 @@ void SpecificWorker::compute()
     read_base(&scene);
     auto cdata = read_rgbd_camera(true);
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
-    check_target(robot);
+    //check_target(robot);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +111,7 @@ float SpecificWorker::exponential(float value, float xValue, float yValue, float
     float res = exp(-fabs(value) / landa);
     return std::max(res, min);
 }
-RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
+RoboCompGenericBase::TBaseState SpecificWorker::gitread_base(Robot2DScene *scene)
 {
     RoboCompGenericBase::TBaseState bState;
     try
@@ -166,6 +166,7 @@ void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> rob
     auto ball = scene->addEllipse(ex - 25, ey - 25, 50, 50, QPen(QColor("green")), QBrush(QColor("green")));
     ball->setParentItem(target_draw);
 }
+
 void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
 {
     static Target target;
@@ -195,12 +196,11 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
         { std::cout << e.what() << std::endl; };
     }
 }
-std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata,
-                                                                              Robot2DScene *scene,
-                                                                              bool draw,
-                                                                              unsigned short subsampling )
+
+std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata, Robot2DScene *scene,bool draw,unsigned short subsampling )
 {
-    if (subsampling == 0 or subsampling > 10)
+    const int MAX_LASER_BINS = 200;
+  /*  if (subsampling == 0 or subsampling > 10)
     {
         qWarning("SpecificWorker::get_laser_from_rgbd: subsampling parameter < 1 or > than 10");
         return std::vector<LaserPoint>();
@@ -235,9 +235,9 @@ std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( co
         int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
         hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
         // result[i] = std::make_tuple(X, Y, Z);
-    }
+    }*/
     std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
-    uint i=0;
+    /*uint i=0;
     for(auto &bin : hor_bins)
     {
         const auto &[X,Y,Z] = *bin.cbegin();
@@ -246,7 +246,7 @@ std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( co
     }
     auto laser_poly = filter_laser(laser_data);
     if(draw)
-        draw_laser(scene, laser_poly);
+        draw_laser(scene, laser_poly);*/
     return laser_data;
 }
 void SpecificWorker::draw_laser(Robot2DScene *scene, QPolygonF &laser_poly)

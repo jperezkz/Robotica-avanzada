@@ -24,9 +24,11 @@
 #include <qlog/qlog.h>
 #include <CommonBehavior.h>
 
+#include <BatteryStatus.h>
 #include <DifferentialRobot.h>
 #include <GenericBase.h>
 #include <JoystickAdapter.h>
+#include <Ultrasound.h>
 
 
 #define CHECK_PERIOD 5000
@@ -50,6 +52,7 @@ public:
 
 
 
+	virtual RoboCompBatteryStatus::TBattery BatteryStatus_getBatteryState() = 0;
 	virtual void DifferentialRobot_correctOdometer(int x, int z, float alpha) = 0;
 	virtual void DifferentialRobot_getBasePose(int &x, int &z, float &alpha) = 0;
 	virtual void DifferentialRobot_getBaseState(RoboCompGenericBase::TBaseState &state) = 0;
@@ -58,6 +61,11 @@ public:
 	virtual void DifferentialRobot_setOdometerPose(int x, int z, float alpha) = 0;
 	virtual void DifferentialRobot_setSpeedBase(float adv, float rot) = 0;
 	virtual void DifferentialRobot_stopBase() = 0;
+	virtual RoboCompUltrasound::SensorsState Ultrasound_getAllSensorDistances() = 0;
+	virtual RoboCompUltrasound::SensorParamsList Ultrasound_getAllSensorParams() = 0;
+	virtual RoboCompUltrasound::BusParams Ultrasound_getBusParams() = 0;
+	virtual int Ultrasound_getSensorDistance(std::string sensor) = 0;
+	virtual RoboCompUltrasound::SensorParams Ultrasound_getSensorParams(std::string sensor) = 0;
 	virtual void JoystickAdapter_sendData (RoboCompJoystickAdapter::TData data) = 0;
 
 protected:

@@ -51,6 +51,28 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 	return true;
 }
 
+
+void SpecificWorker::rate(){
+        // instantiate dynamically to avoid stack unwinding before the process terminates
+        QProcess *iwconfig = new QProcess();
+        // catch data output
+        QObject::connect(iwconfig, &QProcess::readyRead, [iwconfig] () {
+            QByteArray a = iwconfig->readAll();
+            //qDebug() <<  a;
+        });
+
+        // delete process instance when done, and get the exit status to handle errors.
+        QObject::connect(iwconfig, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                     [=](int exitCode, QProcess::ExitStatus /*exitStatus*/){
+                         qDebug()<< "process exited with code " << exitCode;
+                         iwconfig->deleteLater();
+                     });
+
+        // start the process after making signal/slots connections
+    iwconfig->start("iwconfig");
+}
+
+
 void SpecificWorker::initialize(int period)
 {
 
@@ -75,6 +97,9 @@ void SpecificWorker::initialize(int period)
         robot->disableSonar();
     robot->unlock();
 
+    connect(&timerRSSI, &QTimer::timeout, this, &SpecificWorker::rate);
+    timerRSSI.start(1000);
+
     this->Period = period;
 	if(this->startup_check_flag)
 	{
@@ -96,14 +121,14 @@ void SpecificWorker::compute()
 /////////////////////////////////////////////////////////////////////////////////
 
 
-/*RoboCompBatteryStatus::TBattery SpecificWorker::BatteryStatus_getBatteryState()
+RoboCompBatteryStatus::TBattery SpecificWorker::BatteryStatus_getBatteryState()
 {
     RoboCompBatteryStatus::TBattery battery;
     robot->lock();
         battery.percentage = robot->getBatteryVoltageNow();
     robot->unlock();
     return battery;
-}*/
+}
 
 //////////////////////////////////////
 
@@ -172,6 +197,37 @@ int SpecificWorker::startup_check()
     QTimer::singleShot(200, qApp, SLOT(quit()));
     return 0;
 }
+
+RoboCompUltrasound::SensorsState SpecificWorker::Ultrasound_getAllSensorDistances()
+{
+//implementCODE
+
+}
+
+RoboCompUltrasound::SensorParamsList SpecificWorker::Ultrasound_getAllSensorParams()
+{
+//implementCODE
+
+}
+
+RoboCompUltrasound::BusParams SpecificWorker::Ultrasound_getBusParams()
+{
+//implementCODE
+
+}
+
+int SpecificWorker::Ultrasound_getSensorDistance(std::string sensor)
+{
+//implementCODE
+
+}
+
+RoboCompUltrasound::SensorParams SpecificWorker::Ultrasound_getSensorParams(std::string sensor)
+{
+//implementCODE
+
+}
+
 
 /**************************************/
 // From the RoboCompJoystickAdapter you can use this types:

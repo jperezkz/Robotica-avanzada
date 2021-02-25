@@ -31,6 +31,7 @@
 #include </usr/local/Aria/include/Aria.h>
 #include <innermodel/innermodel.h>
 
+
 class SpecificWorker : public GenericWorker
 {
 Q_OBJECT
@@ -39,7 +40,7 @@ public:
 	~SpecificWorker();
 	bool setParams(RoboCompCommonBehavior::ParameterList params);
 
-    //RoboCompBatteryStatus::TBattery BatteryStatus_getBatteryState();
+    RoboCompBatteryStatus::TBattery BatteryStatus_getBatteryState();
 	void DifferentialRobot_correctOdometer(int x, int z, float alpha);
 	void DifferentialRobot_getBasePose(int &x, int &z, float &alpha);
 	void DifferentialRobot_getBaseState(RoboCompGenericBase::TBaseState &state);
@@ -51,11 +52,18 @@ public:
 	void moveWheels();
     void JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data);
 
+    RoboCompUltrasound::SensorsState Ultrasound_getAllSensorDistances();
+    RoboCompUltrasound::SensorParamsList Ultrasound_getAllSensorParams();
+    RoboCompUltrasound::BusParams Ultrasound_getBusParams();
+    int Ultrasound_getSensorDistance(std::string sensor);
+    RoboCompUltrasound::SensorParams Ultrasound_getSensorParams(std::string sensor);
+
 
 public slots:
 	void compute();
 	int startup_check();
 	void initialize(int period);
+	void rate();
 
 private:
 	std::shared_ptr < InnerModel > innerModel;
@@ -69,6 +77,8 @@ private:
     ArRobot *robot;
     ArRobotConnector *conn;
 
+    //Timer
+    QTimer timerRSSI;
 };
 
 #endif

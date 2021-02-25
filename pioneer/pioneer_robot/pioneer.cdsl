@@ -1,12 +1,13 @@
 import "DifferentialRobot.idsl";
 import "JoystickAdapter.idsl";
-//import "BatteryStatus.idsl";
+import "BatteryStatus.idsl";
+import "Ultrasound.idsl";
 
 Component pioneer
 {
     Communications
     {
-        implements DifferentialRobot;
+        implements DifferentialRobot, BatteryStatus, Ultrasound;
         subscribesTo JoystickAdapter;
     };
     language Cpp11;

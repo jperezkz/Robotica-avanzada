@@ -1,6 +1,7 @@
 import "DifferentialRobot.idsl";
 import "CameraRGBDSimple.idsl";
 
+
 Component pioneer_controller
 {
     Communications
