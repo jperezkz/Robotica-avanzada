@@ -174,6 +174,22 @@ if __name__ == '__main__':
     adapter.add(differentialrobotI.DifferentialRobotI(worker), ic.stringToIdentity('differentialrobot'))
     adapter.activate()
 
+    adapter = ic.createObjectAdapter('FullPoseEstimation')
+    adapter.add(fullposeestimationI.FullPoseEstimationI(worker), ic.stringToIdentity('fullposeestimation'))
+    adapter.activate()
+
+    adapter = ic.createObjectAdapter('Ultrasound')
+    adapter.add(ultrasoundI.UltrasoundI(worker), ic.stringToIdentity('ultrasound'))
+    adapter.activate()
+
+    adapter = ic.createObjectAdapter('BatteryStatus')
+    adapter.add(batterystatusI.BatteryStatusI(worker), ic.stringToIdentity('batterystatus'))
+    adapter.activate()
+
+    adapter = ic.createObjectAdapter('RSSIStatus')
+    adapter.add(rssistatusI.RSSIStatusI(worker), ic.stringToIdentity('rssistatus'))
+    adapter.activate()
+
     adapter = ic.createObjectAdapter('CoppeliaUtils')
     adapter.add(coppeliautilsI.CoppeliaUtilsI(worker), ic.stringToIdentity('coppeliautils'))
     adapter.activate()

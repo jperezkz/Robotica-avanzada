@@ -24,8 +24,8 @@ import os, time, queue
 from bisect import bisect_left
 from os.path import dirname, join, abspath
 from pyrep import PyRep
-#from pyrep.robots.mobiles.viriato import Viriato
-#from pyrep.robots.mobiles.viriato import Viriato
+# from pyrep.robots.mobiles.viriato import Viriato
+# from pyrep.robots.mobiles.viriato import Viriato
 from pyrep.robots.mobiles.youbot import YouBot
 from pyrep.objects.vision_sensor import VisionSensor
 from pyrep.objects.dummy import Dummy
@@ -62,12 +62,12 @@ class TimeControl:
 class SpecificWorker(GenericWorker):
     def __init__(self, proxy_map):
         super(SpecificWorker, self).__init__(proxy_map)
-       
+
     def __del__(self):
         print('SpecificWorker destructor')
 
     def setParams(self, params):
-        
+
         SCENE_FILE = '../../etc/informatica.ttt'
 
         self.pr = PyRep()
@@ -79,8 +79,8 @@ class SpecificWorker(GenericWorker):
         self.back_right_wheel = Joint("p3at_back_right_wheel_joint")
         self.front_left_wheel = Joint("p3at_front_left_wheel_joint")
         self.front_right_wheel = Joint("p3at_front_right_wheel_joint")
-        self.radius = 110 # mm
-        self.semi_width = 140 # mm
+        self.radius = 110  # mm
+        self.semi_width = 140  # mm
 
         # front pan-tilt camera
         self.cameras = {}
@@ -92,7 +92,8 @@ class SpecificWorker(GenericWorker):
                                                 "angle": np.radians(cam.get_perspective_angle()),
                                                 "width": cam.get_resolution()[0],
                                                 "height": cam.get_resolution()[1],
-                                                "focal": (cam.get_resolution()[0] / 2) / np.tan(np.radians(cam.get_perspective_angle() / 2)),
+                                                "focal": (cam.get_resolution()[0] / 2) / np.tan(
+                                                    np.radians(cam.get_perspective_angle() / 2)),
                                                 "rgb": np.array(0),
                                                 "depth": np.ndarray(0)}
 
@@ -113,7 +114,6 @@ class SpecificWorker(GenericWorker):
 
             tc.wait()
 
-
     ###########################################
     ### CAMERAS get and publish cameras data
     ###########################################
@@ -133,17 +133,16 @@ class SpecificWorker(GenericWorker):
                                                        alivetime=time.time(), depthFactor=1.0,
                                                        depth=depth.tobytes())
 
-        #try:
+        # try:
         #    self.camerargbdsimplepub_proxy.pushRGBD(cam["rgb"], cam["depth"])
-        #except Ice.Exception as e:
+        # except Ice.Exception as e:
         #    print(e)
-
 
     ###########################################
     ### JOYSITCK read and move the robot
     ###########################################
     def read_joystick(self):
-        if self.joystick_newdata: #and (time.time() - self.joystick_newdata[1]) > 0.1:
+        if self.joystick_newdata:  # and (time.time() - self.joystick_newdata[1]) > 0.1:
             datos = self.joystick_newdata[0]
             adv = 0.0
             rot = 0.0
@@ -160,7 +159,7 @@ class SpecificWorker(GenericWorker):
         else:
             elapsed = time.time() - self.last_received_data_time
             if elapsed > 2 and elapsed < 3:
-                self.convert_base_speed_to_motors_speed(0,0)
+                self.convert_base_speed_to_motors_speed(0, 0)
 
     def convert_base_speed_to_motors_speed(self, adv, rot):
         #  adv = r*(Wl + Wr)/2
@@ -174,22 +173,23 @@ class SpecificWorker(GenericWorker):
         self.back_right_wheel.set_joint_target_velocity(right_vel)
         self.front_left_wheel.set_joint_target_velocity(left_vel)
         self.front_right_wheel.set_joint_target_velocity(right_vel)
+
     ###########################################
     ### ROBOT POSE get and publish robot position
     ###########################################
     def read_robot_pose(self):
-        #pose = self.robot.get_2d_pose()
+        # pose = self.robot.get_2d_pose()
         pose = self.robot_object.get_pose()
         linear_vel, ang_vel = self.robot_object.get_velocity()
         # print("Veld:", linear_vel, ang_vel)
         isMoving = np.abs(linear_vel[0]) > 0.01 or np.abs(linear_vel[1]) > 0.01 or np.abs(ang_vel[2]) > 0.01
         self.bState = RoboCompGenericBase.TBaseState(x=pose[0] * 1000,
-                                                         z=pose[1] * 1000,
-                                                         alpha=pose[2],
-                                                         advVx=linear_vel[0] * 1000,
-                                                         advVz=linear_vel[1] * 1000,
-                                                         rotV=ang_vel[2],
-                                                         isMoving=isMoving)
+                                                     z=pose[1] * 1000,
+                                                     alpha=pose[2],
+                                                     advVx=linear_vel[0] * 1000,
+                                                     advVz=linear_vel[1] * 1000,
+                                                     rotV=ang_vel[2],
+                                                     isMoving=isMoving)
 
     ###########################################
     ### MOVE ROBOT from Omnirobot interface
@@ -198,16 +198,14 @@ class SpecificWorker(GenericWorker):
 
         if self.speed_robot != self.speed_robot_ant:  # or (isMoving and self.speed_robot == [0,0,0]):
             self.convert_base_speed_to_motors_speed(self.speed_robot)
-        #print("Velocities sent to robot:", self.speed_robot)
+            # print("Velocities sent to robot:", self.speed_robot)
             self.speed_robot_ant = self.speed_robot
-
 
     ##################################################################################
     # SUBSCRIPTION to sendData method from JoystickAdapter interface
     ###################################################################################
     def JoystickAdapter_sendData(self, data):
         self.joystick_newdata = [data, time.time()]
-
 
     ##################################################################################
     #                       Methods for CameraRGBDSimple
@@ -225,6 +223,7 @@ class SpecificWorker(GenericWorker):
     def CameraRGBDSimple_getDepth(self, camera):
         if camera in self.cameras.keys():
             return self.cameras[camera]["depth"]
+
     #
     # getImage
     #
@@ -297,7 +296,7 @@ class SpecificWorker(GenericWorker):
         if not Dummy.exists(name):
             dummy = Dummy.create(0.1)
             # one color for each type of dummy
-            if type==RoboCompCoppeliaUtils.TargetTypes.Info:
+            if type == RoboCompCoppeliaUtils.TargetTypes.Info:
                 pass
             if type == RoboCompCoppeliaUtils.TargetTypes.Hand:
                 pass
@@ -309,7 +308,101 @@ class SpecificWorker(GenericWorker):
             parent_frame_object = None
             if type == RoboCompCoppeliaUtils.TargetTypes.HeadCamera:
                 parent_frame_object = Dummy("viriato_head_camera_pan_tilt")
-            #print("Coppelia ", name, pose.x/1000, pose.y/1000, pose.z/1000)
+            # print("Coppelia ", name, pose.x/1000, pose.y/1000, pose.z/1000)
             dummy.set_position([pose.x / 1000., pose.y / 1000., pose.z / 1000.], parent_frame_object)
             dummy.set_orientation([pose.rx, pose.ry, pose.rz], parent_frame_object)
+
+    # =============== Methods for Component Implements ==================
+    # ===================================================================
+
+    #
+    # IMPLEMENTATION of getFullPose method from FullPoseEstimation interface
+    #
+    def FullPoseEstimation_getFullPose(self):
+        ret = RoboCompFullPoseEstimation.FullPose()
+        #
+        # write your CODE here
+        #
+        return ret
+
+    #
+    # IMPLEMENTATION of setInitialPose method from FullPoseEstimation interface
+    #
+    def FullPoseEstimation_setInitialPose(self, x, y, z, rx, ry, rz):
+
+        #
+        # write your CODE here
+        #
+        pass
+
+    #
+    # IMPLEMENTATION of getAllSensorDistances method from Ultrasound interface
+    #
+    def Ultrasound_getAllSensorDistances(self):
+        ret = RoboCompUltrasound.SensorsState()
+        #
+        # write your CODE here
+        #
+        return ret
+
+    #
+    # IMPLEMENTATION of getAllSensorParams method from Ultrasound interface
+    #
+    def Ultrasound_getAllSensorParams(self):
+        ret = RoboCompUltrasound.SensorParamsList()
+        #
+        # write your CODE here
+        #
+        return ret
+
+    #
+    # IMPLEMENTATION of getBusParams method from Ultrasound interface
+    #
+    def Ultrasound_getBusParams(self):
+        ret = RoboCompUltrasound.BusParams()
+        #
+        # write your CODE here
+        #
+        return ret
+
+    #
+    # IMPLEMENTATION of getSensorDistance method from Ultrasound interface
+    #
+    def Ultrasound_getSensorDistance(self, sensor):
+        ret = int()
+        #
+        # write your CODE here
+        #
+        return ret
+
+    #
+    # IMPLEMENTATION of getSensorParams method from Ultrasound interface
+    #
+    def Ultrasound_getSensorParams(self, sensor):
+        ret = RoboCompUltrasound.SensorParams()
+        #
+        # write your CODE here
+        #
+        return ret
+
+    # ===================================================================
+    # ===================================================================
+    #
+    # IMPLEMENTATION of getRSSIState method from RSSIStatus interface
+    #
+    def RSSIStatus_getRSSIState(self):
+        ret = RoboCompRSSIStatus.TRSSI()
+        #
+        # write your CODE here
+        #
+        return ret
+
+    ######################
+    # From the RoboCompFullPoseEstimation you can use this types:
+    # RoboCompFullPoseEstimation.FullPose
+
+    ######################
+    # From the RoboCompUltrasound you can use this types:
+    # RoboCompUltrasound.BusParams
+    # RoboCompUltrasound.SensorParams
 

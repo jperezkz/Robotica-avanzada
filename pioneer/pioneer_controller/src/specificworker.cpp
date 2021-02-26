@@ -99,17 +99,35 @@ void SpecificWorker::compute()
     // camara
     auto cdata = read_rgb_camera(true);
 
-    // bateria
-    battery = batterystatus_proxy->getBatteryState();
-    lcdNumber_bat->display(battery.percentage);
+    // battery
+    read_battery();
 
-    //conexion
-    //con->display(3);
+    // RSSI
+    read_RSSI();
+
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
     //check_target(robot);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
+void SpecificWorker::read_battery()
+{
+    try
+    {
+        auto battery = batterystatus_proxy->getBatteryState();
+        bat_lcdnumber->display(battery.percentage);
+    }
+    catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
+}
+void SpecificWorker::read_RSSI()
+{
+    try
+    {
+        //auto rssi = rssistatus_proxy->getRSSIState();
+        //rssi_lcdnumber->display(rssi.percentage);
+    }
+    catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
+}
 void SpecificWorker::read_robot_pose()
 {
     try
