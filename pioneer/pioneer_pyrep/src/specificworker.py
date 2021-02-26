@@ -68,7 +68,7 @@ class SpecificWorker(GenericWorker):
 
     def setParams(self, params):
 
-        SCENE_FILE = '../../etc/informatica.ttt'
+        SCENE_FILE = '../../etc/informatica-2.ttt'
 
         self.pr = PyRep()
         self.pr.launch(SCENE_FILE, headless=False)
@@ -124,6 +124,9 @@ class SpecificWorker(GenericWorker):
         depth = cam["handle"].capture_depth(True)
         image = cv2.normalize(src=image_float, dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX,
                               dtype=cv2.CV_8U)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.flip(image, 0)
+        
         cam["rgb"] = RoboCompCameraRGBDSimple.TImage(cameraID=cam["id"], width=cam["width"], height=cam["height"],
                                                      depth=3, focalx=cam["focal"], focaly=cam["focal"],
                                                      alivetime=time.time(), image=image.tobytes())
@@ -392,17 +395,14 @@ class SpecificWorker(GenericWorker):
     #
     def RSSIStatus_getRSSIState(self):
         ret = RoboCompRSSIStatus.TRSSI()
-        #
-        # write your CODE here
-        #
+        ret.percentage = 100;
         return ret
 
-    ######################
-    # From the RoboCompFullPoseEstimation you can use this types:
-    # RoboCompFullPoseEstimation.FullPose
-
-    ######################
-    # From the RoboCompUltrasound you can use this types:
-    # RoboCompUltrasound.BusParams
-    # RoboCompUltrasound.SensorParams
-
+    #
+    # IMPLEMENTATION of getBatteryState method from BatteryStatus interface
+    #
+    def BatteryStatus_getBatteryState(self):
+        ret = RoboCompBatteryStatus.TBattery()
+        ret.percent = 100
+        return ret
+    #

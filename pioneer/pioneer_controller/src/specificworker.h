@@ -89,7 +89,6 @@ class SpecificWorker : public GenericWorker
         //robot
         const float ROBOT_WIDTH = 400;
         const float ROBOT_LONG = 450;
-        //const std::string FILE_NAME_XML = "../etc/escuela.simscene.json";
         const std::string FILE_NAME = "../../etc/informatica.json";
         struct Robot
         {
@@ -145,6 +144,9 @@ class SpecificWorker : public GenericWorker
 
         // RSSI
         void read_RSSI();
+
+        // Alive roobot
+        QTimer timer_alive;
 };
 
 #endif

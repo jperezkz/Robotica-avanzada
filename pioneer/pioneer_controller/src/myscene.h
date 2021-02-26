@@ -53,10 +53,11 @@ class Robot2DScene : public QGraphicsScene
                         float ROBOT_LONG,
                         std::string filename)
         {
-            dim = initializeWorld(filename);
             graphicsView->setScene(this);
             graphicsView->setMinimumSize(400,400);
+            dim = initializeWorld(filename);
             this->setSceneRect(dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT);
+            qInfo() << this->sceneRect();
             graphicsView->scale(1, -1);
             graphicsView->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
             graphicsView->show();
@@ -102,10 +103,10 @@ class Robot2DScene : public QGraphicsScene
             QJsonDocument doc = QJsonDocument::fromJson(val.toUtf8());
             QJsonObject jObject = doc.object();
             QVariantMap mainMap = jObject.toVariantMap();
+
             //load dimensions
             QVariantMap dim = mainMap[QString("dimensions")].toMap();
             Dimensions dimensions{dim["LEFT"].toFloat(), dim["BOTTOM"].toFloat(), dim["WIDTH"].toFloat(), dim["HEIGHT"].toFloat(), dim["TILESIZE"].toFloat()};
-
             //load tables
             QVariantMap tables = mainMap[QString("tables")].toMap();
             for (auto &t : tables)

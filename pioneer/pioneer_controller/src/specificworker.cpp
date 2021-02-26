@@ -83,6 +83,32 @@ void SpecificWorker::initialize(int period)
     scene.initialize(graphicsView, target_slot, ROBOT_WIDTH, ROBOT_LONG, FILE_NAME);
     robot = std::make_shared<Robot>(innerModel);
 
+    connect(&timer_alive, &QTimer::timeout, [this]()
+            {
+                try
+                {
+                    differentialrobot_proxy->ice_ping();
+                    QPixmap mypix("../../etc/resources/green.png");
+                    label_robot->setPixmap(mypix);
+                }
+                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                try
+                {
+                    fullposeestimation_proxy->ice_ping();
+                    QPixmap mypix("../../etc/resources/green.png");
+                    label_localization->setPixmap(mypix);
+                }
+                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                try
+                {
+                    camerargbdsimple_proxy->ice_ping();
+                    QPixmap mypix("../../etc/resources/green.png");
+                    label_camera->setPixmap(mypix);
+                }
+                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+            });
+    timer_alive.start(1000);
+
 	this->Period = period;
 	if(this->startup_check_flag)
 	    this->startup_check();
@@ -123,8 +149,8 @@ void SpecificWorker::read_RSSI()
 {
     try
     {
-        //auto rssi = rssistatus_proxy->getRSSIState();
-        //rssi_lcdnumber->display(rssi.percentage);
+        auto rssi = rssistatus_proxy->getRSSIState();
+        rssi_lcdnumber->display(rssi.percentage);
     }
     catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
 }
