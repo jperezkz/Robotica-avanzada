@@ -4,7 +4,7 @@
         "BOTTOM": -35000.0,
         "HEIGHT": 70000.0,
         "LEFT": -12500.0,
-        "TILESIZE": 50,
+        "TILESIZE": 400,
         "WIDTH": 25000.0
     },
     "walls": {

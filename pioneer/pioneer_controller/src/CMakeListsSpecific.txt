@@ -3,9 +3,10 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Sources set
 SET ( SOURCES
-  specificworker.cpp
+   specificworker.cpp
    specificmonitor.cpp
    myscene.h
+   $ENV{ROBOCOMP}/classes/grid2d/grid2d.cpp
 )
 
 # Headers set

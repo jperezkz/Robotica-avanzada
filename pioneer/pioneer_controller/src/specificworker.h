@@ -32,6 +32,8 @@
 #include <QGraphicsLineItem>
 #include <myscene.h>
 #include <doublebuffer/DoubleBuffer.h>
+#include <grid2d/grid2d.h>
+#include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
 
 class SpecificWorker : public GenericWorker
 {
@@ -92,6 +94,8 @@ class SpecificWorker : public GenericWorker
         const std::string FILE_NAME = "../../etc/informatica.json";
         struct Robot
         {
+            const float WIDTH = 400;
+            const float LENGTH = 450;
             float TARGET_THRESHOLD_DISTANCE = 100.f;
             float MAX_ROT_SPEED = 1.f; // rads/sg
             float MAX_ADV_SPEED = 1000.f;  // mm/sg
@@ -147,6 +151,9 @@ class SpecificWorker : public GenericWorker
 
         // Alive roobot
         QTimer timer_alive;
+
+        // Grid
+        Grid<> grid;
 };
 
 #endif

@@ -37,6 +37,9 @@ class Robot2DScene : public QGraphicsScene
     Q_OBJECT
     public:
         QGraphicsItem *robot_polygon;
+        using Dimensions = struct{ float HMIN = -2500, VMIN = -2500, WIDTH = 5000, HEIGHT = 5000, TILE_SIZE = 40; };
+        Dimensions get_dimensions() const { return dim; };
+        std::vector<QPolygonF> get_obstacles() const { return obstacles; };
 
     signals:
         void new_target(QGraphicsSceneMouseEvent *);
@@ -84,9 +87,9 @@ class Robot2DScene : public QGraphicsScene
         }
 
     private:
-         struct Dimensions { float HMIN = -2500, VMIN = -2500, WIDTH = 5000, HEIGHT = 5000, TILE_SIZE = 40; };
-         std::vector<QGraphicsItem *> boxes;
-         Dimensions dim;
+        std::vector<QGraphicsItem *> boxes;
+        std::vector<QPolygonF> obstacles;
+        Dimensions dim;
 
         //load world model from file
         Dimensions initializeWorld(const std::string &FILE_NAME)
@@ -135,6 +138,7 @@ class Robot2DScene : public QGraphicsScene
                 box->setPos(object[4].toFloat(), object[5].toFloat());
                 box->setRotation(object[6].toFloat()*180/M_PI);
                 boxes.push_back(box);
+                obstacles.emplace_back( box->mapToScene(QPolygonF(box->rect())));
             }
 
             //load points

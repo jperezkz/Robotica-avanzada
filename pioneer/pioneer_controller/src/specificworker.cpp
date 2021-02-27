@@ -83,6 +83,7 @@ void SpecificWorker::initialize(int period)
     scene.initialize(graphicsView, target_slot, ROBOT_WIDTH, ROBOT_LONG, FILE_NAME);
     robot = std::make_shared<Robot>(innerModel);
 
+    // UI
     connect(&timer_alive, &QTimer::timeout, [this]()
             {
                 try
@@ -109,7 +110,12 @@ void SpecificWorker::initialize(int period)
             });
     timer_alive.start(1000);
 
-	this->Period = period;
+    // grid
+    auto dim = scene.get_dimensions();
+    grid.initialize(&scene, Grid<>::Dimensions{dim.TILE_SIZE, dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT });
+    grid.fill_with_obstacles(scene. get_obstacles());
+
+    this->Period = period;
 	if(this->startup_check_flag)
 	    this->startup_check();
 	else
@@ -132,7 +138,7 @@ void SpecificWorker::compute()
     read_RSSI();
 
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
-    //check_target(robot);
+    check_target(robot);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -253,28 +259,31 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
     static Target target;
     if(auto t = target_buffer.try_get(); t.has_value())
     {
+        qInfo() << __FUNCTION__ << t.value().pos;
         target.set_new_value(t.value());
         draw_target(&scene, robot, target);
+        auto path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
+        grid.draw_path(&scene, path, robot->WIDTH/3 );
     }
     if(target.is_active())
     {
-        try
-        {
-            if (not robot->at_target(target))
-            {
-                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
-                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
-                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
-                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
-                differentialrobot_proxy->setSpeedBase(adv_speed, rot_speed);
-            } else
-            {
-                target.set_active(false);
-                differentialrobot_proxy->setSpeedBase(0, 0);
-            }
-        }
-        catch (const Ice::Exception &e)
-        { std::cout << e.what() << std::endl; };
+//        try
+//        {
+//            if (not robot->at_target(target))
+//            {
+//                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
+//                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
+//                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
+//                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
+//                differentialrobot_proxy->setSpeedBase(adv_speed, rot_speed);
+//            } else
+//            {
+//                target.set_active(false);
+//                differentialrobot_proxy->setSpeedBase(0, 0);
+//            }
+//        }
+//        catch (const Ice::Exception &e)
+//        { std::cout << e.what() << std::endl; };
     }
 }
 
