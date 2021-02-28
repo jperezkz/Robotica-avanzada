@@ -46,7 +46,10 @@ class Robot2DScene : public QGraphicsScene
 
     protected:
         void mousePressEvent(QGraphicsSceneMouseEvent *event)
-        { emit new_target(event); }
+        {
+            if(event->buttons() == Qt::LeftButton)
+                emit new_target(event);
+        }
 
     public:
         template<typename T>

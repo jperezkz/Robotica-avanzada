@@ -34,6 +34,7 @@
 #include <doublebuffer/DoubleBuffer.h>
 #include <grid2d/grid2d.h>
 #include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
+#include <opencv2/viz.hpp>
 
 class SpecificWorker : public GenericWorker
 {
@@ -56,17 +57,20 @@ class SpecificWorker : public GenericWorker
         }
         void wheelEvent(QWheelEvent* event)
         {
-            qreal factor;
-            if (event->angleDelta().y() > 0)
-              factor = 1.1;
-            else
-              factor = 0.9;
-            auto view_pos = event->pos();
-            auto scene_pos = graphicsView->mapToScene(view_pos);
-            graphicsView->centerOn(scene_pos);
-            graphicsView->scale(factor, factor);
-            auto delta = graphicsView->mapToScene(view_pos) - graphicsView->mapToScene(graphicsView->viewport()->rect().center());
-            graphicsView->centerOn(scene_pos - delta);
+            if(event->buttons() == Qt::RightButton )
+            {
+                qreal factor;
+                if (event->angleDelta().y() > 0)
+                    factor = 1.1;
+                else
+                    factor = 0.9;
+                auto view_pos = event->pos();
+                auto scene_pos = graphicsView->mapToScene(view_pos);
+                graphicsView->centerOn(scene_pos);
+                graphicsView->scale(factor, factor);
+                auto delta = graphicsView->mapToScene(view_pos) - graphicsView->mapToScene(graphicsView->viewport()->rect().center());
+                graphicsView->centerOn(scene_pos - delta);
+            }
         }
 
     private:
@@ -91,8 +95,10 @@ class SpecificWorker : public GenericWorker
         //robot
         const float ROBOT_WIDTH = 400;
         const float ROBOT_LONG = 450;
+        //const std::string FILE_NAME = "../../etc/escuela.json";
         const std::string FILE_NAME = "../../etc/informatica.json";
-        struct Robot
+
+    struct Robot
         {
             const float WIDTH = 400;
             const float LENGTH = 450;
@@ -154,6 +160,9 @@ class SpecificWorker : public GenericWorker
 
         // Grid
         Grid<> grid;
+
+        // viz
+        cv::viz::Viz3d window; //creating a Viz window
 };
 
 #endif

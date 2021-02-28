@@ -115,6 +115,10 @@ void SpecificWorker::initialize(int period)
     grid.initialize(&scene, Grid<>::Dimensions{dim.TILE_SIZE, dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT });
     grid.fill_with_obstacles(scene. get_obstacles());
 
+    // Viz
+    //Displaying the Coordinate Origin (0,0,0)
+    window.showWidget("coordinate", cv::viz::WCoordinateSystem(100));
+
     this->Period = period;
 	if(this->startup_check_flag)
 	    this->startup_check();
@@ -139,6 +143,7 @@ void SpecificWorker::compute()
 
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
     check_target(robot);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
