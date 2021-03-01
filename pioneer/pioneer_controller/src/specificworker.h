@@ -35,6 +35,7 @@
 #include <grid2d/grid2d.h>
 #include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
 #include <opencv2/viz.hpp>
+#include "elastic_band.h"
 
 class SpecificWorker : public GenericWorker
 {
@@ -100,25 +101,27 @@ class SpecificWorker : public GenericWorker
 
     struct Robot
         {
+            Robot(Robot2DScene *scene_){ scene = scene_;}
+            Robot2DScene *scene;
             const float WIDTH = 400;
             const float LENGTH = 450;
             float TARGET_THRESHOLD_DISTANCE = 100.f;
             float MAX_ROT_SPEED = 1.f; // rads/sg
             float MAX_ADV_SPEED = 1000.f;  // mm/sg
-            std::shared_ptr < InnerModel > innerModel;
             struct State { float x; float y; float ang;};
             State state;
-            Robot(std::shared_ptr <InnerModel> innerModel_){ innerModel = innerModel_;}
             std::tuple<float, float> to_go(const Target &t) const
                 {
-                    auto tr = innerModel->transform("robot", QVec::vec3(t.pos.x(), 0, t.pos.y()), "world");
-                    float ang = atan2(tr.x(), tr.z());
-                    float dist = tr.norm2();
+                    //auto tr = innerModel->transform("robot", QVec::vec3(t.pos.x(), 0, t.pos.y()), "world");
+                    auto tr = scene->robot_polygon->mapFromScene(t.pos);
+                    float ang = atan2(tr.x(), tr.y());
+                    float dist = QVector2D(tr).length();
                     return std::make_tuple(dist, ang);
                 };
             bool at_target(Target &t)
             {
-                return innerModel->transform("robot", QVec::vec3(t.pos.x(), 0, t.pos.y()), "world").norm2() < TARGET_THRESHOLD_DISTANCE;
+                return QVector2D(scene->robot_polygon->mapFromScene(t.pos)).length() < TARGET_THRESHOLD_DISTANCE;
+
             }
             void update_state( const State &s)
             {
@@ -127,7 +130,7 @@ class SpecificWorker : public GenericWorker
         };
         std::shared_ptr<Robot> robot;
         RoboCompGenericBase::TBaseState read_base(Robot2DScene *scene);
-        void read_robot_pose();
+        void read_robot_pose(Robot2DScene *scene);
         float sigmoid(float t);
         float exponential(float value, float xValue, float yValue, float min);
         void check_target( std::shared_ptr<Robot> robot);
@@ -161,8 +164,8 @@ class SpecificWorker : public GenericWorker
         // Grid
         Grid<> grid;
 
-        // viz
-        cv::viz::Viz3d window; //creating a Viz window
+        // Elastic band
+        ElasticBand elastic_band;
 };
 
 #endif

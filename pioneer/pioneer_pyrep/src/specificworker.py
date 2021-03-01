@@ -68,7 +68,7 @@ class SpecificWorker(GenericWorker):
 
     def setParams(self, params):
 
-        SCENE_FILE = '../../etc/informatica-2.ttt'
+        SCENE_FILE = '../../etc/informatica.ttt'
 
         self.pr = PyRep()
         self.pr.launch(SCENE_FILE, headless=False)
@@ -182,13 +182,14 @@ class SpecificWorker(GenericWorker):
     ###########################################
     def read_robot_pose(self):
         # pose = self.robot.get_2d_pose()
-        pose = self.robot_object.get_pose()
+        pose = self.robot_object.get_position()
+        rot = self.robot_object.get_orientation()
         linear_vel, ang_vel = self.robot_object.get_velocity()
         # print("Veld:", linear_vel, ang_vel)
         isMoving = np.abs(linear_vel[0]) > 0.01 or np.abs(linear_vel[1]) > 0.01 or np.abs(ang_vel[2]) > 0.01
         self.bState = RoboCompGenericBase.TBaseState(x=pose[0] * 1000,
                                                      z=pose[1] * 1000,
-                                                     alpha=pose[2],
+                                                     alpha=rot[2],
                                                      advVx=linear_vel[0] * 1000,
                                                      advVz=linear_vel[1] * 1000,
                                                      rotV=ang_vel[2],
@@ -323,9 +324,12 @@ class SpecificWorker(GenericWorker):
     #
     def FullPoseEstimation_getFullPose(self):
         ret = RoboCompFullPoseEstimation.FullPose()
-        #
-        # write your CODE here
-        #
+        ret.x = self.bState.x
+        ret.y = self.bState.z
+        ret.z = 150
+        ret.rx = 0
+        ret.ry = 0
+        ret.rz = self.bState.alpha
         return ret
 
     #
@@ -333,9 +337,7 @@ class SpecificWorker(GenericWorker):
     #
     def FullPoseEstimation_setInitialPose(self, x, y, z, rx, ry, rz):
 
-        #
-        # write your CODE here
-        #
+        # should move robot in Coppelia to designated pose
         pass
 
     #
@@ -403,6 +405,6 @@ class SpecificWorker(GenericWorker):
     #
     def BatteryStatus_getBatteryState(self):
         ret = RoboCompBatteryStatus.TBattery()
-        ret.percent = 100
+        ret.percentage = 100
         return ret
     #

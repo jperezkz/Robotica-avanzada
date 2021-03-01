@@ -81,7 +81,7 @@ void SpecificWorker::initialize(int period)
                     });
             };
     scene.initialize(graphicsView, target_slot, ROBOT_WIDTH, ROBOT_LONG, FILE_NAME);
-    robot = std::make_shared<Robot>(innerModel);
+    robot = std::make_shared<Robot>(&scene);
 
     // UI
     connect(&timer_alive, &QTimer::timeout, [this]()
@@ -110,14 +110,13 @@ void SpecificWorker::initialize(int period)
             });
     timer_alive.start(1000);
 
-    // grid
+    // grid and planner
     auto dim = scene.get_dimensions();
     grid.initialize(&scene, Grid<>::Dimensions{dim.TILE_SIZE, dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT });
     grid.fill_with_obstacles(scene. get_obstacles());
 
-    // Viz
-    //Displaying the Coordinate Origin (0,0,0)
-    window.showWidget("coordinate", cv::viz::WCoordinateSystem(100));
+    // elastic band
+    elastic_band.initialize();
 
     this->Period = period;
 	if(this->startup_check_flag)
@@ -129,19 +128,16 @@ void SpecificWorker::initialize(int period)
 void SpecificWorker::compute()
 {
 
-    read_base(&scene);
-    read_robot_pose();
-
+    //read_base(&scene);
+    read_robot_pose(&scene);
     // camara
-    auto cdata = read_rgb_camera(true);
-
+    auto cdata = read_rgbd_camera(false);
     // battery
     read_battery();
-
     // RSSI
     read_RSSI();
 
-    //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
+    auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
     check_target(robot);
 
 }
@@ -165,12 +161,15 @@ void SpecificWorker::read_RSSI()
     }
     catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
 }
-void SpecificWorker::read_robot_pose()
+void SpecificWorker::read_robot_pose(Robot2DScene *scene)
 {
     try
     {
         auto pose = fullposeestimation_proxy->getFullPose();
-        //Info() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+        //qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+        scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz-M_PI_2));  //porque en Coppelia está inicializado con el eje X
+        scene->robot_polygon->setPos(pose.x, pose.y);
+        robot->update_state(Robot::State{pose.x, pose.y, pose.rz});
     }
     catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;};
 }
@@ -240,7 +239,6 @@ RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
     }
     return cdata;
 }
-
 void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> robot, const Target &target)
 {
     static QGraphicsEllipseItem *target_draw = nullptr;
@@ -258,7 +256,6 @@ void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> rob
     auto ball = scene->addEllipse(ex - 25, ey - 25, 50, 50, QPen(QColor("green")), QBrush(QColor("green")));
     ball->setParentItem(target_draw);
 }
-
 void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
 {
     static Target target;
@@ -291,11 +288,10 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
 //        { std::cout << e.what() << std::endl; };
     }
 }
-
 std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata, Robot2DScene *scene,bool draw,unsigned short subsampling )
 {
-    const int MAX_LASER_BINS = 200;
-    /*if (subsampling == 0 or subsampling > 10)
+    const int MAX_LASER_BINS = 100;
+    if (subsampling == 0 or subsampling > 10)
     {
         qWarning("SpecificWorker::get_laser_from_rgbd: subsampling parameter < 1 or > than 10");
         return std::vector<LaserPoint>();
@@ -304,17 +300,17 @@ std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( co
     float *depth_array = (float *) cdata.depth.depth.data();  // cast to float
     const int WIDTH = cdata.depth.width;
     const int HEIGHT = cdata.depth.height;
-    int FOCAL = cdata.depth.focalx;
-    FOCAL = (int) ((WIDTH / 2) / atan(0.52));  // para angulo de 60º
+    //int FOCAL_A = cdata.depth.focalx;  //554
+    int FOCAL = (int) ((WIDTH / 2) / atan(0.52));  // para angulo de 60º  667
     int STEP = subsampling;
     float X, Y, Z;
     int cols, rows;
-    std::size_t SIZE = tmp.size() / sizeof(float);*/
-    /*
+    std::size_t SIZE = tmp.size() / sizeof(float);
+
     //const float TOTAL_HOR_ANGLE = atan2(WIDTH / 2.f, FOCAL) * 2.f;
     const float TOTAL_HOR_ANGLE = 1.0472;  // para 60º
     using Point = std::tuple< float, float, float>;
-    auto cmp = [](Point a, Point b) { return true; };
+    auto cmp = [](Point a, Point b) { auto &[ax,ay,az] = a; auto &[bx,by,bz] = b; return (ax*ax+ay*ay+az*az) < (bx*bx+by*by+bz*bz);};
     std::vector<std::set<Point, decltype(cmp)>> hor_bins(MAX_LASER_BINS);
     for (std::size_t i = 0; i < SIZE; i += STEP)
     {
@@ -324,24 +320,31 @@ std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( co
         Y = depth_array[i] * 1000; // we transform measurements to millimeters
         X = cols * Y / FOCAL;
         Z = rows * Y / FOCAL;
+        if(Z>50)
+            continue;
         // accumulate in bins of equal horizontal angle from optical axis
         float hor_angle = atan2(cols, FOCAL);
         // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
         int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
         hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
         // result[i] = std::make_tuple(X, Y, Z);
-    }*/
+    }
     std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
-    /*uint i=0;
+    uint i=0;
     for(auto &bin : hor_bins)
     {
-        const auto &[X,Y,Z] = *bin.cbegin();
-        laser_data[i] = LaserPoint{sqrt(X*X+Y*Y+Z*Z), (i-MAX_LASER_BINS/2.f)/(MAX_LASER_BINS/TOTAL_HOR_ANGLE)};
+        if( bin.size() > 0)
+        {
+            const auto &[X, Y, Z] = *bin.cbegin();
+            laser_data[i] = LaserPoint{sqrt(X * X + Y * Y + Z * Z), (i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+        }
+        else
+            laser_data[i] = LaserPoint{0.f,(i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
         i++;
     }
     auto laser_poly = filter_laser(laser_data);
     if(draw)
-        draw_laser(scene, laser_poly);*/
+        draw_laser(scene, laser_poly);
     return laser_data;
 }
 void SpecificWorker::draw_laser(Robot2DScene *scene, QPolygonF &laser_poly)
