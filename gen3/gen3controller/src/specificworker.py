@@ -36,7 +36,7 @@ class SpecificWorker(GenericWorker):
         self.depth = []
         self.camera_name = "camera_arm"
 
-        self.Period = 100
+        self.Period = 300
         if startup_check:
             self.startup_check()
         else:
@@ -58,10 +58,20 @@ class SpecificWorker(GenericWorker):
     @QtCore.Slot()
     def compute(self):
         print('SpecificWorker.compute...')
-        all = self.camerargbdsimple_proxy.getAll(self.camera_name)
-        self.draw_image(all.image)
+        #all = self.camerargbdsimple_proxy.getAll(self.camera_name)
+        #self.draw_image(all.image)
+        tip = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
+        pos = RoboCompKinovaArm.TPose()
+        pos.x=0
+        pos.y=5
+        pos.z=0
+        #self.kinovaarm_proxy.setCenterOfTool(pos ,RoboCompKinovaArm.ArmJoints.base)
+        self.kinovaarm_proxy.openGripper()
+        print(tip)
+
         #procesar imagen
         #enviar cambio a la pinza
+
 
         return True
 
@@ -90,12 +100,9 @@ class SpecificWorker(GenericWorker):
     # RoboCompCameraRGBDSimple.TRGBD
 
     ######################
-    # From the RoboCompJoystickAdapter you can publish calling this methods:
-    # self.joystickadapter_proxy.sendData(...)
-
-    ######################
-    # From the RoboCompJoystickAdapter you can use this types:
-    # RoboCompJoystickAdapter.AxisParams
-    # RoboCompJoystickAdapter.ButtonParams
-    # RoboCompJoystickAdapter.TData
-
+    # From the RoboCompKinovaArm you can call this methods:
+    # self.kinovaarm_proxy.closeGripper(...)
+    # self.kinovaarm_proxy.getCenterOfTool(...)
+    # self.kinovaarm_proxy.openGripper(...)
+    # self.kinovaarm_proxy.setCenterOfTool(...)
+    # self.kinovaarm_proxy.setGripper(...)
