@@ -45,6 +45,7 @@ class TimeControl:
         self.start_print = time.time()  # it doesn't exist yet, so initialize it
         self.period = period_
 
+
     def wait(self):
         elapsed = time.time() - self.start
         if elapsed < self.period:
@@ -59,6 +60,7 @@ class TimeControl:
 class SpecificWorker(GenericWorker):
     def __init__(self, proxy_map):
         super(SpecificWorker, self).__init__(proxy_map)
+        self.pinza = False
        
     def __del__(self):
         print('SpecificWorker destructor')
@@ -99,6 +101,9 @@ class SpecificWorker(GenericWorker):
             self.pr.step()
             self.read_joystick()
             self.read_camera(self.cameras[self.camera_arm_name])
+
+            if self.pinza:
+                self.pr.script_call("close@RG2", 1)
 
             tc.wait()
 
@@ -149,6 +154,7 @@ class SpecificWorker(GenericWorker):
             if x.name == "Z_axis":
                 side = x.value if np.abs(x.value) > 1 else 0
             if x.name == "gripper":
+
                 if x.value > 1:
                     self.pr.script_call("open@RG2", 1)
                     print("abriendo")
@@ -226,12 +232,15 @@ class SpecificWorker(GenericWorker):
     # IMPLEMENTATION of openGripper method from KinovaArm interface
     #
     def KinovaArm_openGripper(self):
+
         self.pr.script_call("open@RG2", 1)
         print("Opening gripper")
+        self.pinza = True
 
     def KinovaArm_closeGripper(self):
-        self.pr.script_call("open@RG2", 1)
+        #self.pr.script_call("close@RG2", 1)
         print("Closing gripper")
+        self.pinza = True
 
     #
     # IMPLEMENTATION of setCenterOfTool method from KinovaArm interface
