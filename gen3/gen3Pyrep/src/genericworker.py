@@ -29,25 +29,22 @@ except KeyError:
 
 Ice.loadSlice("-I ./src/ --all ./src/CommonBehavior.ice")
 import RoboCompCommonBehavior
-
 Ice.loadSlice("-I ./src/ --all ./src/CameraRGBDSimple.ice")
 import RoboCompCameraRGBDSimple 
 Ice.loadSlice("-I ./src/ --all ./src/CameraRGBDSimplePub.ice")
 import RoboCompCameraRGBDSimplePub
+Ice.loadSlice("-I ./src/ --all ./src/KinovaArm.ice")
+import RoboCompKinovaArm
 Ice.loadSlice("-I ./src/ --all ./src/JoystickAdapter.ice")
 import RoboCompJoystickAdapter
 Ice.loadSlice("-I ./src/ --all ./src/CoppeliaUtils.ice")
 import RoboCompCoppeliaUtils
-Ice.loadSlice("-I ./src/ --all ./src/JointMotorPub.ice")
-import RoboCompJointMotorPub
-Ice.loadSlice("-I ./src/ --all ./src/JointMotor.ice")
-import RoboCompJointMotor
-Ice.loadSlice("-I ./src/ --all ./src/KinovaArmPub.ice")
-import RoboCompKinovaArmPub
+
 
 import camerargbdsimpleI
 import joystickadapterI
 import coppeliautilsI
+import kinovaarmI
 
 class GenericWorker():
 
@@ -57,5 +54,3 @@ class GenericWorker():
         super(GenericWorker, self).__init__()
 
         self.camerargbdsimplepub_proxy = mprx["CameraRGBDSimplePubPub"]
-        self.jointmotorpub_proxy = mprx["JointMotorPubPub"]
-        self.kinovaarmpub_proxy = mprx["KinovaArmPubPub"]
