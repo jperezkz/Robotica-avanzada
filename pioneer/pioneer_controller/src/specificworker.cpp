@@ -116,7 +116,21 @@ void SpecificWorker::initialize(int period)
     grid.fill_with_obstacles(scene. get_obstacles());
 
     // elastic band
-    elastic_band.initialize();
+    //elastic_band.initialize();
+
+    // reset initial state
+    try
+    {
+        float x = 3305;
+        float y = 0;
+        float z = -21699;
+        float rx = 0;
+        float ry = 0;
+        float rz = 0;
+        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
+    }
+    catch(const Ice::Exception &e){};
+
 
     this->Period = period;
 	if(this->startup_check_flag)
@@ -131,14 +145,13 @@ void SpecificWorker::compute()
     //read_base(&scene);
     read_robot_pose(&scene);
     // camara
-    auto cdata = read_rgbd_camera(false);
+    auto cdata = read_rgb_camera(true);
     // battery
     read_battery();
     // RSSI
-    read_RSSI();
-
-    auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
-    check_target(robot);
+    //read_RSSI();
+    //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
+    //check_target(robot);
 
 }
 
@@ -165,11 +178,14 @@ void SpecificWorker::read_robot_pose(Robot2DScene *scene)
 {
     try
     {
-        auto pose = fullposeestimation_proxy->getFullPose();
-        //qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
-        scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz-M_PI_2));  //porque en Coppelia está inicializado con el eje X
-        scene->robot_polygon->setPos(pose.x, pose.y);
-        robot->update_state(Robot::State{pose.x, pose.y, pose.rz});
+        // OJO PONER UN ifdef para Coppelia
+        auto pose = fullposeestimation_proxy->getFullPose();  // en metros
+        qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+        //scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz-M_PI_2));  //porque en Coppelia está inicializado con el eje X
+        scene->robot_polygon->setRotation(qRadiansToDegrees(pose.ry));  //porque en Coppelia está inicializado con el eje X
+        // scene->robot_polygon->setPos(pose.x, pose.y);  //Copppemkia
+        scene->robot_polygon->setPos(pose.x, pose.z);
+        robot->update_state(Robot::State{pose.x, pose.z, pose.ry});
     }
     catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;};
 }
@@ -232,9 +248,12 @@ RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
         cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
-        cv::flip(img, img, 0);
+        cv::flip(img, img, -1);
         cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
-        auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.width, cdata.height, QImage::Format_RGB888));
+        cv::Mat img_resized(640, 480, CV_8UC3);
+        cv::resize(img, img_resized, cv::Size(640,480));
+
+        auto pix = QPixmap::fromImage(QImage(img_resized.data, img_resized.cols, img_resized.rows, QImage::Format_RGB888));
         label_rgb->setPixmap(pix);
     }
     return cdata;

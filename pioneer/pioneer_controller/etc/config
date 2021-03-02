@@ -4,8 +4,9 @@ CommonBehavior.Endpoints=tcp -p 10300
 BatteryStatusProxy = batterystatus:tcp -h 158.49.247.155 -p 10014
 CameraRGBDSimpleProxy = camerargbdsimple:tcp -h 158.49.247.155 -p 10178
 DifferentialRobotProxy = differentialrobot:tcp -h 158.49.247.155 -p 10004
-FullPoseEstimationProxy = fullposeestimation:tcp -h localhost -p 10696
-
+FullPoseEstimationProxy = fullposeestimation:tcp -h 158.49.247.155 -p 10696
+RSSIStatusProxy = rssistatus:tcp -h 158.49.247.155 -p 10016
+UltrasoundProxy = ultrasound:tcp -h 158.49.247.155 -p 10017
 InnerModelPath = ../../etc/simpleworldomni.xml
 
 Ice.Warn.Connections=0
