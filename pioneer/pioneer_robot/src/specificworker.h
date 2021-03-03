@@ -64,6 +64,10 @@ public slots:
 	int startup_check();
 	void initialize(int period);
 	void rate();
+	void controlParadaBase(bool flag);
+
+signals:
+    void controlTime(bool);
 
 private:
 	std::shared_ptr < InnerModel > innerModel;

@@ -99,6 +99,8 @@ void SpecificWorker::initialize(int period)
 
     connect(&timerRSSI, &QTimer::timeout, this, &SpecificWorker::rate);
     timerRSSI.start(1000);
+    connect(this, SIGNAL(&SpecificWorker::controlTime(bool)), this, SLOT(&SpecificWorker::controlParadaBase(bool)));
+
 
     this->Period = period;
 	if(this->startup_check_flag)
@@ -246,12 +248,25 @@ void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData dat
             adv_speed = std::clamp(a.value, -1000.f, 1000.f);
         if(a.name == "turn")
             rot_speed = std::clamp(a.value, -100.f, 100.f);
+        if(a.name == "back") {
+            adv_speed = -(std::clamp(a.value, -1000.f, 1000.f));
+            std::cout << "BACK" << std::endl;
+        }
+        emit controlTime(true);
     }
+
+    if(fabs(rot_speed) < 1) rot_speed = 0;
+    if(fabs(adv_speed) < 4) adv_speed = 0;
+
     robot->lock();
     qInfo() << adv_speed;
     robot->setVel(adv_speed);
     robot->setRotVel(rot_speed);
     robot->unlock();
+}
+
+void SpecificWorker::controlParadaBase(bool flag){
+    //DifferentialRobot_stopBase();
 }
 
 
