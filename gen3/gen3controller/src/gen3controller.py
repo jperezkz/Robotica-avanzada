@@ -62,7 +62,6 @@ import time
 import os
 import copy
 import argparse
-from termcolor import colored
 # Ctrl+c handling
 import signal
 
@@ -114,14 +113,6 @@ if __name__ == '__main__':
     for i in ic.getProperties():
         parameters[str(i)] = str(ic.getProperties().getProperty(i))
 
-    # Topic Manager
-    proxy = ic.getProperties().getProperty("TopicManager.Proxy")
-    obj = ic.stringToProxy(proxy)
-    try:
-        topicManager = IceStorm.TopicManagerPrx.checkedCast(obj)
-    except Ice.ConnectionRefusedException as e:
-        print(colored('Cannot connect to rcnode! This must be running to use pub/sub.', 'red'))
-        exit(1)
 
     # Remote object connection for CameraRGBDSimple
     try:
@@ -140,23 +131,21 @@ if __name__ == '__main__':
         status = 1
 
 
-    # Create a proxy to publish a JoystickAdapter topic
-    topic = False
+    # Remote object connection for KinovaArm
     try:
-        topic = topicManager.retrieve("JoystickAdapter")
-    except:
-        pass
-    while not topic:
+        proxyString = ic.getProperties().getProperty('KinovaArmProxy')
         try:
-            topic = topicManager.retrieve("JoystickAdapter")
-        except IceStorm.NoSuchTopic:
-            try:
-                topic = topicManager.create("JoystickAdapter")
-            except:
-                print('Another client created the JoystickAdapter topic? ...')
-    pub = topic.getPublisher().ice_oneway()
-    joystickadapterTopic = RoboCompJoystickAdapter.JoystickAdapterPrx.uncheckedCast(pub)
-    mprx["JoystickAdapterPub"] = joystickadapterTopic
+            basePrx = ic.stringToProxy(proxyString)
+            kinovaarm_proxy = RoboCompKinovaArm.KinovaArmPrx.uncheckedCast(basePrx)
+            mprx["KinovaArmProxy"] = kinovaarm_proxy
+        except Ice.Exception:
+            print('Cannot connect to the remote object (KinovaArm)', proxyString)
+            #traceback.print_exc()
+            status = 1
+    except Ice.Exception as e:
+        print(e)
+        print('Cannot get KinovaArmProxy property.')
+        status = 1
 
     if status == 0:
         worker = SpecificWorker(mprx, args.startup_check)

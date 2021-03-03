@@ -1,12 +1,11 @@
 import "CameraRGBDSimple.idsl";
-import "JoystickAdapter.idsl";
+import "KinovaArm.idsl";
 
 Component gen3controller
 {
     Communications
     {
-        requires CameraRGBDSimple;
-        publishes JoystickAdapter;
+        requires CameraRGBDSimple, KinovaArm;
     };
     language python;
     gui Qt(QMainWindow);

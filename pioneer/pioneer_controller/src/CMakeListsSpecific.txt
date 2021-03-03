@@ -3,9 +3,11 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Sources set
 SET ( SOURCES
-  specificworker.cpp
+   specificworker.cpp
    specificmonitor.cpp
    myscene.h
+   $ENV{ROBOCOMP}/classes/grid2d/grid2d.cpp
+   elastic_band.cpp
 )
 
 # Headers set
@@ -15,7 +17,7 @@ SET ( HEADERS
 )
 
 INCLUDE( $ENV{ROBOCOMP}/cmake/modules/opencv4.cmake )
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 add_definitions(-O3 -march=native  -fmax-errors=5 )
 SET (LIBS ${LIBS}  )
 

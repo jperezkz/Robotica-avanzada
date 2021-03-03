@@ -33,8 +33,8 @@ import RoboCompCommonBehavior
 
 Ice.loadSlice("-I ./src/ --all ./src/CameraRGBDSimple.ice")
 import RoboCompCameraRGBDSimple
-Ice.loadSlice("-I ./src/ --all ./src/JoystickAdapter.ice")
-import RoboCompJoystickAdapter
+Ice.loadSlice("-I ./src/ --all ./src/KinovaArm.ice")
+import RoboCompKinovaArm
 
 class ImgType(list):
     def __init__(self, iterable=list()):
@@ -74,44 +74,6 @@ class DepthType(list):
 
 setattr(RoboCompCameraRGBDSimple, "DepthType", DepthType)
 
-class AxisList(list):
-    def __init__(self, iterable=list()):
-        super(AxisList, self).__init__(iterable)
-
-    def append(self, item):
-        assert isinstance(item, RoboCompJoystickAdapter.AxisParams)
-        super(AxisList, self).append(item)
-
-    def extend(self, iterable):
-        for item in iterable:
-            assert isinstance(item, RoboCompJoystickAdapter.AxisParams)
-        super(AxisList, self).extend(iterable)
-
-    def insert(self, index, item):
-        assert isinstance(item, RoboCompJoystickAdapter.AxisParams)
-        super(AxisList, self).insert(index, item)
-
-setattr(RoboCompJoystickAdapter, "AxisList", AxisList)
-
-class ButtonsList(list):
-    def __init__(self, iterable=list()):
-        super(ButtonsList, self).__init__(iterable)
-
-    def append(self, item):
-        assert isinstance(item, RoboCompJoystickAdapter.ButtonParams)
-        super(ButtonsList, self).append(item)
-
-    def extend(self, iterable):
-        for item in iterable:
-            assert isinstance(item, RoboCompJoystickAdapter.ButtonParams)
-        super(ButtonsList, self).extend(iterable)
-
-    def insert(self, index, item):
-        assert isinstance(item, RoboCompJoystickAdapter.ButtonParams)
-        super(ButtonsList, self).insert(index, item)
-
-setattr(RoboCompJoystickAdapter, "ButtonsList", ButtonsList)
-
 
 
 
@@ -131,7 +93,7 @@ class GenericWorker(QtWidgets.QMainWindow):
         super(GenericWorker, self).__init__()
 
         self.camerargbdsimple_proxy = mprx["CameraRGBDSimpleProxy"]
-        self.joystickadapter_proxy = mprx["JoystickAdapterPub"]
+        self.kinovaarm_proxy = mprx["KinovaArmProxy"]
 
         self.ui = Ui_guiDlg()
         self.ui.setupUi(self)

@@ -38,9 +38,29 @@ import numpy_indexed as npi
 from itertools import zip_longest
 import cv2
 
+class TimeControl:
+    def __init__(self, period_):
+        self.counter = 0
+        self.start = time.time()  # it doesn't exist yet, so initialize it
+        self.start_print = time.time()  # it doesn't exist yet, so initialize it
+        self.period = period_
+
+
+    def wait(self):
+        elapsed = time.time() - self.start
+        if elapsed < self.period:
+            time.sleep(self.period - elapsed)
+        self.start = time.time()
+        self.counter += 1
+        if time.time() - self.start_print > 1:
+            print("Freq -> ", self.counter, " Hz")
+            self.counter = 0
+            self.start_print = time.time()
+
 class SpecificWorker(GenericWorker):
     def __init__(self, proxy_map):
         super(SpecificWorker, self).__init__(proxy_map)
+        self.pinza = False
        
     def __del__(self):
         print('SpecificWorker destructor')
@@ -73,24 +93,20 @@ class SpecificWorker(GenericWorker):
         self.joystick_newdata = []
         self.last_received_data_time = 0
 
-    #@QtCore.Slot()
+
     def compute(self):
-        cont = 0
-        start = time.time()
+        tc = TimeControl(0.05)
+
         while True:
             self.pr.step()
             self.read_joystick()
             self.read_camera(self.cameras[self.camera_arm_name])
 
-            #self.pr.simExtCallScriptFunction("open()", local)
-            elapsed = time.time()-start
-            if elapsed < 0.05:
-                time.sleep(0.05-elapsed)
-            cont += 1
-            if elapsed > 1:
-                print("Freq -> ", cont)
-                cont = 0
-                start = time.time()
+            if self.pinza:
+                self.pr.script_call("close@RG2", 1)
+
+            tc.wait()
+
 
     ###########################################
     def read_camera(self, cam):
@@ -138,6 +154,7 @@ class SpecificWorker(GenericWorker):
             if x.name == "Z_axis":
                 side = x.value if np.abs(x.value) > 1 else 0
             if x.name == "gripper":
+
                 if x.value > 1:
                     self.pr.script_call("open@RG2", 1)
                     print("abriendo")
@@ -179,87 +196,6 @@ class SpecificWorker(GenericWorker):
     def CameraRGBDSimple_getImage(self, camera):
         return self.cameras[camera]["rgb"]
 
-    #######################################################
-    #### Laser
-    #######################################################
-
-    #
-    # getLaserAndBStateData
-    #
-    def Laser_getLaserAndBStateData(self):
-        bState = RoboCompGenericBase.TBaseState()
-        return self.ldata, bState
-
-    #
-    # getLaserConfData
-    #
-    def Laser_getLaserConfData(self):
-        ret = RoboCompLaser.LaserConfData()
-        return ret
-
-    #
-    # getLaserData
-    #
-    def Laser_getLaserData(self):
-        return self.ldata
-
-    ##############################################
-    ## Omnibase
-    #############################################
-
-    #
-    # correctOdometer
-    #
-    def OmniRobot_correctOdometer(self, x, z, alpha):
-        pass
-
-    #
-    # getBasePose
-    #
-    def OmniRobot_getBasePose(self):
-        #
-        # implementCODE
-        #
-        x = self.bState.x
-        z = self.bState.z
-        alpha = self.bState.alpha
-        return [x, z, alpha]
-
-    #
-    # getBaseState
-    #
-    def OmniRobot_getBaseState(self):
-        return self.bState
-
-    #
-    # resetOdometer
-    #
-    def OmniRobot_resetOdometer(self):
-        pass
-
-    #
-    # setOdometer
-    #
-    def OmniRobot_setOdometer(self, state):
-        pass
-
-    #
-    # setOdometerPose
-    #
-    def OmniRobot_setOdometerPose(self, x, z, alpha):
-        pass
-
-    #
-    # setSpeedBase
-    #
-    def OmniRobot_setSpeedBase(self, advx, advz, rot):
-        self.speed_robot = self.convert_base_speed_to_radians(advz, advx, rot)
-
-    #
-    # stopBase
-    #
-    def OmniRobot_stopBase(self):
-        pass
 
     # ===================================================================
     # CoppeliaUtils
@@ -274,4 +210,61 @@ class SpecificWorker(GenericWorker):
             #print("Coppelia ", name, pose.x/1000, pose.y/1000, pose.z/1000)
             dummy.set_position([pose.x / 1000., pose.y / 1000., pose.z / 1000.], parent_frame_object)
             #dummy.set_orientation([pose.rx, pose.ry, pose.rz], parent_frame_object)
+
+    #
+    # IMPLEMENTATION of getCenterOfTool method from KinovaArm interface
+    #
+    def KinovaArm_getCenterOfTool(self, referencedTo):
+        ret = RoboCompKinovaArm.TPose()
+        parent_frame_object = Shape('gen3')
+        tip = Dummy("tip")
+        pos = tip.get_position(parent_frame_object)
+        rot = tip.get_orientation(parent_frame_object)
+        ret.x = pos[0]
+        ret.y = pos[1]
+        ret.z = pos[2]
+        ret.rx = rot[0]
+        ret.ry = rot[1]
+        ret.rz = rot[2]
+        return ret
+
+    #
+    # IMPLEMENTATION of openGripper method from KinovaArm interface
+    #
+    def KinovaArm_openGripper(self):
+
+        self.pr.script_call("open@RG2", 1)
+        print("Opening gripper")
+        self.pinza = True
+
+    def KinovaArm_closeGripper(self):
+        #self.pr.script_call("close@RG2", 1)
+        print("Closing gripper")
+        self.pinza = True
+
+    #
+    # IMPLEMENTATION of setCenterOfTool method from KinovaArm interface
+    #
+    def KinovaArm_setCenterOfTool(self, pose, referencedTo):
+        target = Dummy("target")
+        parent_frame_object = Shape('gen3')
+        position = target.get_position(parent_frame_object)
+        target.set_position([position[0] + pose.x / 1000, position[1] + pose.y / 1000, position[2] + pose.z / 1000], parent_frame_object)
+
+    #
+    # IMPLEMENTATION of setGripper method from KinovaArm interface
+    #
+    def KinovaArm_setGripper(self, pos):
+
+        #
+        # write your CODE here
+        #
+        pass
+
+    # ===================================================================
+    # ===================================================================
+
+    ######################
+    # From the RoboCompKinovaArm you can use this types:
+    # RoboCompKinovaArm.TPose
 

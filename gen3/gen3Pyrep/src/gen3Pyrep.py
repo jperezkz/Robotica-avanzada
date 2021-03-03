@@ -88,13 +88,10 @@ class CommonBehaviorI(RoboCompCommonBehavior.CommonBehavior):
             status = 1
             return
 
-#SIGNALS handler
 def sigint_handler(*args):
-    #QtCore.QCoreApplication.quit()
     pass
     
 if __name__ == '__main__':
-    #app = QtCore.QCoreApplication(sys.argv)
     params = copy.deepcopy(sys.argv)
     if len(params) > 1:
         if not params[1].startswith('--Ice.Config='):
@@ -135,41 +132,6 @@ if __name__ == '__main__':
     camerargbdsimplepubTopic = RoboCompCameraRGBDSimplePub.CameraRGBDSimplePubPrx.uncheckedCast(pub)
     mprx["CameraRGBDSimplePubPub"] = camerargbdsimplepubTopic
 
-    # Create a proxy to publish a JointMotorPub topic
-    topic = False
-    try:
-        topic = topicManager.retrieve("JointMotorPub")
-    except:
-        pass
-    while not topic:
-        try:
-            topic = topicManager.retrieve("JointMotorPub")
-        except IceStorm.NoSuchTopic:
-            try:
-                topic = topicManager.create("JointMotorPub")
-            except:
-                print('Another client created the JointMotorPub topic? ...')
-    pub = topic.getPublisher().ice_oneway()
-    jointmotorpubTopic = RoboCompJointMotorPub.JointMotorPubPrx.uncheckedCast(pub)
-    mprx["JointMotorPubPub"] = jointmotorpubTopic
-
-    # Create a proxy to publish a KinovaArmPub topic
-    topic = False
-    try:
-        topic = topicManager.retrieve("KinovaArmPub")
-    except:
-        pass
-    while not topic:
-        try:
-            topic = topicManager.retrieve("KinovaArmPub")
-        except IceStorm.NoSuchTopic:
-            try:
-                topic = topicManager.create("KinovaArmPub")
-            except:
-                print('Another client created the JointMotorPub topic? ...')
-    pub = topic.getPublisher().ice_oneway()
-    kinovaarmpubTopic = RoboCompKinovaArmPub.KinovaArmPubPrx.uncheckedCast(pub)
-    mprx["KinovaArmPubPub"] = kinovaarmpubTopic
 
     if status == 0:
         worker = SpecificWorker(mprx)
@@ -180,6 +142,10 @@ if __name__ == '__main__':
 
     adapter = ic.createObjectAdapter('CameraRGBDSimple')
     adapter.add(camerargbdsimpleI.CameraRGBDSimpleI(worker), ic.stringToIdentity('camerargbdsimple'))
+    adapter.activate()
+
+    adapter = ic.createObjectAdapter('KinovaArm')
+    adapter.add(kinovaarmI.KinovaArmI(worker), ic.stringToIdentity('kinovaarm'))
     adapter.activate()
 
     adapter = ic.createObjectAdapter('CoppeliaUtils')

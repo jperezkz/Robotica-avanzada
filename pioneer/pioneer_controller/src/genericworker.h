@@ -36,13 +36,15 @@
 #include <DifferentialRobot.h>
 #include <FullPoseEstimation.h>
 #include <GenericBase.h>
+#include <RSSIStatus.h>
+#include <Ultrasound.h>
 
 
 #define CHECK_PERIOD 5000
 #define BASIC_PERIOD 100
 
 
-using TuplePrx = std::tuple<RoboCompBatteryStatus::BatteryStatusPrxPtr,RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr,RoboCompDifferentialRobot::DifferentialRobotPrxPtr,RoboCompFullPoseEstimation::FullPoseEstimationPrxPtr>;
+using TuplePrx = std::tuple<RoboCompBatteryStatus::BatteryStatusPrxPtr,RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr,RoboCompDifferentialRobot::DifferentialRobotPrxPtr,RoboCompFullPoseEstimation::FullPoseEstimationPrxPtr,RoboCompRSSIStatus::RSSIStatusPrxPtr,RoboCompUltrasound::UltrasoundPrxPtr>;
 
 
 class GenericWorker : public QWidget, public Ui_guiDlg
@@ -62,6 +64,8 @@ public:
 	RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr camerargbdsimple_proxy;
 	RoboCompDifferentialRobot::DifferentialRobotPrxPtr differentialrobot_proxy;
 	RoboCompFullPoseEstimation::FullPoseEstimationPrxPtr fullposeestimation_proxy;
+	RoboCompRSSIStatus::RSSIStatusPrxPtr rssistatus_proxy;
+	RoboCompUltrasound::UltrasoundPrxPtr ultrasound_proxy;
 
 
 protected:

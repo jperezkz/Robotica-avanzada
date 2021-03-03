@@ -22,7 +22,7 @@
 from PySide2.QtCore import QTimer
 from PySide2.QtWidgets import QApplication
 from genericworker import *
-import cv2
+import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -59,16 +59,21 @@ class SpecificWorker(GenericWorker):
     def compute(self):
         print('SpecificWorker.compute...')
         all = self.camerargbdsimple_proxy.getAll(self.camera_name)
-        self.draw_image(all.image)
+        #self.draw_image(all.image)
         #procesar imagen
+        centre = self.procesarImagen(all.image)
+
         #enviar cambio a la pinza
+        self.pinza(centre,all.depth)
+
+
 
         return True
 
     # ===================================================================
     def draw_image(self, color_):
         color = np.frombuffer(color_.image, np.uint8).reshape(color_.height, color_.width, color_.depth)
-        plt.figure(1);
+        plt.figure(1)
         plt.clf()
         plt.imshow(color)
         plt.title('Front Camera ')
@@ -76,6 +81,62 @@ class SpecificWorker(GenericWorker):
 
     def startup_check(self):
         QTimer.singleShot(200, QApplication.instance().quit)
+
+    def procesarImagen(self, color_):
+        color = np.frombuffer(color_.image, np.uint8).reshape(color_.height, color_.width, color_.depth)
+        color = cv.medianBlur(color, 5)
+        color = cv.cvtColor(color, cv.COLOR_BGR2GRAY)
+        cimg = cv.cvtColor(color, cv.COLOR_GRAY2BGR)
+        circles = cv.HoughCircles(color, cv.HOUGH_GRADIENT, 1, 20, param1=60, param2=60, minRadius=0,maxRadius=0)
+        #print(type(circles))
+        centre = []
+        if type(circles) is not type(None):
+            circles = np.uint16(np.around(circles))
+            for i in circles[0, :]:
+                cv.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+                cv.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+                centre.append(i[0])
+                centre.append(i[1])
+            print(centre[0], centre[1])
+        plt.figure(1)
+        plt.clf()
+        plt.imshow(cimg)
+        plt.title('Front Camera ')
+        plt.pause(.1)
+        plt.imshow(cimg)
+            #self.draw_image(cimg)
+        return centre
+        
+        
+
+    def pinza(self, centre,depth):
+        tip = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
+        pos = RoboCompKinovaArm.TPose()
+        print(tip.z)
+        if centre:
+            pos.x=tip.x - centre[0]/100
+            pos.y=tip.y - centre[1]/100
+            pos.z=0
+            """print(tip.x,tip.y)
+            print(pos.x,pos.y)
+            print(centre)"""
+
+        elif tip.z > 0.08:
+            pos.x=0
+            pos.y=0
+            pos.z=-5
+        else:
+            pos.x=0
+            pos.y=0
+            pos.z=0
+            self.kinovaarm_proxy.closeGripper()
+
+        self.kinovaarm_proxy.setCenterOfTool(pos ,RoboCompKinovaArm.ArmJoints.base)
+
+
+
+        #self.kinovaarm_proxy.openGripper()
+        print(tip)
 
     ######################
     # From the RoboCompCameraRGBDSimple you can call this methods:
@@ -90,12 +151,9 @@ class SpecificWorker(GenericWorker):
     # RoboCompCameraRGBDSimple.TRGBD
 
     ######################
-    # From the RoboCompJoystickAdapter you can publish calling this methods:
-    # self.joystickadapter_proxy.sendData(...)
-
-    ######################
-    # From the RoboCompJoystickAdapter you can use this types:
-    # RoboCompJoystickAdapter.AxisParams
-    # RoboCompJoystickAdapter.ButtonParams
-    # RoboCompJoystickAdapter.TData
-
+    # From the RoboCompKinovaArm you can call this methods:
+    # self.kinovaarm_proxy.closeGripper(...)
+    # self.kinovaarm_proxy.getCenterOfTool(...)
+    # self.kinovaarm_proxy.openGripper(...)
+    # self.kinovaarm_proxy.setCenterOfTool(...)
+    # self.kinovaarm_proxy.setGripper(...)

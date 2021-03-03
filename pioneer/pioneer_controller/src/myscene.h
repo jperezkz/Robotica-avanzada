@@ -37,13 +37,19 @@ class Robot2DScene : public QGraphicsScene
     Q_OBJECT
     public:
         QGraphicsItem *robot_polygon;
+        using Dimensions = struct{ float HMIN = -2500, VMIN = -2500, WIDTH = 5000, HEIGHT = 5000, TILE_SIZE = 40; };
+        Dimensions get_dimensions() const { return dim; };
+        std::vector<QPolygonF> get_obstacles() const { return obstacles; };
 
     signals:
         void new_target(QGraphicsSceneMouseEvent *);
 
     protected:
         void mousePressEvent(QGraphicsSceneMouseEvent *event)
-        { emit new_target(event); }
+        {
+            if(event->buttons() == Qt::LeftButton)
+                emit new_target(event);
+        }
 
     public:
         template<typename T>
@@ -53,10 +59,11 @@ class Robot2DScene : public QGraphicsScene
                         float ROBOT_LONG,
                         std::string filename)
         {
-            dim = initializeWorld(filename);
             graphicsView->setScene(this);
             graphicsView->setMinimumSize(400,400);
+            dim = initializeWorld(filename);
             this->setSceneRect(dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT);
+            qInfo() << this->sceneRect();
             graphicsView->scale(1, -1);
             graphicsView->fitInView(this->sceneRect(), Qt::KeepAspectRatio);
             graphicsView->show();
@@ -83,9 +90,9 @@ class Robot2DScene : public QGraphicsScene
         }
 
     private:
-         struct Dimensions { float HMIN = -2500, VMIN = -2500, WIDTH = 5000, HEIGHT = 5000, TILE_SIZE = 40; };
-         std::vector<QGraphicsItem *> boxes;
-         Dimensions dim;
+        std::vector<QGraphicsItem *> boxes;
+        std::vector<QPolygonF> obstacles;
+        Dimensions dim;
 
         //load world model from file
         Dimensions initializeWorld(const std::string &FILE_NAME)
@@ -102,10 +109,10 @@ class Robot2DScene : public QGraphicsScene
             QJsonDocument doc = QJsonDocument::fromJson(val.toUtf8());
             QJsonObject jObject = doc.object();
             QVariantMap mainMap = jObject.toVariantMap();
+
             //load dimensions
             QVariantMap dim = mainMap[QString("dimensions")].toMap();
             Dimensions dimensions{dim["LEFT"].toFloat(), dim["BOTTOM"].toFloat(), dim["WIDTH"].toFloat(), dim["HEIGHT"].toFloat(), dim["TILESIZE"].toFloat()};
-
             //load tables
             QVariantMap tables = mainMap[QString("tables")].toMap();
             for (auto &t : tables)
@@ -134,6 +141,7 @@ class Robot2DScene : public QGraphicsScene
                 box->setPos(object[4].toFloat(), object[5].toFloat());
                 box->setRotation(object[6].toFloat()*180/M_PI);
                 boxes.push_back(box);
+                obstacles.emplace_back( box->mapToScene(QPolygonF(box->rect())));
             }
 
             //load points

@@ -81,9 +81,58 @@ void SpecificWorker::initialize(int period)
                     });
             };
     scene.initialize(graphicsView, target_slot, ROBOT_WIDTH, ROBOT_LONG, FILE_NAME);
-    robot = std::make_shared<Robot>(innerModel);
+    robot = std::make_shared<Robot>(&scene);
 
-	this->Period = period;
+    // UI
+    connect(&timer_alive, &QTimer::timeout, [this]()
+            {
+                try
+                {
+                    differentialrobot_proxy->ice_ping();
+                    QPixmap mypix("../../etc/resources/green.png");
+                    label_robot->setPixmap(mypix);
+                }
+                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                try
+                {
+                    fullposeestimation_proxy->ice_ping();
+                    QPixmap mypix("../../etc/resources/green.png");
+                    label_localization->setPixmap(mypix);
+                }
+                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                try
+                {
+                    camerargbdsimple_proxy->ice_ping();
+                    QPixmap mypix("../../etc/resources/green.png");
+                    label_camera->setPixmap(mypix);
+                }
+                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+            });
+    timer_alive.start(1000);
+
+    // grid and planner
+    auto dim = scene.get_dimensions();
+    grid.initialize(&scene, Grid<>::Dimensions{dim.TILE_SIZE, dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT });
+    grid.fill_with_obstacles(scene. get_obstacles());
+
+    // elastic band
+    //elastic_band.initialize();
+
+    // reset initial state
+    try
+    {
+        float x = 3305;
+        float y = 0;
+        float z = -21699;
+        float rx = 0;
+        float ry = 0;
+        float rz = 0;
+        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
+    }
+    catch(const Ice::Exception &e){};
+
+
+    this->Period = period;
 	if(this->startup_check_flag)
 	    this->startup_check();
 	else
@@ -93,29 +142,50 @@ void SpecificWorker::initialize(int period)
 void SpecificWorker::compute()
 {
 
-    read_base(&scene);
-    read_robot_pose();
-
+    //read_base(&scene);
+    read_robot_pose(&scene);
     // camara
     auto cdata = read_rgb_camera(true);
-
-    // bateria
-    battery = batterystatus_proxy->getBatteryState();
-    lcdNumber_bat->display(battery.percentage);
-
-    //conexion
-    //con->display(3);
-    //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 1);
+    // battery
+    read_battery();
+    // RSSI
+    //read_RSSI();
+    //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
     //check_target(robot);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
-void SpecificWorker::read_robot_pose()
+void SpecificWorker::read_battery()
 {
     try
     {
-        auto pose = fullposeestimation_proxy->getFullPose();
-        //Info() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+        auto battery = batterystatus_proxy->getBatteryState();
+        bat_lcdnumber->display(battery.percentage);
+    }
+    catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
+}
+void SpecificWorker::read_RSSI()
+{
+    try
+    {
+        auto rssi = rssistatus_proxy->getRSSIState();
+        rssi_lcdnumber->display(rssi.percentage);
+    }
+    catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
+}
+void SpecificWorker::read_robot_pose(Robot2DScene *scene)
+{
+    try
+    {
+        // OJO PONER UN ifdef para Coppelia
+        auto pose = fullposeestimation_proxy->getFullPose();  // en metros
+        qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+        //scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz-M_PI_2));  //porque en Coppelia está inicializado con el eje X
+        scene->robot_polygon->setRotation(qRadiansToDegrees(pose.ry));  //porque en Coppelia está inicializado con el eje X
+        // scene->robot_polygon->setPos(pose.x, pose.y);  //Copppemkia
+        scene->robot_polygon->setPos(pose.x, pose.z);
+        robot->update_state(Robot::State{pose.x, pose.z, pose.ry});
     }
     catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;};
 }
@@ -178,14 +248,16 @@ RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
         cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
-        cv::flip(img, img, 0);
+        cv::flip(img, img, -1);
         cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
-        auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.width, cdata.height, QImage::Format_RGB888));
+        cv::Mat img_resized(640, 480, CV_8UC3);
+        cv::resize(img, img_resized, cv::Size(640,480));
+
+        auto pix = QPixmap::fromImage(QImage(img_resized.data, img_resized.cols, img_resized.rows, QImage::Format_RGB888));
         label_rgb->setPixmap(pix);
     }
     return cdata;
 }
-
 void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> robot, const Target &target)
 {
     static QGraphicsEllipseItem *target_draw = nullptr;
@@ -203,41 +275,42 @@ void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> rob
     auto ball = scene->addEllipse(ex - 25, ey - 25, 50, 50, QPen(QColor("green")), QBrush(QColor("green")));
     ball->setParentItem(target_draw);
 }
-
 void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
 {
     static Target target;
     if(auto t = target_buffer.try_get(); t.has_value())
     {
+        qInfo() << __FUNCTION__ << t.value().pos;
         target.set_new_value(t.value());
         draw_target(&scene, robot, target);
+        auto path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
+        grid.draw_path(&scene, path, robot->WIDTH/3 );
     }
     if(target.is_active())
     {
-        try
-        {
-            if (not robot->at_target(target))
-            {
-                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
-                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
-                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
-                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
-                differentialrobot_proxy->setSpeedBase(adv_speed, rot_speed);
-            } else
-            {
-                target.set_active(false);
-                differentialrobot_proxy->setSpeedBase(0, 0);
-            }
-        }
-        catch (const Ice::Exception &e)
-        { std::cout << e.what() << std::endl; };
+//        try
+//        {
+//            if (not robot->at_target(target))
+//            {
+//                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
+//                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
+//                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
+//                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
+//                differentialrobot_proxy->setSpeedBase(adv_speed, rot_speed);
+//            } else
+//            {
+//                target.set_active(false);
+//                differentialrobot_proxy->setSpeedBase(0, 0);
+//            }
+//        }
+//        catch (const Ice::Exception &e)
+//        { std::cout << e.what() << std::endl; };
     }
 }
-
 std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata, Robot2DScene *scene,bool draw,unsigned short subsampling )
 {
-    const int MAX_LASER_BINS = 200;
-    /*if (subsampling == 0 or subsampling > 10)
+    const int MAX_LASER_BINS = 100;
+    if (subsampling == 0 or subsampling > 10)
     {
         qWarning("SpecificWorker::get_laser_from_rgbd: subsampling parameter < 1 or > than 10");
         return std::vector<LaserPoint>();
@@ -246,17 +319,17 @@ std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( co
     float *depth_array = (float *) cdata.depth.depth.data();  // cast to float
     const int WIDTH = cdata.depth.width;
     const int HEIGHT = cdata.depth.height;
-    int FOCAL = cdata.depth.focalx;
-    FOCAL = (int) ((WIDTH / 2) / atan(0.52));  // para angulo de 60º
+    //int FOCAL_A = cdata.depth.focalx;  //554
+    int FOCAL = (int) ((WIDTH / 2) / atan(0.52));  // para angulo de 60º  667
     int STEP = subsampling;
     float X, Y, Z;
     int cols, rows;
-    std::size_t SIZE = tmp.size() / sizeof(float);*/
-    /*
+    std::size_t SIZE = tmp.size() / sizeof(float);
+
     //const float TOTAL_HOR_ANGLE = atan2(WIDTH / 2.f, FOCAL) * 2.f;
     const float TOTAL_HOR_ANGLE = 1.0472;  // para 60º
     using Point = std::tuple< float, float, float>;
-    auto cmp = [](Point a, Point b) { return true; };
+    auto cmp = [](Point a, Point b) { auto &[ax,ay,az] = a; auto &[bx,by,bz] = b; return (ax*ax+ay*ay+az*az) < (bx*bx+by*by+bz*bz);};
     std::vector<std::set<Point, decltype(cmp)>> hor_bins(MAX_LASER_BINS);
     for (std::size_t i = 0; i < SIZE; i += STEP)
     {
@@ -266,24 +339,31 @@ std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( co
         Y = depth_array[i] * 1000; // we transform measurements to millimeters
         X = cols * Y / FOCAL;
         Z = rows * Y / FOCAL;
+        if(Z>50)
+            continue;
         // accumulate in bins of equal horizontal angle from optical axis
         float hor_angle = atan2(cols, FOCAL);
         // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
         int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
         hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
         // result[i] = std::make_tuple(X, Y, Z);
-    }*/
+    }
     std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
-    /*uint i=0;
+    uint i=0;
     for(auto &bin : hor_bins)
     {
-        const auto &[X,Y,Z] = *bin.cbegin();
-        laser_data[i] = LaserPoint{sqrt(X*X+Y*Y+Z*Z), (i-MAX_LASER_BINS/2.f)/(MAX_LASER_BINS/TOTAL_HOR_ANGLE)};
+        if( bin.size() > 0)
+        {
+            const auto &[X, Y, Z] = *bin.cbegin();
+            laser_data[i] = LaserPoint{sqrt(X * X + Y * Y + Z * Z), (i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+        }
+        else
+            laser_data[i] = LaserPoint{0.f,(i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
         i++;
     }
     auto laser_poly = filter_laser(laser_data);
     if(draw)
-        draw_laser(scene, laser_poly);*/
+        draw_laser(scene, laser_poly);
     return laser_data;
 }
 void SpecificWorker::draw_laser(Robot2DScene *scene, QPolygonF &laser_poly)

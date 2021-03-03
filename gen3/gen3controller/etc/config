@@ -1,5 +1,7 @@
 # Proxies for required interfaces
 CameraRGBDSimpleProxy = camerargbdsimple:tcp -h localhost -p 10096
+KinovaArmProxy = kinovaarm:tcp -h localhost -p 10013
+
 
 # This property is used by the clients to connect to IceStorm.
 TopicManager.Proxy=IceStorm/TopicManager:default -p 9999
