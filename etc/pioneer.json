@@ -1,0 +1,324 @@
+{
+    "DSRModel": {
+        "symbols": {
+            "200": {
+                "attribute": {
+                    "base_target_x": {
+                        "type": 2,
+                        "value": 0
+                    },
+                    "base_target_y": {
+                        "type": 2,
+                        "value": 0
+                    },
+                    "color": {
+                        "type": 0,
+                        "value": "Blue"
+                    },
+                    "level": {
+                        "type": 1,
+                        "value": 1
+                    },
+                    "parent": {
+                        "type": 7,
+                        "value": 1
+                    },
+                    "port": {
+                        "type": 1,
+                        "value": 12238
+                    },
+                    "pos_x": {
+                        "type": 2,
+                        "value": -139.084915
+                    },
+                    "pos_y": {
+                        "type": 2,
+                        "value": -594.108032
+                    },
+                    "ref_adv_speed": {
+                        "type": 2,
+                        "value": 0
+                    },
+                    "ref_rot_speed": {
+                        "type": 2,
+                        "value": 0
+                    },
+                    "ref_side_speed": {
+                        "type": 2,
+                        "value": 0
+                    }
+                },
+                "id": 200,
+                "links": [
+                    {
+                        "dst": 210,
+                        "label": "RT",
+                        "linkAttribute": {
+                            "rt_rotation_euler_xyz": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    -0.5199999809265137
+                                ]
+                            },
+                            "rt_translation": {
+                                "type": 3,
+                                "value": [
+                                    -60,
+                                    0,
+                                    350
+                                ]
+                            }
+                        },
+                        "src": 200
+                    },
+                    {
+                        "dst": 211,
+                        "label": "RT",
+                        "linkAttribute": {
+                            "rt_rotation_euler_xyz": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    0.5199999809265137
+                                ]
+                            },
+                            "rt_translation": {
+                                "type": 3,
+                                "value": [
+                                    60,
+                                    0,
+                                    350
+                                ]
+                            }
+                        },
+                        "src": 200
+                    },
+                    {
+                        "dst": 215,
+                        "label": "RT",
+                        "linkAttribute": {
+                            "rt_rotation_euler_xyz": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    -1.570796012878418
+                                ]
+                            },
+                            "rt_translation": {
+                                "type": 3,
+                                "value": [
+                                    100,
+                                    0,
+                                    400
+                                ]
+                            }
+                        },
+                        "src": 200
+                    },
+                    {
+                        "dst": 216,
+                        "label": "RT",
+                        "linkAttribute": {
+                            "rt_rotation_euler_xyz": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    -3.141590118408203
+                                ]
+                            },
+                            "rt_translation": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    -100,
+                                    400
+                                ]
+                            }
+                        },
+                        "src": 200
+                    }
+                ],
+                "name": "differentialrobot",
+                "type": "differentialrobot"
+            },
+            "210": {
+                "attribute": {
+                    "color": {
+                        "type": 0,
+                        "value": "Brown"
+                    },
+                    "height": {
+                        "type": 1,
+                        "value": 480
+                    },
+                    "ifconfig": {
+                        "type": 0,
+                        "value": "40000,50000"
+                    },
+                    "level": {
+                        "type": 1,
+                        "value": 2
+                    },
+                    "parent": {
+                        "type": 7,
+                        "value": 200
+                    },
+                    "pos_x": {
+                        "type": 2,
+                        "value": -302.520233
+                    },
+                    "pos_y": {
+                        "type": 2,
+                        "value": -646.475098
+                    },
+                    "width": {
+                        "type": 1,
+                        "value": 640
+                    }
+                },
+                "id": 210,
+                "links": [
+                ],
+                "name": "pioneer_head_camera_0",
+                "type": "rgbd"
+            },
+            "211": {
+                "attribute": {
+                    "color": {
+                        "type": 0,
+                        "value": "Brown"
+                    },
+                    "height": {
+                        "type": 1,
+                        "value": 480
+                    },
+                    "ifconfig": {
+                        "type": 0,
+                        "value": "40000,50000"
+                    },
+                    "level": {
+                        "type": 1,
+                        "value": 2
+                    },
+                    "parent": {
+                        "type": 7,
+                        "value": 200
+                    },
+                    "pos_x": {
+                        "type": 2,
+                        "value": -257.518433
+                    },
+                    "pos_y": {
+                        "type": 2,
+                        "value": -714.993835
+                    },
+                    "width": {
+                        "type": 1,
+                        "value": 640
+                    }
+                },
+                "id": 211,
+                "links": [
+                ],
+                "name": "pioneer_head_camera_1",
+                "type": "rgbd"
+            },
+            "215": {
+                "attribute": {
+                    "color": {
+                        "type": 0,
+                        "value": "Pink"
+                    },
+                    "depth": {
+                        "type": 1,
+                        "value": 15
+                    },
+                    "height": {
+                        "type": 1,
+                        "value": 20
+                    },
+                    "level": {
+                        "type": 1,
+                        "value": 2
+                    },
+                    "parent": {
+                        "type": 7,
+                        "value": 200
+                    },
+                    "pos_x": {
+                        "type": 2,
+                        "value": -175.994492
+                    },
+                    "pos_y": {
+                        "type": 2,
+                        "value": -454.668976
+                    },
+                    "texture": {
+                        "type": 0,
+                        "value": "#b7e059"
+                    },
+                    "width": {
+                        "type": 1,
+                        "value": 70
+                    }
+                },
+                "id": 215,
+                "links": [
+                ],
+                "name": "slam_0",
+                "type": "plane"
+            },
+            "216": {
+                "attribute": {
+                    "color": {
+                        "type": 0,
+                        "value": "Green"
+                    },
+                    "depth": {
+                        "type": 1,
+                        "value": 15
+                    },
+                    "height": {
+                        "type": 1,
+                        "value": 20
+                    },
+                    "level": {
+                        "type": 1,
+                        "value": 2
+                    },
+                    "parent": {
+                        "type": 7,
+                        "value": 200
+                    },
+                    "pos_x": {
+                        "type": 2,
+                        "value": -223.609268
+                    },
+                    "pos_y": {
+                        "type": 2,
+                        "value": -491.462219
+                    },
+                    "texture": {
+                        "type": 0,
+                        "value": "#b7e059"
+                    },
+                    "width": {
+                        "type": 1,
+                        "value": 70
+                    }
+                },
+                "id": 216,
+                "links": [
+                ],
+                "name": "slam_1",
+                "type": "plane"
+            }
+				}	
+		}
+}
+

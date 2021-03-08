@@ -38,8 +38,11 @@ class FullPoseEstimationI(FullPoseEstimation):
         self.worker = worker
 
 
-    def getFullPose(self, c):
-        return self.worker.FullPoseEstimation_getFullPose()
+    def getFullPoseEuler(self, c):
+        return self.worker.FullPoseEstimation_getFullPoseEuler()
+
+    def getFullPoseMatrix(self, c):
+        return self.worker.FullPoseEstimation_getFullPoseMatrix()
 
     def setInitialPose(self, x, y, z, rx, ry, rz, c):
         return self.worker.FullPoseEstimation_setInitialPose(x, y, z, rx, ry, rz)
