@@ -1,14 +1,12 @@
 CommonBehavior.Endpoints=tcp -p 10300
 
 # Proxies for required interfaces
-BatteryStatusProxy = batterystatus:tcp -h localhost -p 0
-CameraRGBDSimpleProxy = camerargbdsimple:tcp -h localhost -p 0
+BatteryStatusProxy = batterystatus:tcp -h localhost -p 10014
+CameraRGBDSimpleProxy = camerargbdsimple:tcp -h localhost -p 10096
 DifferentialRobotProxy = differentialrobot:tcp -h localhost -p 10004
-FullPoseEstimationProxy = fullposeestimation:tcp -h localhost -p 0
-RSSIStatusProxy = rssistatus:tcp -h localhost -p 0
-UltrasoundProxy = ultrasound:tcp -h localhost -p 0
-
-dsr_input_file = ../../etc/informatica_dsr.json
+FullPoseEstimationProxy = fullposeestimation:tcp -h localhost -p 10016
+RSSIStatusProxy = rssistatus:tcp -h localhost -p 10017
+UltrasoundProxy = ultrasound:tcp -h localhost -p 10015
 
 agent_id = 30 # Change id
 agent_name = pioneer_dsr

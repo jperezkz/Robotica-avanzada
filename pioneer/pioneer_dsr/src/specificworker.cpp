@@ -111,9 +111,46 @@ void SpecificWorker::initialize(int period)
 void SpecificWorker::compute()
 {
     update_robot_localization();
+    update_rgbd();
     //auto cdata = read_rgb_camera(false);
     //read_battery();
     //read_RSSI();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+void SpecificWorker::update_rgbd()
+{
+    RoboCompCameraRGBDSimple::TImage rgb;
+    try
+    {
+        rgb = camerargbdsimple_proxy->getImage("pioneer_head_camera_0");
+    }
+    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+
+    if( auto node = G->get_node(pioneer_head_camera_left_name); node.has_value())
+    {
+        G->add_or_modify_attrib_local<cam_rgb_att>(node.value(), rgb.image);
+        G->add_or_modify_attrib_local<cam_rgb_width_att>(node.value(), rgb.width);
+        G->add_or_modify_attrib_local<cam_rgb_height_att>(node.value(), rgb.height);
+        G->add_or_modify_attrib_local<cam_rgb_depth_att>(node.value(), rgb.depth);
+        G->add_or_modify_attrib_local<cam_rgb_cameraID_att>(node.value(), rgb.cameraID);
+        G->add_or_modify_attrib_local<cam_rgb_focalx_att>(node.value(), rgb.focalx);
+        G->add_or_modify_attrib_local<cam_rgb_focaly_att>(node.value(), rgb.focaly);
+        G->add_or_modify_attrib_local<cam_rgb_alivetime_att>(node.value(), rgb.alivetime);
+        // depth
+//        G->add_or_modify_attrib_local<cam_depth_att>(node.value(), depth.depth);
+//        G->add_or_modify_attrib_local<cam_depth_width_att>(node.value(), depth.width);
+//        G->add_or_modify_attrib_local<cam_depth_height_att>(node.value(), depth.height);
+//        G->add_or_modify_attrib_local<cam_depth_focalx_att>(node.value(), depth.focalx);
+//        G->add_or_modify_attrib_local<cam_depth_focaly_att>(node.value(), depth.focaly);
+//        G->add_or_modify_attrib_local<cam_depth_cameraID_att>(node.value(), depth.cameraID);
+//        G->add_or_modify_attrib_local<cam_depthFactor_att>(node.value(), depth.depthFactor);
+//        G->add_or_modify_attrib_local<cam_depth_alivetime_att>(node.value(), depth.alivetime);
+        G->update_node(node.value());
+    }
+    else
+        qWarning() << __FUNCTION__ << "Node not found";
 }
 
 void SpecificWorker::read_battery()
@@ -143,24 +180,26 @@ void SpecificWorker::update_robot_localization()
     }
     catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
 
-    auto robot = G->get_node(robot_name);
-    if (not robot.has_value())
-        qWarning() << __FUNCTION__ << " No node " << QString::fromStdString(robot_name);
-    auto parent = G->get_parent_node(robot.value());
-    if (not parent.has_value())
-        qWarning() << __FUNCTION__ << " No parent found for node " << QString::fromStdString(robot_name);
-    if( are_different(std::vector<float>{ pose.x, pose.y, pose.rz },
-                      std::vector<float>{ last_state.x, last_state.y, last_state.rz},
-                      std::vector<float>{ 1, 1, 0.1}))
+    if( auto robot = G->get_node(robot_name); robot.has_value())
     {
-        auto edge = rt->get_edge_RT(parent.value(), robot->id()).value();
-        G->modify_attrib_local<rt_rotation_euler_xyz_att>(edge, std::vector<float>{0.0, 0.0, pose.rz});
-        G->modify_attrib_local<rt_translation_att>(edge, std::vector<float>{pose.x, pose.y, 0.0});
-        //G->modify_attrib_local<robot_current_linear_speed_att>(edge, std::vector<float>{pose.vel_x, pose.vel_y, pose.vel_z});
-        //G->modify_attrib_local<robot_current_angular_speed_att>(edge, std::vector<float>{pose.rot.x, pos.rot.y, pose.rot_z});
-        G->insert_or_assign_edge(edge);
-        last_state = pose;
+        if( auto parent = G->get_parent_node(robot.value()); parent.has_value())
+        {
+            if (are_different(std::vector < float > {pose.x, pose.y, pose.rz},
+                              std::vector < float > {last_state.x, last_state.y, last_state.rz},
+                              std::vector < float > {1, 1, 0.05}))
+            {
+                auto edge = rt->get_edge_RT(parent.value(), robot->id()).value();
+                G->modify_attrib_local<rt_rotation_euler_xyz_att>(edge, std::vector < float > {0.0, 0.0, pose.rz});
+                G->modify_attrib_local<rt_translation_att>(edge, std::vector < float > {pose.x, pose.y, 0.0});
+                //G->modify_attrib_local<robot_current_linear_speed_att>(edge, std::vector<float>{pose.vel_x, pose.vel_y, pose.vel_z});
+                //G->modify_attrib_local<robot_current_angular_speed_att>(edge, std::vector<float>{pose.rot.x, pos.rot.y, pose.rot_z});
+                G->insert_or_assign_edge(edge);
+                last_state = pose;
+            }
+        }
+        else  qWarning() << __FUNCTION__ << " No parent found for node " << QString::fromStdString(robot_name);
     }
+    else    qWarning() << __FUNCTION__ << " No node " << QString::fromStdString(robot_name);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

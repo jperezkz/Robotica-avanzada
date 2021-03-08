@@ -217,7 +217,12 @@ RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
 }
 RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
 {
-    auto cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_sensor");
+    try
+    {
+        auto cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
+    }
+    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl:}
+
     if(draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image.image).data();

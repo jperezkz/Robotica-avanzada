@@ -80,6 +80,8 @@ class SpecificWorker : public GenericWorker
         void read_RSSI();
 
     bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);
+
+    void update_rgbd();
 };
 
 #endif
