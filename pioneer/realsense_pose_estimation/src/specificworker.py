@@ -68,7 +68,7 @@ class SpecificWorker(GenericWorker):
         self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
                                                                     ([0.0,0.0,0.0]),
                                                                      [0.0,0.0,0.0]))
-        # get slam_sensor_0 coordinates in the robot's frame
+        # get slam_sensor_0 coordinates in the robot's frame. Read them from config file
         self.tm.add_transform("robot", "slam_sensor",
                               pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([0, 0, 0]), [0, 0, 0])
                               )
