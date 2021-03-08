@@ -5,7 +5,7 @@
 #define USE_QTGUI
 
 
-#define PROGRAM_NAME    "pioneer_controller"
-#define SERVER_FULL_NAME   "RoboComp pioneer_controller:: pioneer_controller"
+#define PROGRAM_NAME    "pioneer_dsr"
+#define SERVER_FULL_NAME   "RoboComp pioneer_dsr:: pioneer_dsr"
 
 #endif

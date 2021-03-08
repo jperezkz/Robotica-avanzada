@@ -31,6 +31,7 @@
 #include "dsr/api/dsr_api.h"
 #include "dsr/gui/dsr_gui.h"
 #include <doublebuffer/DoubleBuffer.h>
+#include "../../../etc/pioneer_world_names.h"
 
 class SpecificWorker : public GenericWorker
 {
@@ -48,12 +49,15 @@ class SpecificWorker : public GenericWorker
     private:
         // DSR graph
         std::shared_ptr<DSR::DSRGraph> G;
+        std::shared_ptr<DSR::InnerEigenAPI> inner_eigen;
+        std::unique_ptr<DSR::RT_API> rt;
 
         //DSR params
         int agent_id;
         std::string agent_name;
         std::string dsr_input_file;
 
+        // UI
         bool tree_view;
         bool graph_view;
         bool qscene_2d_view;
@@ -70,6 +74,12 @@ class SpecificWorker : public GenericWorker
         void del_node_slot(std::uint64_t from){};
         bool startup_check_flag;
 
+        // remote services
+        void update_robot_localization();
+        void read_battery();
+        void read_RSSI();
+
+    bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);
 };
 
 #endif

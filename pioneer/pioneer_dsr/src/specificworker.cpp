@@ -17,6 +17,7 @@
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "specificworker.h"
+#include <cppitertools/zip.hpp>
 
 /**
 * \brief Default constructor
@@ -65,7 +66,11 @@ void SpecificWorker::initialize(int period)
 		timer.start(Period);
 		// create graph
 		G = std::make_shared<DSR::DSRGraph>(0, agent_name, agent_id, ""); // Init nodes
-		std::cout<< __FUNCTION__ << "Graph loaded" << std::endl;  
+		std::cout<< __FUNCTION__ << "Graph loaded" << std::endl;
+
+		//APIS
+        rt = G->get_rt_api();
+        inner_eigen = G->get_inner_eigen_api();
 
 		//dsr update signals
 		connect(G.get(), &DSR::DSRGraph::update_node_signal, this, &SpecificWorker::add_or_assign_node_slot);
@@ -101,14 +106,64 @@ void SpecificWorker::initialize(int period)
 		this->Period = period;
 		timer.start(Period);
 	}
-
 }
 
 void SpecificWorker::compute()
 {
-	
+    update_robot_localization();
+    //auto cdata = read_rgb_camera(false);
+    //read_battery();
+    //read_RSSI();
 }
 
+void SpecificWorker::read_battery()
+{
+    try
+    {
+        auto battery = batterystatus_proxy->getBatteryState();
+    }
+    catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
+}
+void SpecificWorker::read_RSSI()
+{
+    try
+    {
+        auto rssi = rssistatus_proxy->getRSSIState();
+    }
+    catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
+}
+void SpecificWorker::update_robot_localization()
+{
+    static RoboCompFullPoseEstimation::FullPoseEuler last_state;
+    RoboCompFullPoseEstimation::FullPoseEuler pose;
+    try
+    {
+        pose = fullposeestimation_proxy->getFullPoseEuler();
+        qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+    }
+    catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
+
+    auto robot = G->get_node(robot_name);
+    if (not robot.has_value())
+        qWarning() << __FUNCTION__ << " No node " << QString::fromStdString(robot_name);
+    auto parent = G->get_parent_node(robot.value());
+    if (not parent.has_value())
+        qWarning() << __FUNCTION__ << " No parent found for node " << QString::fromStdString(robot_name);
+    if( are_different(std::vector<float>{ pose.x, pose.y, pose.rz },
+                      std::vector<float>{ last_state.x, last_state.y, last_state.rz},
+                      std::vector<float>{ 1, 1, 0.1}))
+    {
+        auto edge = rt->get_edge_RT(parent.value(), robot->id()).value();
+        G->modify_attrib_local<rt_rotation_euler_xyz_att>(edge, std::vector<float>{0.0, 0.0, pose.rz});
+        G->modify_attrib_local<rt_translation_att>(edge, std::vector<float>{pose.x, pose.y, 0.0});
+        //G->modify_attrib_local<robot_current_linear_speed_att>(edge, std::vector<float>{pose.vel_x, pose.vel_y, pose.vel_z});
+        //G->modify_attrib_local<robot_current_angular_speed_att>(edge, std::vector<float>{pose.rot.x, pos.rot.y, pose.rot_z});
+        G->insert_or_assign_edge(edge);
+        last_state = pose;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int SpecificWorker::startup_check()
 {
 	std::cout << "Startup check" << std::endl;
@@ -116,6 +171,14 @@ int SpecificWorker::startup_check()
 	return 0;
 }
 
+//////////////////// AUX ///////////////////////////////////////////////
+bool SpecificWorker::are_different(const std::vector<float> &a, const std::vector<float> &b, const std::vector<float> &epsilon)
+{
+    for(auto &&[aa, bb, e] : iter::zip(a, b, epsilon))
+        if (fabs(aa - bb) > e)
+            return true;
+    return false;
+};
 /**************************************/
 // From the RoboCompBatteryStatus you can call this methods:
 // this->batterystatus_proxy->getBatteryState(...)
