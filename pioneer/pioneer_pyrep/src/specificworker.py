@@ -202,7 +202,6 @@ class SpecificWorker(GenericWorker):
                                                      rotV=ang_vel[2],
                                                      isMoving=isMoving)
 
-        #self.tm.remove_transform("world", "robot")
         self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
                                                                     ([rot[0], rot[1], rot[2]]),
                                                                     [pose[0]*1000.0, pose[1]*1000.0, pose[2]*1000.0]
