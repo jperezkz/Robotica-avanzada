@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>wifi.jpeg</file>
+    <file>battery.png</file>
+  </qresource>
+</RCC>
