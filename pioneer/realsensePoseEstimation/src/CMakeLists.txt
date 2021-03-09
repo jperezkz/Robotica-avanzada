@@ -24,11 +24,7 @@ SET ( SOURCES
   genericmonitor.cpp
   commonbehaviorI.cpp
   genericworker.cpp
-  batterystatusI.cpp
-  differentialrobotI.cpp
-  rssistatusI.cpp
-  ultrasoundI.cpp
-  joystickadapterI.cpp
+  fullposeestimationI.cpp
 )
 
 
@@ -39,12 +35,12 @@ FIND_PACKAGE( Ice REQUIRED COMPONENTS Ice++11 IceStorm++11)
 
 #ROBOCOMP
 ROBOCOMP_INITIALIZE( $ENV{ROBOCOMP}/ )
-ROBOCOMP_IDSL_TO_ICE( CommonBehavior BatteryStatus DifferentialRobot GenericBase JoystickAdapter RSSIStatus Ultrasound)
-ROBOCOMP_ICE_TO_SRC( CommonBehavior BatteryStatus DifferentialRobot GenericBase JoystickAdapter RSSIStatus Ultrasound)
+ROBOCOMP_IDSL_TO_ICE( CommonBehavior FullPoseEstimation FullPoseEstimationPub)
+ROBOCOMP_ICE_TO_SRC( CommonBehavior FullPoseEstimation FullPoseEstimationPub)
 SET (EXECUTABLE_OUTPUT_PATH ${RC_COMPONENT_DEVEL_PATH}/bin)
 
 
 # Specify construction and link process
-ADD_EXECUTABLE( pioneer ${SOURCES} ${MOC_SOURCES} ${RC_SOURCES} ${UI_HEADERS} )
-TARGET_LINK_LIBRARIES( pioneer ${LIBS} ${STATIC_LIBS} ${SPECIFIC_LIBS} ${QT_LIBRARIES} ${Ice_LIBRARIES})
-INSTALL(FILES ${EXECUTABLE_OUTPUT_PATH}/pioneer DESTINATION ${RC_COMPONENT_INSTALL_PATH}/bin/ PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )
+ADD_EXECUTABLE( realSensePoseEstimation ${SOURCES} ${MOC_SOURCES} ${RC_SOURCES} ${UI_HEADERS} )
+TARGET_LINK_LIBRARIES( realSensePoseEstimation ${LIBS} ${STATIC_LIBS} ${SPECIFIC_LIBS} ${QT_LIBRARIES} ${Ice_LIBRARIES})
+INSTALL(FILES ${EXECUTABLE_OUTPUT_PATH}/realSensePoseEstimation DESTINATION ${RC_COMPONENT_INSTALL_PATH}/bin/ PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE )

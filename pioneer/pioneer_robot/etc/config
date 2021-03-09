@@ -4,6 +4,7 @@ CommonBehavior.Endpoints=tcp -p 10040
 DifferentialRobot.Endpoints=tcp -p 10004
 BatteryStatus.Endpoints=tcp -p 10014
 Ultrasound.Endpoints=tcp -p 10015
+RSSIStatus.Endpoints=tcp -p 10016
 
 # Endpoints for subscriptions interfaces
 JoystickAdapterTopic.Endpoints=tcp -p 11231

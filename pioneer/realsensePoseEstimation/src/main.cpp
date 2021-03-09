@@ -18,11 +18,11 @@
  */
 
 
-/** \mainpage RoboComp::pioneer
+/** \mainpage RoboComp::realSensePoseEstimation
  *
  * \section intro_sec Introduction
  *
- * The pioneer component...
+ * The realSensePoseEstimation component...
  *
  * \section interface_sec Interface
  *
@@ -34,7 +34,7 @@
  * ...
  *
  * \subsection install2_ssec Compile and install
- * cd pioneer
+ * cd realSensePoseEstimation
  * <br>
  * cmake . && make
  * <br>
@@ -52,7 +52,7 @@
  *
  * \subsection execution_ssec Execution
  *
- * Just: "${PATH_TO_BINARY}/pioneer --Ice.Config=${PATH_TO_CONFIG_FILE}"
+ * Just: "${PATH_TO_BINARY}/realSensePoseEstimation --Ice.Config=${PATH_TO_CONFIG_FILE}"
  *
  * \subsection running_ssec Once running
  *
@@ -81,20 +81,15 @@
 #include "specificmonitor.h"
 #include "commonbehaviorI.h"
 
-#include <batterystatusI.h>
-#include <differentialrobotI.h>
-#include <rssistatusI.h>
-#include <ultrasoundI.h>
-#include <joystickadapterI.h>
-
-#include <GenericBase.h>
+#include <fullposeestimationI.h>
 
 
 
-class pioneer : public RoboComp::Application
+
+class realSensePoseEstimation : public RoboComp::Application
 {
 public:
-	pioneer (QString prfx, bool startup_check) { prefix = prfx.toStdString(); this->startup_check_flag=startup_check; }
+	realSensePoseEstimation (QString prfx, bool startup_check) { prefix = prfx.toStdString(); this->startup_check_flag=startup_check; }
 private:
 	void initialize();
 	std::string prefix;
@@ -105,14 +100,14 @@ public:
 	virtual int run(int, char*[]);
 };
 
-void ::pioneer::initialize()
+void ::realSensePoseEstimation::initialize()
 {
 	// Config file properties read example
 	// configGetString( PROPERTY_NAME_1, property1_holder, PROPERTY_1_DEFAULT_VALUE );
 	// configGetInt( PROPERTY_NAME_2, property1_holder, PROPERTY_2_DEFAULT_VALUE );
 }
 
-int ::pioneer::run(int argc, char* argv[])
+int ::realSensePoseEstimation::run(int argc, char* argv[])
 {
 #ifdef USE_QTGUI
 	QApplication a(argc, argv);  // GUI application
@@ -135,6 +130,7 @@ int ::pioneer::run(int argc, char* argv[])
 
 	int status=EXIT_SUCCESS;
 
+	RoboCompFullPoseEstimationPub::FullPoseEstimationPubPrxPtr fullposeestimationpub_pubproxy;
 
 	string proxy, tmp;
 	initialize();
@@ -149,8 +145,39 @@ int ::pioneer::run(int argc, char* argv[])
 		cout << "[" << PROGRAM_NAME << "]: Exception: 'rcnode' not running: " << ex << endl;
 		return EXIT_FAILURE;
 	}
+	std::shared_ptr<IceStorm::TopicPrx> fullposeestimationpub_topic;
 
-	tprx = std::tuple<>();
+	while (!fullposeestimationpub_topic)
+	{
+		try
+		{
+			fullposeestimationpub_topic = topicManager->retrieve("FullPoseEstimationPub");
+		}
+		catch (const IceStorm::NoSuchTopic&)
+		{
+			cout << "[" << PROGRAM_NAME << "]: ERROR retrieving FullPoseEstimationPub topic. \n";
+			try
+			{
+				fullposeestimationpub_topic = topicManager->create("FullPoseEstimationPub");
+			}
+			catch (const IceStorm::TopicExists&){
+				// Another client created the topic.
+				cout << "[" << PROGRAM_NAME << "]: ERROR publishing the FullPoseEstimationPub topic. It's possible that other component have created\n";
+			}
+		}
+		catch(const IceUtil::NullHandleException&)
+		{
+			cout << "[" << PROGRAM_NAME << "]: ERROR TopicManager is Null. Check that your configuration file contains an entry like:\n"<<
+			"\t\tTopicManager.Proxy=IceStorm/TopicManager:default -p <port>\n";
+			return EXIT_FAILURE;
+		}
+	}
+
+	auto fullposeestimationpub_pub = fullposeestimationpub_topic->getPublisher()->ice_oneway();
+	fullposeestimationpub_pubproxy = Ice::uncheckedCast<RoboCompFullPoseEstimationPub::FullPoseEstimationPubPrx
+	        >(fullposeestimationpub_pub);
+
+	tprx = std::make_tuple(fullposeestimationpub_pubproxy);
 	SpecificWorker *worker = new SpecificWorker(tprx, startup_check_flag);
 	//Monitor thread
 	SpecificMonitor *monitor = new SpecificMonitor(worker,communicator());
@@ -192,119 +219,18 @@ int ::pioneer::run(int argc, char* argv[])
 		try
 		{
 			// Server adapter creation and publication
-			if (not GenericMonitor::configGetString(communicator(), prefix, "BatteryStatus.Endpoints", tmp, ""))
+			if (not GenericMonitor::configGetString(communicator(), prefix, "FullPoseEstimation.Endpoints", tmp, ""))
 			{
-				cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy BatteryStatus";
+				cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy FullPoseEstimation";
 			}
-			Ice::ObjectAdapterPtr adapterBatteryStatus = communicator()->createObjectAdapterWithEndpoints("BatteryStatus", tmp);
-			auto batterystatus = std::make_shared<BatteryStatusI>(worker);
-			adapterBatteryStatus->add(batterystatus, Ice::stringToIdentity("batterystatus"));
-			adapterBatteryStatus->activate();
-			cout << "[" << PROGRAM_NAME << "]: BatteryStatus adapter created in port " << tmp << endl;
+			Ice::ObjectAdapterPtr adapterFullPoseEstimation = communicator()->createObjectAdapterWithEndpoints("FullPoseEstimation", tmp);
+			auto fullposeestimation = std::make_shared<FullPoseEstimationI>(worker);
+			adapterFullPoseEstimation->add(fullposeestimation, Ice::stringToIdentity("fullposeestimation"));
+			adapterFullPoseEstimation->activate();
+			cout << "[" << PROGRAM_NAME << "]: FullPoseEstimation adapter created in port " << tmp << endl;
 		}
 		catch (const IceStorm::TopicExists&){
-			cout << "[" << PROGRAM_NAME << "]: ERROR creating or activating adapter for BatteryStatus\n";
-		}
-
-
-		try
-		{
-			// Server adapter creation and publication
-			if (not GenericMonitor::configGetString(communicator(), prefix, "DifferentialRobot.Endpoints", tmp, ""))
-			{
-				cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy DifferentialRobot";
-			}
-			Ice::ObjectAdapterPtr adapterDifferentialRobot = communicator()->createObjectAdapterWithEndpoints("DifferentialRobot", tmp);
-			auto differentialrobot = std::make_shared<DifferentialRobotI>(worker);
-			adapterDifferentialRobot->add(differentialrobot, Ice::stringToIdentity("differentialrobot"));
-			adapterDifferentialRobot->activate();
-			cout << "[" << PROGRAM_NAME << "]: DifferentialRobot adapter created in port " << tmp << endl;
-		}
-		catch (const IceStorm::TopicExists&){
-			cout << "[" << PROGRAM_NAME << "]: ERROR creating or activating adapter for DifferentialRobot\n";
-		}
-
-
-		try
-		{
-			// Server adapter creation and publication
-			if (not GenericMonitor::configGetString(communicator(), prefix, "RSSIStatus.Endpoints", tmp, ""))
-			{
-				cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy RSSIStatus";
-			}
-			Ice::ObjectAdapterPtr adapterRSSIStatus = communicator()->createObjectAdapterWithEndpoints("RSSIStatus", tmp);
-			auto rssistatus = std::make_shared<RSSIStatusI>(worker);
-			adapterRSSIStatus->add(rssistatus, Ice::stringToIdentity("rssistatus"));
-			adapterRSSIStatus->activate();
-			cout << "[" << PROGRAM_NAME << "]: RSSIStatus adapter created in port " << tmp << endl;
-		}
-		catch (const IceStorm::TopicExists&){
-			cout << "[" << PROGRAM_NAME << "]: ERROR creating or activating adapter for RSSIStatus\n";
-		}
-
-
-		try
-		{
-			// Server adapter creation and publication
-			if (not GenericMonitor::configGetString(communicator(), prefix, "Ultrasound.Endpoints", tmp, ""))
-			{
-				cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy Ultrasound";
-			}
-			Ice::ObjectAdapterPtr adapterUltrasound = communicator()->createObjectAdapterWithEndpoints("Ultrasound", tmp);
-			auto ultrasound = std::make_shared<UltrasoundI>(worker);
-			adapterUltrasound->add(ultrasound, Ice::stringToIdentity("ultrasound"));
-			adapterUltrasound->activate();
-			cout << "[" << PROGRAM_NAME << "]: Ultrasound adapter created in port " << tmp << endl;
-		}
-		catch (const IceStorm::TopicExists&){
-			cout << "[" << PROGRAM_NAME << "]: ERROR creating or activating adapter for Ultrasound\n";
-		}
-
-
-		// Server adapter creation and publication
-		std::shared_ptr<IceStorm::TopicPrx> joystickadapter_topic;
-		Ice::ObjectPrxPtr joystickadapter;
-		try
-		{
-			if (not GenericMonitor::configGetString(communicator(), prefix, "JoystickAdapterTopic.Endpoints", tmp, ""))
-			{
-				cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy JoystickAdapterProxy";
-			}
-			Ice::ObjectAdapterPtr JoystickAdapter_adapter = communicator()->createObjectAdapterWithEndpoints("joystickadapter", tmp);
-			RoboCompJoystickAdapter::JoystickAdapterPtr joystickadapterI_ =  std::make_shared <JoystickAdapterI>(worker);
-			auto joystickadapter = JoystickAdapter_adapter->addWithUUID(joystickadapterI_)->ice_oneway();
-			if(!joystickadapter_topic)
-			{
-				try {
-					joystickadapter_topic = topicManager->create("JoystickAdapter");
-				}
-				catch (const IceStorm::TopicExists&) {
-					//Another client created the topic
-					try{
-						cout << "[" << PROGRAM_NAME << "]: Probably other client already opened the topic. Trying to connect.\n";
-						joystickadapter_topic = topicManager->retrieve("JoystickAdapter");
-					}
-					catch(const IceStorm::NoSuchTopic&)
-					{
-						cout << "[" << PROGRAM_NAME << "]: Topic doesn't exists and couldn't be created.\n";
-						//Error. Topic does not exist
-					}
-				}
-				catch(const IceUtil::NullHandleException&)
-				{
-					cout << "[" << PROGRAM_NAME << "]: ERROR TopicManager is Null. Check that your configuration file contains an entry like:\n"<<
-					"\t\tTopicManager.Proxy=IceStorm/TopicManager:default -p <port>\n";
-					return EXIT_FAILURE;
-				}
-				IceStorm::QoS qos;
-				joystickadapter_topic->subscribeAndGetPublisher(qos, joystickadapter);
-			}
-			JoystickAdapter_adapter->activate();
-		}
-		catch(const IceStorm::NoSuchTopic&)
-		{
-			cout << "[" << PROGRAM_NAME << "]: Error creating JoystickAdapter topic.\n";
-			//Error. Topic does not exist
+			cout << "[" << PROGRAM_NAME << "]: ERROR creating or activating adapter for FullPoseEstimation\n";
 		}
 
 
@@ -319,16 +245,6 @@ int ::pioneer::run(int argc, char* argv[])
 		#endif
 		// Run QT Application Event Loop
 		a.exec();
-
-		try
-		{
-			std::cout << "Unsubscribing topic: joystickadapter " <<std::endl;
-			joystickadapter_topic->unsubscribe( joystickadapter );
-		}
-		catch(const Ice::Exception& ex)
-		{
-			std::cout << "ERROR Unsubscribing topic: joystickadapter " << ex.what()<<std::endl;
-		}
 
 
 		status = EXIT_SUCCESS;
@@ -404,7 +320,7 @@ int main(int argc, char* argv[])
 		}
 
 	}
-	::pioneer app(prefix, startup_check_flag);
+	::realSensePoseEstimation app(prefix, startup_check_flag);
 
 	return app.main(argc, argv, configFile.toLocal8Bit().data());
 }

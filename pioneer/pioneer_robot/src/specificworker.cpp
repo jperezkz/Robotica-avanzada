@@ -51,28 +51,6 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 	return true;
 }
 
-
-void SpecificWorker::rate(){
-        // instantiate dynamically to avoid stack unwinding before the process terminates
-        QProcess *iwconfig = new QProcess();
-        // catch data output
-        QObject::connect(iwconfig, &QProcess::readyRead, [iwconfig] () {
-            QByteArray a = iwconfig->readAll();
-            //qDebug() <<  a;
-        });
-
-        // delete process instance when done, and get the exit status to handle errors.
-        QObject::connect(iwconfig, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                     [=](int exitCode, QProcess::ExitStatus /*exitStatus*/){
-                         qDebug()<< "process exited with code " << exitCode;
-                         iwconfig->deleteLater();
-                     });
-
-        // start the process after making signal/slots connections
-    iwconfig->start("iwconfig");
-}
-
-
 void SpecificWorker::initialize(int period)
 {
 
@@ -87,7 +65,7 @@ void SpecificWorker::initialize(int period)
     //ArRobotConnector robotConnector(argparser, robot);
     if(!conn->connectRobot())
     {
-        qInfo()<<"SimpleMotionCommands: Could not connect to the robot->";
+        qInfo()<< __FUNCTION__ << " SimpleMotionCommands: Could not connect to the robot->";
         std::terminate();
     }
 
@@ -99,24 +77,56 @@ void SpecificWorker::initialize(int period)
 
     connect(&timerRSSI, &QTimer::timeout, this, &SpecificWorker::rate);
     timerRSSI.start(1000);
-    connect(this, SIGNAL(&SpecificWorker::controlTime(bool)), this, SLOT(&SpecificWorker::controlParadaBase(bool)));
 
+    reloj_seguridad.restart();
+    new_command.store(false);
+    connect(&timerWatchdog, &QTimer::timeout, this, &SpecificWorker::controlParadaBase);
+    timerWatchdog.start(1000);
 
     this->Period = period;
 	if(this->startup_check_flag)
-	{
 		this->startup_check();
-	}
 	else
-	{
 		timer.start(Period);
-	}
 }
 
 void SpecificWorker::compute()
 {
+    if(new_command.load())
+        reloj_seguridad.restart();
 
 }
+
+//Hay que quitar el void por el numero; debemos devolver el num en el controller
+void SpecificWorker::rate()
+{
+    // instantiate dynamically to avoid stack unwinding before the process terminates
+    QProcess *iwconfig = new QProcess();
+    // catch data output
+
+    QObject::connect(iwconfig, &QProcess::readyRead, [iwconfig, this] () {
+        char c4 [3];
+        QByteArray a = iwconfig->readAll();
+        int indexRate = a.indexOf("=", 11);
+        c4[0] = a.at(indexRate+1);;
+        c4[1] = a.at(indexRate+2);
+        c4[2] = a.at(indexRate+3);;
+        this->quality_rssi.store(atoi(c4));
+        // qInfo()<<"Link Quality: " << this->quality_rssi << "/100";
+
+    });
+
+    // delete process instance when done, and get the exit status to handle errors.
+    QObject::connect(iwconfig, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                     [=](int exitCode, QProcess::ExitStatus /*exitStatus*/){
+                         qDebug()<< "process exited with code " << exitCode;
+                         iwconfig->deleteLater();
+                     });
+
+    // start the process after making signal/slots connections
+    iwconfig->start("iwconfig");
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////
 /// SERVANTS
@@ -191,7 +201,8 @@ void SpecificWorker::DifferentialRobot_stopBase()
 
 /**************************************/
 // From the RoboCompDifferentialRobot you can use this types:
-// RoboCompDifferentialRobot::TMechParams
+// RoboCompDifferentialRobot::Tstatic QTime reloj = QTime::currentTime();
+
 
 int SpecificWorker::startup_check()
 {
@@ -203,7 +214,15 @@ int SpecificWorker::startup_check()
 RoboCompUltrasound::SensorsState SpecificWorker::Ultrasound_getAllSensorDistances()
 {
 //implementCODE
+    RoboCompUltrasound::SensorsState sonar;
+    robot->lock();
 
+    int numSonar = robot->getNumSonar();
+    for (int i = 0; i < numSonar; i++){
+        sonar[i] = robot->getSonarReading(i)->getRange();
+    }
+    robot->unlock();
+    return sonar;
 }
 
 RoboCompUltrasound::SensorParamsList SpecificWorker::Ultrasound_getAllSensorParams()
@@ -231,6 +250,14 @@ RoboCompUltrasound::SensorParams SpecificWorker::Ultrasound_getSensorParams(std:
 }
 
 
+RoboCompRSSIStatus::TRSSI SpecificWorker::RSSIStatus_getRSSIState()
+{
+    RoboCompRSSIStatus::TRSSI res;
+    res.percentage = this->quality_rssi.load();
+    return res;
+}
+
+
 /**************************************/
 // From the RoboCompJoystickAdapter you can use this types:
 // RoboCompJoystickAdapter::AxisParams
@@ -244,29 +271,38 @@ void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData dat
     float rot_speed = 0;
     for(auto a : data.axes)
     {
-        if(a.name == "advance")
+        if(a.name == "advance"){
             adv_speed = std::clamp(a.value, -1000.f, 1000.f);
+        }
         if(a.name == "turn")
             rot_speed = std::clamp(a.value, -100.f, 100.f);
-        if(a.name == "back") {
-            adv_speed = -(std::clamp(a.value, -1000.f, 1000.f));
+        /*if(a.name == "back") {
+            adv_speed = (std::clamp(a.value, -1000.f, 1000.f));
             std::cout << "BACK" << std::endl;
-        }
-        emit controlTime(true);
+        }*/
     }
-
     if(fabs(rot_speed) < 1) rot_speed = 0;
     if(fabs(adv_speed) < 4) adv_speed = 0;
+    if(adv_speed != 0 or rot_speed !=0)
+        this->new_command.store(true);
 
-    robot->lock();
-    qInfo() << adv_speed;
-    robot->setVel(adv_speed);
-    robot->setRotVel(rot_speed);
+        robot->lock();
+    //qInfo() << adv_speed;
+        robot->setVel(adv_speed);
+        robot->setRotVel(rot_speed);
     robot->unlock();
 }
 
-void SpecificWorker::controlParadaBase(bool flag){
-    //DifferentialRobot_stopBase();
+void SpecificWorker::controlParadaBase()
+{
+    qInfo() << __FUNCTION__ << "entro en controlPAradaa";
+    if(reloj_seguridad.elapsed() > 3000)
+    {
+        robot->lock();
+            robot->stop();
+        robot->unlock();
+    }
+
 }
 
 

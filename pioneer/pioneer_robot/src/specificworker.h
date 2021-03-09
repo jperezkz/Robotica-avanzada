@@ -58,13 +58,14 @@ public:
     int Ultrasound_getSensorDistance(std::string sensor);
     RoboCompUltrasound::SensorParams Ultrasound_getSensorParams(std::string sensor);
 
+    RoboCompRSSIStatus::TRSSI RSSIStatus_getRSSIState();
 
 public slots:
 	void compute();
 	int startup_check();
 	void initialize(int period);
 	void rate();
-	void controlParadaBase(bool flag);
+	void controlParadaBase();
 
 signals:
     void controlTime(bool);
@@ -83,6 +84,17 @@ private:
 
     //Timer
     QTimer timerRSSI;
+    QTimer timerWatchdog;
+
+    // rsssi
+    std::atomic<int> quality_rssi;
+
+    //Watchdog
+    QTime reloj_seguridad;
+    std::atomic<bool> new_command;
+
+    //Ultrasound
+    std::map<int, ArSonarMTX *> *sonarMap;
 };
 
 #endif
