@@ -28,7 +28,6 @@ GenericWorker::GenericWorker(TuplePrx tprx) : Ui_guiDlg()
 	differentialrobot_proxy = std::get<2>(tprx);
 	fullposeestimation_proxy = std::get<3>(tprx);
 	rssistatus_proxy = std::get<4>(tprx);
-	ultrasound_proxy = std::get<5>(tprx);
 
 	mutex = new QMutex(QMutex::Recursive);
 

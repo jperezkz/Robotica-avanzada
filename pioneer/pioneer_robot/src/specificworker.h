@@ -63,7 +63,7 @@ public slots:
 	void compute();
 	int startup_check();
 	void initialize(int period);
-	void rate();
+	int rate();
 	void controlParadaBase(bool flag);
 
 signals:

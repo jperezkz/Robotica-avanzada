@@ -52,7 +52,7 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 }
 
 
-void SpecificWorker::rate(){
+int SpecificWorker::rate(){
         // instantiate dynamically to avoid stack unwinding before the process terminates
         QProcess *iwconfig = new QProcess();
         // catch data output
@@ -70,6 +70,7 @@ void SpecificWorker::rate(){
 
         // start the process after making signal/slots connections
     iwconfig->start("iwconfig");
+    return 0;
 }
 
 

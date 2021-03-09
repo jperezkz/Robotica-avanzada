@@ -149,7 +149,7 @@ void SpecificWorker::compute()
     // battery
     read_battery();
     // RSSI
-    //read_RSSI();
+    read_RSSI();
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
     //check_target(robot);
 
@@ -495,4 +495,12 @@ int SpecificWorker::startup_check()
 /**************************************/
 // From the RoboCompDifferentialRobot you can use this types:
 // RoboCompDifferentialRobot::TMechParams
+
+/**************************************/
+// From the RoboCompRSSIStatus you can call this methods:
+// this->rssistatus_proxy->getRSSIState(...)
+
+/**************************************/
+// From the RoboCompRSSIStatus you can use this types:
+// RoboCompRSSIStatus::TRSSI
 
