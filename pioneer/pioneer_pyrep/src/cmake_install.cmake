@@ -1,4 +1,4 @@
-# Install script for directory: /home/pbustos/robocomp/components/Robotica-avanzada/pioneer/pioneerPyrep/src
+# Install script for directory: /home/pbustos/robocomp/components/Robotica-avanzada/pioneer/pioneer_pyrep/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

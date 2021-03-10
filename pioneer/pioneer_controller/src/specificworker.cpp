@@ -59,8 +59,8 @@ void SpecificWorker::initialize(int period)
     std::cout << "Initialize worker" << std::endl;
 
     // draw
-    QFileInfo info1("../../etc/informatica.simscene.xml");
-    QFileInfo info2("../../etc/informatica.json");
+    //QFileInfo info1("../../etc/informatica.simscene.xml");
+    //QFileInfo info2("../../etc/informatica.json");
     //qInfo() << info2.lastModified().toSecsSinceEpoch() - info1.lastModified().toSecsSinceEpoch();
 
     //    qInfo() << info.lastModified().toSecsSinceEpoch();
@@ -108,7 +108,7 @@ void SpecificWorker::initialize(int period)
                 }
                 catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
             });
-    timer_alive.start(1000);
+    timer_alive.start(2000);
 
     // grid and planner
     auto dim = scene.get_dimensions();
@@ -119,17 +119,17 @@ void SpecificWorker::initialize(int period)
     //elastic_band.initialize();
 
     // reset initial state
-    try
-    {
-        float x = 3305;
-        float y = 0;
-        float z = -21699;
-        float rx = 0;
-        float ry = 0;
-        float rz = 0;
-        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
-    }
-    catch(const Ice::Exception &e){};
+//    try
+//    {
+//        float x = 3305;
+//        float y = 0;
+//        float z = -21699;
+//        float rx = 0;
+//        float ry = 0;
+//        float rz = 0;
+//        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
+//    }
+//    catch(const Ice::Exception &e){};
 
 
     this->Period = period;
@@ -141,13 +141,12 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
-
-    //read_base(&scene);
+    qInfo() << __FUNCTION__;
     read_robot_pose(&scene);
     // camara
-    auto cdata = read_rgb_camera(true);
+    auto cdata = read_rgb_camera(false);
     // battery
-    read_battery();
+    //read_battery();
     // RSSI
     //read_RSSI();
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
@@ -178,16 +177,15 @@ void SpecificWorker::read_robot_pose(Robot2DScene *scene)
 {
     try
     {
-        // OJO PONER UN ifdef para Coppelia
-        auto pose = fullposeestimation_proxy->getFullPose();  // en metros
+        auto pose = fullposeestimation_proxy->getFullPoseEuler();  // en metros
         qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
         //scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz-M_PI_2));  //porque en Coppelia está inicializado con el eje X
-        scene->robot_polygon->setRotation(qRadiansToDegrees(pose.ry));  //porque en Coppelia está inicializado con el eje X
+        scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz));  //porque en Coppelia está inicializado con el eje X
         // scene->robot_polygon->setPos(pose.x, pose.y);  //Copppemkia
-        scene->robot_polygon->setPos(pose.x, pose.z);
-        robot->update_state(Robot::State{pose.x, pose.z, pose.ry});
+        scene->robot_polygon->setPos(pose.x, pose.y);
+        robot->update_state(Robot::State{pose.x, pose.y, pose.rz});
     }
-    catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;};
+    catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
 }
 float SpecificWorker::sigmoid(float t)
 {
@@ -219,7 +217,12 @@ RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
 }
 RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
 {
-    auto cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_sensor");
+    try
+    {
+        auto cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
+    }
+    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl:}
+
     if(draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image.image).data();
@@ -243,17 +246,25 @@ RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
 }
 RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
 {
-    auto cdata = camerargbdsimple_proxy->getImage("pioneer_head_camera_sensor");
+    auto cdata = camerargbdsimple_proxy->getImage("pioneer_head_camera_0");
+
     if(draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
         cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
         cv::flip(img, img, -1);
-        cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
+        cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
         cv::Mat img_resized(640, 480, CV_8UC3);
-        cv::resize(img, img_resized, cv::Size(640,480));
-
+        cv::resize(img, img_resized, cv::Size(640, 480));
         auto pix = QPixmap::fromImage(QImage(img_resized.data, img_resized.cols, img_resized.rows, QImage::Format_RGB888));
+        label_rgb->setPixmap(pix);
+    }
+    else //coppelia
+    {
+        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
+        cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
+        //cv::flip(img, img, 0);
+        auto pix = QPixmap::fromImage(QImage(img.data, img.cols, img.rows, QImage::Format_RGB888));
         label_rgb->setPixmap(pix);
     }
     return cdata;

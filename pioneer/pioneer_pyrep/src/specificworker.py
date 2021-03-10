@@ -24,21 +24,19 @@ import os, time, queue
 from bisect import bisect_left
 from os.path import dirname, join, abspath
 from pyrep import PyRep
-# from pyrep.robots.mobiles.viriato import Viriato
-# from pyrep.robots.mobiles.viriato import Viriato
-from pyrep.robots.mobiles.youbot import YouBot
 from pyrep.objects.vision_sensor import VisionSensor
 from pyrep.objects.dummy import Dummy
 from pyrep.objects.shape import Shape
 from pyrep.objects.shape import Object
 from pyrep.objects.joint import Joint
-
 import numpy as np
+from pytransform3d.transform_manager import TransformManager
+import pytransform3d.transformations as pytr
+import pytransform3d.rotations as pyrot
 import numpy_indexed as npi
 from itertools import zip_longest
 import cv2
-import queue
-
+import imutils
 
 class TimeControl:
     def __init__(self, period_):
@@ -62,6 +60,10 @@ class TimeControl:
 class SpecificWorker(GenericWorker):
     def __init__(self, proxy_map):
         super(SpecificWorker, self).__init__(proxy_map)
+        self.tm = TransformManager()
+        self.tm.add_transform("origin", "world",
+                              pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([0.0, 0.0, 0.0]), [0.0, 0.0, 0.0])
+                              )
 
     def __del__(self):
         print('SpecificWorker destructor')
@@ -85,17 +87,21 @@ class SpecificWorker(GenericWorker):
         # front pan-tilt camera
         self.cameras = {}
         self.cameras.clear()
-        self.front_camera_name = "pioneer_head_camera_sensor"
-        cam = VisionSensor(self.front_camera_name)
-        self.cameras[self.front_camera_name] = {"handle": cam,
-                                                "id": 0,
-                                                "angle": np.radians(cam.get_perspective_angle()),
-                                                "width": cam.get_resolution()[0],
-                                                "height": cam.get_resolution()[1],
-                                                "focal": (cam.get_resolution()[0] / 2) / np.tan(
-                                                    np.radians(cam.get_perspective_angle() / 2)),
-                                                "rgb": np.array(0),
-                                                "depth": np.ndarray(0)}
+        self.front_left_camera_name = "pioneer_head_camera_0"
+        cam = VisionSensor(self.front_left_camera_name)
+        self.cameras[self.front_left_camera_name] = {"handle": cam,
+                                                     "id": 0,
+                                                     "angle": np.radians(cam.get_perspective_angle()),
+                                                     "width": cam.get_resolution()[0],
+                                                     "height": cam.get_resolution()[1],
+                                                     "focal": (cam.get_resolution()[0] / 2) / np.tan(
+                                                         np.radians(cam.get_perspective_angle() / 2)),
+                                                     "rgb": np.array(0),
+                                                     "depth": np.ndarray(0)}
+
+
+        # stichimg images
+        #self.stitcher = cv2.Stitcher_create()
 
         self.ldata = []
         self.joystick_newdata = []
@@ -107,7 +113,7 @@ class SpecificWorker(GenericWorker):
         tc = TimeControl(0.05)
         while True:
             self.pr.step()
-            self.read_camera(self.front_camera_name)
+            self.read_cameras([self.front_left_camera_name])
             self.read_joystick()
             self.read_robot_pose()
             self.move_robot()
@@ -117,29 +123,31 @@ class SpecificWorker(GenericWorker):
     ###########################################
     ### CAMERAS get and publish cameras data
     ###########################################
-    def read_camera(self, cam_name):
-        cam = self.cameras[cam_name]
-        image_float = cam["handle"].capture_rgb()
-        #            print("len", len(image_float))
-        depth = cam["handle"].capture_depth(True)
-        image = cv2.normalize(src=image_float, dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX,
-                              dtype=cv2.CV_8U)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = cv2.flip(image, 0)
-        
-        cam["rgb"] = RoboCompCameraRGBDSimple.TImage(cameraID=cam["id"], width=cam["width"], height=cam["height"],
-                                                     depth=3, focalx=cam["focal"], focaly=cam["focal"],
-                                                     alivetime=time.time(), image=image.tobytes())
-        cam["depth"] = RoboCompCameraRGBDSimple.TDepth(cameraID=cam["id"], width=cam["handle"].get_resolution()[0],
-                                                       height=cam["handle"].get_resolution()[1],
-                                                       focalx=cam["focal"], focaly=cam["focal"],
-                                                       alivetime=time.time(), depthFactor=1.0,
-                                                       depth=depth.tobytes())
+    def read_cameras(self, camera_names):
+        #images = []
+        for camera_name in camera_names:
+            cam = self.cameras[camera_name]
+            image_float = cam["handle"].capture_rgb()
+            depth = cam["handle"].capture_depth(True)
+            image = cv2.normalize(src=image_float, dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX,
+                                  dtype=cv2.CV_8U)
+            #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            cam["rgb"] = RoboCompCameraRGBDSimple.TImage(cameraID=cam["id"], width=cam["width"], height=cam["height"],
+                                                         depth=3, focalx=cam["focal"], focaly=cam["focal"],
+                                                         alivetime=time.time(), image=image.tobytes())
+            cam["depth"] = RoboCompCameraRGBDSimple.TDepth(cameraID=cam["id"], width=cam["handle"].get_resolution()[0],
+                                                           height=cam["handle"].get_resolution()[1],
+                                                           focalx=cam["focal"], focaly=cam["focal"],
+                                                           alivetime=time.time(), depthFactor=1.0,
+                                                           depth=depth.tobytes())
+            #images.append(image)
+        #(status, stitched) = self.stitcher.stitch(images)
+        #print(status)
 
-        # try:
-        #    self.camerargbdsimplepub_proxy.pushRGBD(cam["rgb"], cam["depth"])
-        # except Ice.Exception as e:
-        #    print(e)
+            # try:
+            #    self.camerargbdsimplepub_proxy.pushRGBD(cam["rgb"], cam["depth"])
+            # except Ice.Exception as e:
+            #    print(e)
 
     ###########################################
     ### JOYSITCK read and move the robot
@@ -156,7 +164,7 @@ class SpecificWorker(GenericWorker):
                     rot = x.value if np.abs(x.value) > 0.01 else 0
 
             converted = self.convert_base_speed_to_motors_speed(adv, rot)
-            print("Joystick ", [adv, rot], converted)
+            #print("Joystick ", [adv, rot], converted)
             self.joystick_newdata = None
             self.last_received_data_time = time.time()
         else:
@@ -181,11 +189,10 @@ class SpecificWorker(GenericWorker):
     ### ROBOT POSE get and publish robot position
     ###########################################
     def read_robot_pose(self):
-        # pose = self.robot.get_2d_pose()
-        pose = self.robot_object.get_position()
-        rot = self.robot_object.get_orientation()
-        linear_vel, ang_vel = self.robot_object.get_velocity()
-        # print("Veld:", linear_vel, ang_vel)
+        slam_0 = Shape("slam_0")
+        pose = slam_0.get_position()
+        rot = slam_0.get_orientation()
+        linear_vel, ang_vel = slam_0.get_velocity()
         isMoving = np.abs(linear_vel[0]) > 0.01 or np.abs(linear_vel[1]) > 0.01 or np.abs(ang_vel[2]) > 0.01
         self.bState = RoboCompGenericBase.TBaseState(x=pose[0] * 1000,
                                                      z=pose[1] * 1000,
@@ -194,6 +201,11 @@ class SpecificWorker(GenericWorker):
                                                      advVz=linear_vel[1] * 1000,
                                                      rotV=ang_vel[2],
                                                      isMoving=isMoving)
+
+        self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+                                                                    ([rot[0], rot[1], rot[2]]),
+                                                                    [pose[0]*1000.0, pose[1]*1000.0, pose[2]*1000.0]
+                                                                    ))
 
     ###########################################
     ### MOVE ROBOT from Omnirobot interface
@@ -322,15 +334,39 @@ class SpecificWorker(GenericWorker):
     #
     # IMPLEMENTATION of getFullPose method from FullPoseEstimation interface
     #
-    def FullPoseEstimation_getFullPose(self):
-        ret = RoboCompFullPoseEstimation.FullPose()
-        ret.x = self.bState.x
-        ret.y = self.bState.z
-        ret.z = 150
-        ret.rx = 0
-        ret.ry = 0
-        ret.rz = self.bState.alpha
+    def FullPoseEstimation_getFullPoseEuler(self):
+        t = self.tm.get_transform("origin", "robot")
+        rot = t[0:3, 0:3]
+        angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
+        ret = RoboCompFullPoseEstimation.FullPoseEuler()
+        ret.x = t[0][3]
+        ret.y = t[1][3]
+        ret.z = t[2][3]
+        ret.rx = angles[0]
+        ret.ry = angles[1]
+        ret.rz = angles[2]
         return ret
+
+    def FullPoseEstimation_getFullPoseMatrix(self):
+        t = self.tm.get_transform("origin", "robot")
+        m = RoboCompFullPoseEstimation.FullPoseMatrix()
+        m.m00 = t[0][0]
+        m.m01 = t[0][1]
+        m.m02 = t[0][2]
+        m.m03 = t[0][3]
+        m.m10 = t[1][0]
+        m.m11 = t[1][1]
+        m.m12 = t[1][2]
+        m.m13 = t[1][3]
+        m.m20 = t[2][0]
+        m.m21 = t[2][1]
+        m.m22 = t[2][2]
+        m.m23 = t[2][3]
+        m.m30 = t[3][0]
+        m.m31 = t[3][1]
+        m.m32 = t[3][2]
+        m.m33 = t[3][3]
+        return m
 
     #
     # IMPLEMENTATION of setInitialPose method from FullPoseEstimation interface
@@ -338,7 +374,9 @@ class SpecificWorker(GenericWorker):
     def FullPoseEstimation_setInitialPose(self, x, y, z, rx, ry, rz):
 
         # should move robot in Coppelia to designated pose
-        pass
+        self.tm.add_transform("origin", "world",
+                               pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]), [x, y, z])
+        )
 
     #
     # IMPLEMENTATION of getAllSensorDistances method from Ultrasound interface
