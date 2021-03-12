@@ -112,8 +112,8 @@ void SpecificWorker::initialize(int period)
 
     // grid and planner
     auto dim = scene.get_dimensions();
-    grid.initialize(&scene, Grid<>::Dimensions{dim.TILE_SIZE, dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT });
-    grid.fill_with_obstacles(scene. get_obstacles());
+    //grid.initialize(&scene, Grid<>::Dimensions{dim.TILE_SIZE, dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT });
+    //grid.fill_with_obstacles(scene. get_obstacles());
 
     // elastic band
     //elastic_band.initialize();
@@ -144,7 +144,8 @@ void SpecificWorker::compute()
     qInfo() << __FUNCTION__;
     read_robot_pose(&scene);
     // camara
-    auto cdata = read_rgb_camera(false);
+    auto cdata = read_rgbd_camera(true);
+    auto vframe = mosaic(cdata, cdata, 1);
     // battery
     //read_battery();
     // RSSI
@@ -178,7 +179,7 @@ void SpecificWorker::read_robot_pose(Robot2DScene *scene)
     try
     {
         auto pose = fullposeestimation_proxy->getFullPoseEuler();  // en metros
-        qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+        //qInfo() << __FUNCTION__ << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
         //scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz-M_PI_2));  //porque en Coppelia está inicializado con el eje X
         scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz));  //porque en Coppelia está inicializado con el eje X
         // scene->robot_polygon->setPos(pose.x, pose.y);  //Copppemkia
@@ -217,18 +218,21 @@ RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
 }
 RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
 {
+    RoboCompCameraRGBDSimple::TRGBD cdata;
     try
     {
-        auto cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
+        cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
     }
-    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl:}
+    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
 
     if(draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image.image).data();
         cv::Mat img(cdata.image.height, cdata.image.width, CV_8UC3, rgb_img_data);
-        cv::flip(img, img, 0);
-        cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
+        //cv::flip(img, img, -1);
+        //cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
+        //cv::flip(img, img, 0);
+        //cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
         //cv::imshow("rgb", img);
         //const std::vector<uint8_t> &tmp = cdata.depth.depth;
         //float *depth_array = (float *) cdata.depth.depth.data();
@@ -294,8 +298,8 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
         qInfo() << __FUNCTION__ << t.value().pos;
         target.set_new_value(t.value());
         draw_target(&scene, robot, target);
-        auto path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
-        grid.draw_path(&scene, path, robot->WIDTH/3 );
+        //auto path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
+        //grid.draw_path(&scene, path, robot->WIDTH/3 );
     }
     if(target.is_active())
     {
@@ -464,6 +468,114 @@ void SpecificWorker::ramer_douglas_peucker(const std::vector<Point> &pointList, 
     }
 }
 
+
+cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_left,
+                                const RoboCompCameraRGBDSimple::TRGBD &cdata_right,
+                                unsigned short subsampling )
+{
+    // check that both cameras are equal
+    // declare frame virtual
+    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(cdata_left.image.height, cdata_left.image.width * 2), CV_8UC3);
+    // vats
+    float center_virtual_i = cdata_left.image.width / 2.0;
+    float center_virtual_j = cdata_left.image.height / 2.0;
+    float frame_virtual_focalx = cdata_left.image.focalx * 2.0;
+    // Left image check that rgb and depth are equal
+    if(cdata_left.image.width == cdata_left.depth.width and cdata_left.image.height == cdata_left.depth.height)
+    {
+        // cast depth
+        float *depth_array = (float *) cdata_left.depth.depth.data();
+        // cast rgb
+        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata_left.image.image).data();
+
+        float X, Y, Z;
+        int cols, rows;
+        std::size_t num_pixels = cdata_left.depth.depth.size() / sizeof(float);
+
+        float coseno = cos(-M_PI / 6.0);
+        float seno = sin(-M_PI / 6.0);
+        float h_offset = -100;
+        for (std::size_t i = 0; i < num_pixels; i += subsampling)
+        {
+            cols = (i % cdata_left.depth.width) - (cdata_left.depth.width / 2);
+            rows = (cdata_left.depth.height / 2) - (i / cdata_left.depth.height);
+            // compute axis coordinates according to the camera's coordinate system (Y outwards and Z up)
+            Y = depth_array[i] * 1000.f; // we transform measurements to millimeters
+            if (Y < 100) continue;
+            X = -cols * Y / cdata_left.depth.focalx;
+            Z = rows * Y / cdata_left.depth.focalx;
+            // transform to virtual camera CS at center of both cameras. Assume equal height (Z). Needs angle and translation
+            float XV = coseno * X - seno * Y + h_offset;
+            float YV = seno * X + coseno * Y;
+            // project on virtual camera
+            auto i_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
+            auto j_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
+            if (not is_in_bounds<float>(i_virtual, 0, frame_virtual.cols) or not is_in_bounds<float>(j_virtual, 0, frame_virtual.rows)) continue;
+            cv::Vec3b &color = frame_virtual.at<cv::Vec3b>((int) j_virtual, (int) i_virtual);
+            color[2] = rgb_img_data[i * 3];
+            color[1] = rgb_img_data[i * 3 + 1];
+            color[0] = rgb_img_data[i * 3 + 2];
+        }
+    }
+    else
+    {
+        qWarning() << __FUNCTION__ << " Depth and RGB sizes not equal";
+        return cv::Mat();
+    }
+    // right image
+    if(cdata_right.image.width == cdata_right.depth.width and cdata_right.image.height == cdata_right.depth.height)
+    {
+        // cast depth
+        float *depth_array = (float *) cdata_right.depth.depth.data();
+        // cast rgb
+        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata_right.image.image).data();
+        // declare frame virtual
+        cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(cdata_left.image.height, cdata_left.image.width * 2), CV_8UC3);
+        // vats
+        int center_virtual_i = cdata_left.image.width / 2;
+        int center_virtual_j = cdata_left.image.height / 2;
+        float frame_virtual_focalx = cdata_right.image.focalx * 2.0;
+        float X, Y, Z;
+        int cols, rows;
+        std::size_t num_pixels = cdata_left.depth.depth.size() / sizeof(float);
+        float coseno = cos(M_PI / 6.0);
+        float seno = sin(M_PI / 6.0);
+        float h_offset = 100;
+        for (std::size_t i = 0; i < num_pixels; i += subsampling)
+        {
+            cols = (i % cdata_right.depth.width) - (cdata_right.depth.width / 2);
+            rows = (cdata_right.depth.height / 2) - (i / cdata_right.depth.height);
+            // compute axis coordinates according to the camera's coordinate system (Y outwards and Z up)
+            Y = depth_array[i] * 1000.f; // we transform measurements to millimeters
+            if (Y < 100) continue;
+            X = -cols * Y / cdata_right.depth.focalx;
+            Z = rows * Y / cdata_right.depth.focalx;
+            // transform to virtual camera CS at center of both cameras. Assume equal height (Z). Needs angle and translation
+            float XV = coseno * X - seno * Y + h_offset;
+            float YV = seno * X + coseno * Y;
+            // project on virtual camera
+            auto i_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
+            auto j_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
+            if (not is_in_bounds<float>(i_virtual, 0, frame_virtual.cols) or not is_in_bounds<float>(j_virtual, 0, frame_virtual.rows)) continue;
+            cv::Vec3b &color = frame_virtual.at<cv::Vec3b>((int) j_virtual, (int) i_virtual);
+            color[2] = rgb_img_data[i * 3];
+            color[1] = rgb_img_data[i * 3 + 1];
+            color[0] = rgb_img_data[i * 3 + 2];
+        }
+    }
+    else
+    {
+        qWarning() << __FUNCTION__ << " Depth and RGB sizes not equal";
+        return cv::Mat();
+    }
+        //        auto pix = QPixmap::fromImage(QImage(frame_virtual.data, cdata_left.image.width, cdata_left.image.height, QImage::Format_RGB888));
+        //        label_rgb->setPixmap(pix);
+
+    cv::flip(frame_virtual, frame_virtual, -1);
+    cv::imshow("Virtual", frame_virtual);
+    cv::waitKey(1);
+    return frame_virtual;
+}
 //////////////////////////////////////////////////////////////////////////////////////
 int SpecificWorker::startup_check()
 {

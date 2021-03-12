@@ -32,8 +32,8 @@
 #include <QGraphicsLineItem>
 #include <myscene.h>
 #include <doublebuffer/DoubleBuffer.h>
-#include <grid2d/grid2d.h>
-#include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
+//#include <grid2d/grid2d.h>
+//#include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
 #include <opencv2/viz.hpp>
 #include "elastic_band.h"
 
@@ -151,6 +151,9 @@ class SpecificWorker : public GenericWorker
         // cameras
         RoboCompCameraRGBDSimple::TRGBD read_rgbd_camera(bool draw);
         RoboCompCameraRGBDSimple::TImage read_rgb_camera(bool draw);
+        cv::Mat mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_left,
+                        const RoboCompCameraRGBDSimple::TRGBD &cdata_right,
+                        unsigned short subsampling);
 
         // battery
         void read_battery();
@@ -162,10 +165,13 @@ class SpecificWorker : public GenericWorker
         QTimer timer_alive;
 
         // Grid
-        Grid<> grid;
+        //Grid<> grid;
 
         // Elastic band
-        ElasticBand elastic_band;
+        //ElasticBand elastic_band;
+
+        template <typename T>
+        bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
 };
 
 #endif
