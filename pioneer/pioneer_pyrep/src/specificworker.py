@@ -99,6 +99,17 @@ class SpecificWorker(GenericWorker):
                                                      "rgb": np.array(0),
                                                      "depth": np.ndarray(0)}
 
+        self.front_right_camera_name = "pioneer_head_camera_1"
+        cam = VisionSensor(self.front_right_camera_name)
+        self.cameras[self.front_right_camera_name] = {"handle": cam,
+                                                     "id": 0,
+                                                     "angle": np.radians(cam.get_perspective_angle()),
+                                                     "width": cam.get_resolution()[0],
+                                                     "height": cam.get_resolution()[1],
+                                                     "focal": (cam.get_resolution()[0] / 2) / np.tan(
+                                                         np.radians(cam.get_perspective_angle() / 2)),
+                                                     "rgb": np.array(0),
+                                                     "depth": np.ndarray(0)}
 
         # stichimg images
         #self.stitcher = cv2.Stitcher_create()
@@ -113,7 +124,7 @@ class SpecificWorker(GenericWorker):
         tc = TimeControl(0.05)
         while True:
             self.pr.step()
-            self.read_cameras([self.front_left_camera_name])
+            self.read_cameras([self.front_left_camera_name, self.front_right_camera_name])
             self.read_joystick()
             self.read_robot_pose()
             self.move_robot()

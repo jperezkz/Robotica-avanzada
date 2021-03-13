@@ -36,9 +36,15 @@
 //#include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
 #include <opencv2/viz.hpp>
 #include "elastic_band.h"
+#include <chrono>
+#include "opencv2/imgproc.hpp"
+#include <opencv2/photo.hpp>
 
 class SpecificWorker : public GenericWorker
 {
+    using myclock = std::chrono::system_clock;
+    using msec = std::chrono::duration<double, std::milli>;
+
     Q_OBJECT
     public:
         SpecificWorker(TuplePrx tprx, bool startup_check);
@@ -149,7 +155,7 @@ class SpecificWorker : public GenericWorker
         void draw_laser(Robot2DScene *scene, QPolygonF &laser_poly); // robot coordinates
 
         // cameras
-        RoboCompCameraRGBDSimple::TRGBD read_rgbd_camera(bool draw);
+        std::tuple<RoboCompCameraRGBDSimple::TRGBD, RoboCompCameraRGBDSimple::TRGBD> read_rgbd_camera(bool draw);
         RoboCompCameraRGBDSimple::TImage read_rgb_camera(bool draw);
         cv::Mat mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_left,
                         const RoboCompCameraRGBDSimple::TRGBD &cdata_right,

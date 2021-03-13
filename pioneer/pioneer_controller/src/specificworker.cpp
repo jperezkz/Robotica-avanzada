@@ -24,6 +24,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <Eigen/Dense>
+#include <opencv2/imgcodecs.hpp>
+
 
 /**
 * \brief Default constructor
@@ -144,8 +146,9 @@ void SpecificWorker::compute()
     qInfo() << __FUNCTION__;
     read_robot_pose(&scene);
     // camara
-    auto cdata = read_rgbd_camera(true);
-    auto vframe = mosaic(cdata, cdata, 1);
+    auto &&[cdata_left, cdata_right] = read_rgbd_camera(false);
+    auto vframe = mosaic(cdata_left, cdata_right, 1);
+    project_robot_on_image(vframe);
     // battery
     //read_battery();
     // RSSI
@@ -216,15 +219,16 @@ RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
     { std::cout << "Error reading from DifferentialRobot" << e.what() << std::endl; }
     return bState;
 }
-RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
+std::tuple<RoboCompCameraRGBDSimple::TRGBD, RoboCompCameraRGBDSimple::TRGBD> SpecificWorker::read_rgbd_camera(bool draw)
 {
-    RoboCompCameraRGBDSimple::TRGBD cdata;
+    RoboCompCameraRGBDSimple::TRGBD cdata_left, cdata_right;
     try
     {
-        cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
+        cdata_left = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
+        cdata_right = camerargbdsimple_proxy->getAll("pioneer_head_camera_1");
     }
     catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
-
+    auto &cdata = cdata_right;
     if(draw)
     {
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image.image).data();
@@ -234,19 +238,19 @@ RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
         //cv::flip(img, img, 0);
         //cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
         //cv::imshow("rgb", img);
-        //const std::vector<uint8_t> &tmp = cdata.depth.depth;
-        //float *depth_array = (float *) cdata.depth.depth.data();
+        //const std::vector<uint8_t> &tmp = cdata_left.depth.depth;
+        //float *depth_array = (float *) cdata_left.depth.depth.data();
         //const auto STEP = sizeof(float);
         /*std::vector<std::uint8_t> gray_image(tmp.size() / STEP);
         for (std::size_t i = 0; i < tmp.size() / STEP; i++)
             gray_image[i] = (int) (depth_array[i] * 15);  // ONLY VALID FOR SHORT RANGE, INDOOR SCENES
-        cv::Mat depth(cdata.depth.height, cdata.depth.width, CV_8UC1, const_cast<std::vector<uint8_t> &>(gray_image).data());*/
+        cv::Mat depth(cdata_left.depth.height, cdata_left.depth.width, CV_8UC1, const_cast<std::vector<uint8_t> &>(gray_image).data());*/
         //cv::imshow("depth", depth);
         //cv::waitKey(1);
         auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.image.width, cdata.image.height, QImage::Format_RGB888));
         label_rgb->setPixmap(pix);
     }
-    return cdata;
+    return std::make_tuple(cdata_left,cdata_right);
 }
 RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
 {
@@ -475,11 +479,15 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
 {
     // check that both cameras are equal
     // declare frame virtual
-    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(cdata_left.image.height, cdata_left.image.width * 2), CV_8UC3);
-    // vats
-    float center_virtual_i = cdata_left.image.width / 2.0;
-    float center_virtual_j = cdata_left.image.height / 2.0;
-    float frame_virtual_focalx = cdata_left.image.focalx * 2.0;
+    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(cdata_left.image.width*3, cdata_left.image.height), CV_8UC3);
+    //inpaint mask
+    cv::Mat frame_virtual_occupied = cv::Mat::ones(cv::Size(frame_virtual.cols, frame_virtual.rows), CV_8UC1);
+    float center_virtual_i = frame_virtual.cols / 2.0;
+    float center_virtual_j = frame_virtual.rows / 2.0;
+    float frame_virtual_focalx = cdata_left.image.focalx;
+
+    auto before = myclock::now();   // so it is remembered across QTimer calls to compute()
+
     // Left image check that rgb and depth are equal
     if(cdata_left.image.width == cdata_left.depth.width and cdata_left.image.height == cdata_left.depth.height)
     {
@@ -487,7 +495,7 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
         float *depth_array = (float *) cdata_left.depth.depth.data();
         // cast rgb
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata_left.image.image).data();
-
+        // vars
         float X, Y, Z;
         int cols, rows;
         std::size_t num_pixels = cdata_left.depth.depth.size() / sizeof(float);
@@ -508,13 +516,31 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
             float XV = coseno * X - seno * Y + h_offset;
             float YV = seno * X + coseno * Y;
             // project on virtual camera
-            auto i_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
-            auto j_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
-            if (not is_in_bounds<float>(i_virtual, 0, frame_virtual.cols) or not is_in_bounds<float>(j_virtual, 0, frame_virtual.rows)) continue;
-            cv::Vec3b &color = frame_virtual.at<cv::Vec3b>((int) j_virtual, (int) i_virtual);
-            color[2] = rgb_img_data[i * 3];
-            color[1] = rgb_img_data[i * 3 + 1];
-            color[0] = rgb_img_data[i * 3 + 2];
+            auto col_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
+            auto row_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
+//            if (not is_in_bounds<float>(col_virtual, 0, frame_virtual.cols) or not is_in_bounds<float>(row_virtual, 0, frame_virtual.rows)) continue;
+//            auto &occupied = frame_virtual_occupied.at<std::uint8_t>(row_virtual, col_virtual);
+//            occupied = 0;
+            if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), floor(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(ceil(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(ceil(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), ceil(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(ceil(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), floor(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(ceil(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), ceil(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
         }
     }
     else
@@ -529,15 +555,10 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
         float *depth_array = (float *) cdata_right.depth.depth.data();
         // cast rgb
         const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata_right.image.image).data();
-        // declare frame virtual
-        cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(cdata_left.image.height, cdata_left.image.width * 2), CV_8UC3);
-        // vats
-        int center_virtual_i = cdata_left.image.width / 2;
-        int center_virtual_j = cdata_left.image.height / 2;
-        float frame_virtual_focalx = cdata_right.image.focalx * 2.0;
+        // vars
         float X, Y, Z;
         int cols, rows;
-        std::size_t num_pixels = cdata_left.depth.depth.size() / sizeof(float);
+        std::size_t num_pixels = cdata_right.depth.depth.size() / sizeof(float);
         float coseno = cos(M_PI / 6.0);
         float seno = sin(M_PI / 6.0);
         float h_offset = 100;
@@ -554,13 +575,31 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
             float XV = coseno * X - seno * Y + h_offset;
             float YV = seno * X + coseno * Y;
             // project on virtual camera
-            auto i_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
-            auto j_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
-            if (not is_in_bounds<float>(i_virtual, 0, frame_virtual.cols) or not is_in_bounds<float>(j_virtual, 0, frame_virtual.rows)) continue;
-            cv::Vec3b &color = frame_virtual.at<cv::Vec3b>((int) j_virtual, (int) i_virtual);
-            color[2] = rgb_img_data[i * 3];
-            color[1] = rgb_img_data[i * 3 + 1];
-            color[0] = rgb_img_data[i * 3 + 2];
+            auto col_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
+            auto row_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
+//            if (not is_in_bounds<float>(col_virtual, 0, frame_virtual.cols) or not is_in_bounds<float>(row_virtual, 0, frame_virtual.rows)) continue;
+//            auto &occupied = frame_virtual_occupied.at<std::uint8_t>(row_virtual, col_virtual);
+//            occupied = 0;
+            if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), floor(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(ceil(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(ceil(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), ceil(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(ceil(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), floor(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(ceil(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), ceil(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
         }
     }
     else
@@ -568,12 +607,28 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
         qWarning() << __FUNCTION__ << " Depth and RGB sizes not equal";
         return cv::Mat();
     }
-        //        auto pix = QPixmap::fromImage(QImage(frame_virtual.data, cdata_left.image.width, cdata_left.image.height, QImage::Format_RGB888));
-        //        label_rgb->setPixmap(pix);
+    // Fill gaps
+    //cv::inpaint(frame_virtual, frame_virtual_occupied, frame_virtual, 1.0, cv::INPAINT_TELEA);
+    cv::medianBlur(frame_virtual, frame_virtual, 3);
+    msec duration = myclock::now() - before;
+    std::cout << "It took " << duration.count() << "ms" << std::endl;
+    before = myclock::now();   // so it is remembered across QTimer calls to compute()
+    //qInfo() << frame_virtual.step[0] * frame_virtual.rows;;
+    //vector<int> compression_params;
+    //compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
+    //compression_params.push_back(50);
+    //vector<uchar> buffer;
+    //cv::imencode(".jpg", frame_virtual, buffer, compression_params);
+    //duration = myclock::now() - before;
+    //std::cout << "Encode took " << duration.count() << "ms" << std::endl;
+    //qInfo() << "comp " << buffer.size();
 
     cv::flip(frame_virtual, frame_virtual, -1);
-    cv::imshow("Virtual", frame_virtual);
-    cv::waitKey(1);
+    cv::Mat frame_virtual_final(label_rgb->width(),label_rgb->height(), CV_8UC3);
+    cv::resize(frame_virtual, frame_virtual_final, cv::Size(label_rgb->width(),label_rgb->height()), 0, 0, cv::INTER_LANCZOS4);
+    auto pix = QPixmap::fromImage(QImage(frame_virtual_final.data, frame_virtual_final.cols, frame_virtual_final.rows, QImage::Format_RGB888));
+    label_rgb->setPixmap(pix);
+
     return frame_virtual;
 }
 //////////////////////////////////////////////////////////////////////////////////////
