@@ -37,6 +37,7 @@ import numpy_indexed as npi
 from itertools import zip_longest
 import cv2
 import imutils
+from threading import Lock
 
 class TimeControl:
     def __init__(self, period_):
@@ -84,12 +85,13 @@ class SpecificWorker(GenericWorker):
         self.radius = 110  # mm
         self.semi_width = 140  # mm
 
-        # front pan-tilt camera
-        self.cameras = {}
-        self.cameras.clear()
+        # cameras
+        self.cameras_write = {}
+        self.cameras_read = {}
+
         self.front_left_camera_name = "pioneer_head_camera_0"
         cam = VisionSensor(self.front_left_camera_name)
-        self.cameras[self.front_left_camera_name] = {"handle": cam,
+        self.cameras_write[self.front_left_camera_name] = {"handle": cam,
                                                      "id": 0,
                                                      "angle": np.radians(cam.get_perspective_angle()),
                                                      "width": cam.get_resolution()[0],
@@ -101,7 +103,7 @@ class SpecificWorker(GenericWorker):
 
         self.front_right_camera_name = "pioneer_head_camera_1"
         cam = VisionSensor(self.front_right_camera_name)
-        self.cameras[self.front_right_camera_name] = {"handle": cam,
+        self.cameras_write[self.front_right_camera_name] = {"handle": cam,
                                                      "id": 0,
                                                      "angle": np.radians(cam.get_perspective_angle()),
                                                      "width": cam.get_resolution()[0],
@@ -110,9 +112,14 @@ class SpecificWorker(GenericWorker):
                                                          np.radians(cam.get_perspective_angle() / 2)),
                                                      "rgb": np.array(0),
                                                      "depth": np.ndarray(0)}
+        self.cameras_read = self.cameras_write.copy()
+        self.mutex_c = Lock()
 
-        # stichimg images
-        #self.stitcher = cv2.Stitcher_create()
+        # PoseEstimation
+        self.robot_full_pose_write = RoboCompFullPoseEstimation.FullPoseEuler()
+        self.robot_full_pose_read = RoboCompFullPoseEstimation.FullPoseEuler()
+        self.mutex = Lock()
+
 
         self.ldata = []
         self.joystick_newdata = []
@@ -135,9 +142,8 @@ class SpecificWorker(GenericWorker):
     ### CAMERAS get and publish cameras data
     ###########################################
     def read_cameras(self, camera_names):
-        #images = []
         for camera_name in camera_names:
-            cam = self.cameras[camera_name]
+            cam = self.cameras_write[camera_name]
             image_float = cam["handle"].capture_rgb()
             depth = cam["handle"].capture_depth(True)
             image = cv2.normalize(src=image_float, dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX,
@@ -151,9 +157,10 @@ class SpecificWorker(GenericWorker):
                                                            focalx=cam["focal"], focaly=cam["focal"],
                                                            alivetime=time.time(), depthFactor=1.0,
                                                            depth=depth.tobytes())
-            #images.append(image)
-        #(status, stitched) = self.stitcher.stitch(images)
-        #print(status)
+
+        self.mutex_c.acquire()
+        self.cameras_write, self.cameras_read = self.cameras_read, self.cameras_write
+        self.mutex_c.release()
 
             # try:
             #    self.camerargbdsimplepub_proxy.pushRGBD(cam["rgb"], cam["depth"])
@@ -214,9 +221,31 @@ class SpecificWorker(GenericWorker):
                                                      isMoving=isMoving)
 
         self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-                                                                    ([rot[0], rot[1], rot[2]]),
+                                                                    ([rot[0], rot[1], rot[2]-np.pi]),
                                                                     [pose[0]*1000.0, pose[1]*1000.0, pose[2]*1000.0]
                                                                     ))
+
+        t = self.tm.get_transform("origin", "robot")
+        angles = pyrot.extrinsic_euler_xyz_from_active_matrix(t[0:3, 0:3])
+
+        self.robot_full_pose_write.x = t[0][3]
+        self.robot_full_pose_write.y = t[1][3]
+        self.robot_full_pose_write.z = t[2][3]
+        self.robot_full_pose_write.rx = angles[0]
+        self.robot_full_pose_write.ry = angles[1]
+        self.robot_full_pose_write.rz = angles[2]
+        self.robot_full_pose_write.vx = linear_vel[0] * 1000.0
+        self.robot_full_pose_write.vy = linear_vel[1] * 1000.0
+        self.robot_full_pose_write.vz = linear_vel[2] * 1000.0
+        self.robot_full_pose_write.vrx = ang_vel[0]
+        self.robot_full_pose_write.vry = ang_vel[1]
+        self.robot_full_pose_write.vrz = ang_vel[2]
+
+        # swap
+        self.mutex.acquire()
+        self.robot_full_pose_write, self.robot_full_pose_read = self.robot_full_pose_read, self.robot_full_pose_write
+        self.mutex.release()
+
 
     ###########################################
     ### MOVE ROBOT from Omnirobot interface
@@ -241,22 +270,22 @@ class SpecificWorker(GenericWorker):
     # getAll
     #
     def CameraRGBDSimple_getAll(self, camera):
-        if camera in self.cameras.keys():
-            return RoboCompCameraRGBDSimple.TRGBD(self.cameras[camera]["rgb"], self.cameras[camera]["depth"])
+        if camera in self.cameras_read.keys():
+            return RoboCompCameraRGBDSimple.TRGBD(self.cameras_read[camera]["rgb"], self.cameras_read[camera]["depth"])
 
     #
     # getDepth
     #
     def CameraRGBDSimple_getDepth(self, camera):
-        if camera in self.cameras.keys():
-            return self.cameras[camera]["depth"]
+        if camera in self.cameras_read.keys():
+            return self.cameras_read[camera]["depth"]
 
     #
     # getImage
     #
     def CameraRGBDSimple_getImage(self, camera):
-        if camera in self.cameras.keys():
-            return self.cameras[camera]["rgb"]
+        if camera in self.cameras_read.keys():
+            return self.cameras_read[camera]["rgb"]
 
     ##############################################
     ## Omnibase
@@ -346,17 +375,7 @@ class SpecificWorker(GenericWorker):
     # IMPLEMENTATION of getFullPose method from FullPoseEstimation interface
     #
     def FullPoseEstimation_getFullPoseEuler(self):
-        t = self.tm.get_transform("origin", "robot")
-        rot = t[0:3, 0:3]
-        angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
-        ret = RoboCompFullPoseEstimation.FullPoseEuler()
-        ret.x = t[0][3]
-        ret.y = t[1][3]
-        ret.z = t[2][3]
-        ret.rx = angles[0]
-        ret.ry = angles[1]
-        ret.rz = angles[2]
-        return ret
+        return self.robot_full_pose_read
 
     def FullPoseEstimation_getFullPoseMatrix(self):
         t = self.tm.get_transform("origin", "robot")

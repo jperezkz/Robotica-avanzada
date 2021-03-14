@@ -148,11 +148,15 @@ void SpecificWorker::compute()
     // camara
     auto &&[cdata_left, cdata_right] = read_rgbd_camera(false);
     auto vframe = mosaic(cdata_left, cdata_right, 1);
-    project_robot_on_image(vframe);
+    vframe = project_robot_on_image(vframe, cdata_left.image.focalx);
+
+    auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
+    label_rgb->setPixmap(pix);
+
     // battery
-    //read_battery();
+    read_battery();
     // RSSI
-    //read_RSSI();
+    read_RSSI();
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
     //check_target(robot);
 
@@ -179,17 +183,24 @@ void SpecificWorker::read_RSSI()
 }
 void SpecificWorker::read_robot_pose(Robot2DScene *scene)
 {
+    RoboCompFullPoseEstimation::FullPoseEuler pose;
     try
     {
-        auto pose = fullposeestimation_proxy->getFullPoseEuler();  // en metros
-        //qInfo() << __FUNCTION__ << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
-        //scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz-M_PI_2));  //porque en Coppelia está inicializado con el eje X
-        scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz));  //porque en Coppelia está inicializado con el eje X
-        // scene->robot_polygon->setPos(pose.x, pose.y);  //Copppemkia
-        scene->robot_polygon->setPos(pose.x, pose.y);
-        robot->update_state(Robot::State{pose.x, pose.y, pose.rz});
+        pose = fullposeestimation_proxy->getFullPoseEuler();  // en metros
     }
     catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
+    //qInfo() << __FUNCTION__ << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz << pose.vx << pose.vy << pose.vz << pose.vrx << pose.vry << pose.vrz;
+    scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz));
+    scene->robot_polygon->setPos(pose.x, pose.y);
+    // projected robot
+    int delta_time = 1;  // 1 sec
+    // linear velocities are WRT world axes, so local speed has to be computed WRT to the robot's moving frame
+    //
+    QPointF offset = scene->robot_polygon->mapToScene(0,robot->state.vy * delta_time );  //should be advance speed
+    scene->robot_polygon_projected->setPos(offset);
+    scene->robot_polygon_projected->setRotation(qRadiansToDegrees(pose.rz));
+    robot->update_state(Robot::State{pose.x, pose.y, pose.z, pose.rx, pose.ry, pose.rz, pose.vx, pose.vy, pose.vz, pose.vrx, pose.vry, pose.vrz});
+
 }
 float SpecificWorker::sigmoid(float t)
 {
@@ -471,8 +482,6 @@ void SpecificWorker::ramer_douglas_peucker(const std::vector<Point> &pointList, 
         out.push_back(pointList.back());
     }
 }
-
-
 cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_left,
                                 const RoboCompCameraRGBDSimple::TRGBD &cdata_right,
                                 unsigned short subsampling )
@@ -480,13 +489,22 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
     // check that both cameras are equal
     // declare frame virtual
     cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(cdata_left.image.width*3, cdata_left.image.height), CV_8UC3);
-    //inpaint mask
-    cv::Mat frame_virtual_occupied = cv::Mat::ones(cv::Size(frame_virtual.cols, frame_virtual.rows), CV_8UC1);
     float center_virtual_i = frame_virtual.cols / 2.0;
     float center_virtual_j = frame_virtual.rows / 2.0;
     float frame_virtual_focalx = cdata_left.image.focalx;
+    auto before = myclock::now();
 
-    auto before = myclock::now();   // so it is remembered across QTimer calls to compute()
+    //project_image(cdata_left, frame_virtual);
+    //project_image(cdata_right, frame_virtual);
+    // filter
+    // resize
+
+    // laser stuff
+    const int MAX_LASER_BINS = 100;
+    const float TOTAL_HOR_ANGLE = 2.094;  // para 120º
+    using Point = std::tuple< float, float, float>;
+    auto cmp = [](Point a, Point b) { auto &[ax,ay,az] = a; auto &[bx,by,bz] = b; return (ax*ax+ay*ay+az*az) < (bx*bx+by*by+bz*bz);};
+    std::vector<std::set<Point, decltype(cmp)>> hor_bins(MAX_LASER_BINS);
 
     // Left image check that rgb and depth are equal
     if(cdata_left.image.width == cdata_left.depth.width and cdata_left.image.height == cdata_left.depth.height)
@@ -499,7 +517,6 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
         float X, Y, Z;
         int cols, rows;
         std::size_t num_pixels = cdata_left.depth.depth.size() / sizeof(float);
-
         float coseno = cos(-M_PI / 6.0);
         float seno = sin(-M_PI / 6.0);
         float h_offset = -100;
@@ -518,9 +535,6 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
             // project on virtual camera
             auto col_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
             auto row_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
-//            if (not is_in_bounds<float>(col_virtual, 0, frame_virtual.cols) or not is_in_bounds<float>(row_virtual, 0, frame_virtual.rows)) continue;
-//            auto &occupied = frame_virtual_occupied.at<std::uint8_t>(row_virtual, col_virtual);
-//            occupied = 0;
             if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
             {
                 cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), floor(col_virtual));
@@ -541,6 +555,13 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
                 cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), ceil(col_virtual));
                 color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
             }
+            // laser computation
+            if(Z>50 or Z<-450) continue;  // above the robot and on the floor
+            // accumulate in bins of equal horizontal angle from optical axis
+            float hor_angle = atan2(cols, cdata_left.depth.focalx);
+            // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
+            int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
+            hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
         }
     }
     else
@@ -577,9 +598,6 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
             // project on virtual camera
             auto col_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
             auto row_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
-//            if (not is_in_bounds<float>(col_virtual, 0, frame_virtual.cols) or not is_in_bounds<float>(row_virtual, 0, frame_virtual.rows)) continue;
-//            auto &occupied = frame_virtual_occupied.at<std::uint8_t>(row_virtual, col_virtual);
-//            occupied = 0;
             if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
             {
                 cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), floor(col_virtual));
@@ -600,6 +618,13 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
                 cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), ceil(col_virtual));
                 color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
             }
+            // laser computation
+            if(Z>50) continue;
+            // accumulate in bins of equal horizontal angle from optical axis
+            float hor_angle = atan2(cols, cdata_left.depth.focalx);
+            // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
+            int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
+            hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
         }
     }
     else
@@ -626,10 +651,46 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
     cv::flip(frame_virtual, frame_virtual, -1);
     cv::Mat frame_virtual_final(label_rgb->width(),label_rgb->height(), CV_8UC3);
     cv::resize(frame_virtual, frame_virtual_final, cv::Size(label_rgb->width(),label_rgb->height()), 0, 0, cv::INTER_LANCZOS4);
-    auto pix = QPixmap::fromImage(QImage(frame_virtual_final.data, frame_virtual_final.cols, frame_virtual_final.rows, QImage::Format_RGB888));
-    label_rgb->setPixmap(pix);
 
-    return frame_virtual;
+    // laser computation
+    std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
+    uint i=0;
+    for(auto &bin : hor_bins)
+    {
+        if( bin.size() > 0)
+        {
+            const auto &[X, Y, Z] = *bin.cbegin();
+            laser_data[i] = LaserPoint{sqrt(X * X + Y * Y + Z * Z), (i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+        }
+        else
+            laser_data[i] = LaserPoint{0.f,(i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+        i++;
+    }
+    auto laser_poly = filter_laser(laser_data);
+    draw_laser(&scene, laser_poly);
+
+    return frame_virtual_final;
+}
+cv::Mat SpecificWorker::project_robot_on_image(cv::Mat virtual_frame, float focal)
+{
+    // get projectd polygon in local coordinates
+    QPolygonF poly = robot->scene->robot_polygon_projected->polygon();
+    // transdorm to robot's coordinate frame
+    QPolygonF poly_robot = robot->scene->robot_polygon->mapFromItem(robot->scene->robot_polygon_projected, poly);
+    //qInfo() << poly_robot;
+    float Z = -400.f;  // translation to virtual camera coordinate system  Y outwards
+    float center_cols = virtual_frame.cols/2;
+    float center_rows = virtual_frame.rows/2;
+    // project on virtual camera
+    std::vector<cv::Point> cv_poly;
+    for(const auto &p : poly_robot)
+        cv_poly.emplace_back(cv::Point(focal * Z / p.y() + center_rows, focal * p.x() / p.y() + center_cols));
+
+    const cv::Point *pts = (const cv::Point*) cv::Mat(cv_poly).data;
+    int npts = cv::Mat(cv_poly).rows;
+    // draw the polygon
+    cv::polylines(virtual_frame, &pts, &npts, 1, true, cv::Scalar(0, 255, 0));
+    return virtual_frame;
 }
 //////////////////////////////////////////////////////////////////////////////////////
 int SpecificWorker::startup_check()
