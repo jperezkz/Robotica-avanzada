@@ -50,10 +50,14 @@ public:
 	void DifferentialRobot_setSpeedBase(float adv, float rot);
 	void DifferentialRobot_stopBase();
 	void moveWheels();
+    void fillSonarDistances();
+    void fillSonarPose();
     void JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data);
+
 
     RoboCompUltrasound::SensorsState Ultrasound_getAllSensorDistances();
     RoboCompUltrasound::SensorParamsList Ultrasound_getAllSensorParams();
+    RoboCompUltrasound::SonarPoseList Ultrasound_getAllSonarPose();
     RoboCompUltrasound::BusParams Ultrasound_getBusParams();
     int Ultrasound_getSensorDistance(std::string sensor);
     RoboCompUltrasound::SensorParams Ultrasound_getSensorParams(std::string sensor);
@@ -77,6 +81,7 @@ private:
 	// Pioneer
     const float MAX_ADV = 1000.f;
     const float MAX_ROT = 1.f;
+    bool ejecución=true;
 
 	// Aria
     ArRobot *robot;
@@ -94,7 +99,12 @@ private:
     std::atomic<bool> new_command;
 
     //Ultrasound
-    std::map<int, ArSonarMTX *> *sonarMap;
+    int numSonars = 0;
+    int sonarDistance;
+    //std::vector<int> sonar;
+    RoboCompUltrasound::SensorsState sonar;
+    RoboCompUltrasound::SonarPoseList sonarPose;
+
 };
 
 #endif

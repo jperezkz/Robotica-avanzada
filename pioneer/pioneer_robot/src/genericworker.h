@@ -65,6 +65,7 @@ public:
 	virtual RoboCompRSSIStatus::TRSSI RSSIStatus_getRSSIState() = 0;
 	virtual RoboCompUltrasound::SensorsState Ultrasound_getAllSensorDistances() = 0;
 	virtual RoboCompUltrasound::SensorParamsList Ultrasound_getAllSensorParams() = 0;
+	virtual RoboCompUltrasound::SonarPoseList Ultrasound_getAllSonarPose() = 0;
 	virtual RoboCompUltrasound::BusParams Ultrasound_getBusParams() = 0;
 	virtual int Ultrasound_getSensorDistance(std::string sensor) = 0;
 	virtual RoboCompUltrasound::SensorParams Ultrasound_getSensorParams(std::string sensor) = 0;

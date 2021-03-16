@@ -3,7 +3,7 @@ CommonBehavior.Endpoints=tcp -p 10040
 # Endpoints for implements interfaces
 DifferentialRobot.Endpoints=tcp -p 10004
 BatteryStatus.Endpoints=tcp -p 10014
-Ultrasound.Endpoints=tcp -p 10015
+Ultrasound.Endpoints=tcp -p 10017
 RSSIStatus.Endpoints=tcp -p 10016
 
 # Endpoints for subscriptions interfaces

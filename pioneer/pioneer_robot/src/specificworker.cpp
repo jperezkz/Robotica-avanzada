@@ -17,7 +17,7 @@
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "specificworker.h"
-
+#include <cppitertools/zip.hpp>
 /**
 * \brief Default constructor
 */
@@ -72,8 +72,12 @@ void SpecificWorker::initialize(int period)
     robot->runAsync(true);
     robot->lock();
         robot->enableMotors();
-        robot->disableSonar();
+        robot->enableSonar();
+        numSonars = robot->getNumSonar();
     robot->unlock();
+    // Tamaño vectores sonars
+    sonar.resize(numSonars);
+    sonarPose.resize(numSonars);
 
     connect(&timerRSSI, &QTimer::timeout, this, &SpecificWorker::rate);
     timerRSSI.start(1000);
@@ -90,12 +94,22 @@ void SpecificWorker::initialize(int period)
 		timer.start(Period);
 }
 
+void manejador(int Snum);
+
 void SpecificWorker::compute()
 {
+   // if(!ejecucion) break;
     if(new_command.load())
         reloj_seguridad.restart();
 
+    //signal(SIGUSR1,manejador);
+    fillSonarDistances();
+    fillSonarPose();
 }
+
+//void manejador(int Snum){
+//    ejecucion=false;
+//}
 
 //Hay que quitar el void por el numero; debemos devolver el num en el controller
 void SpecificWorker::rate()
@@ -211,24 +225,45 @@ int SpecificWorker::startup_check()
     return 0;
 }
 
-RoboCompUltrasound::SensorsState SpecificWorker::Ultrasound_getAllSensorDistances()
+RoboCompUltrasound::SensorsState SpecificWorker::Ultrasound_getAllSensorDistances() 
 {
 //implementCODE
-    RoboCompUltrasound::SensorsState sonar;
-    robot->lock();
-
-    int numSonar = robot->getNumSonar();
-    for (int i = 0; i < numSonar; i++){
-        sonar[i] = robot->getSonarReading(i)->getRange();
-    }
-    robot->unlock();
     return sonar;
+}
+
+void SpecificWorker::fillSonarDistances(){
+    try{
+        robot->lock();
+        for (int i = 0; i < numSonars; i++){
+            sonar[i] = robot->getSonarReading(i)->getRange();
+        }
+        robot->unlock();
+    } catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
+    
+}
+
+void SpecificWorker::fillSonarPose(){
+    try{
+        robot->lock();
+        for(int i = 0; i < numSonars; i++){
+            ArPose aux =  robot->getSonarReading(i)->getSensorPosition();
+            sonarPose[i].x = aux.getX();
+            sonarPose[i].y = aux.getY();
+        }
+    robot->unlock();
+    } catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
 }
 
 RoboCompUltrasound::SensorParamsList SpecificWorker::Ultrasound_getAllSensorParams()
 {
-//implementCODE
+  //implemetCODE
 
+}
+
+RoboCompUltrasound::SonarPoseList SpecificWorker::Ultrasound_getAllSonarPose()
+{
+//implementCODE
+    return sonarPose;
 }
 
 RoboCompUltrasound::BusParams SpecificWorker::Ultrasound_getBusParams()
@@ -269,25 +304,29 @@ void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData dat
 {
     float adv_speed = 0;
     float rot_speed = 0;
-    for(auto a : data.axes)
+    for(auto  &&[a, b] :  iter::zip(data.axes, data.buttons))
     {
-        if(a.name == "advance"){
+        if(a.name == "advance" && a.value > 4){
             adv_speed = std::clamp(a.value, -1000.f, 1000.f);
+            std::cout << "Advance" << std::endl;
         }
         if(a.name == "turn")
             rot_speed = std::clamp(a.value, -100.f, 100.f);
-        /*if(a.name == "back") {
-            adv_speed = (std::clamp(a.value, -1000.f, 1000.f));
+        
+        if(b.name == "back") {
+            adv_speed = -50.f; //(std::clamp(-50.f, -1000.f, 1000.f));
             std::cout << "BACK" << std::endl;
-        }*/
+        }
     }
+    
     if(fabs(rot_speed) < 1) rot_speed = 0;
     if(fabs(adv_speed) < 4) adv_speed = 0;
+    
     if(adv_speed != 0 or rot_speed !=0)
         this->new_command.store(true);
 
         robot->lock();
-    //qInfo() << adv_speed;
+    	qInfo() << adv_speed;
         robot->setVel(adv_speed);
         robot->setRotVel(rot_speed);
     robot->unlock();
@@ -305,4 +344,28 @@ void SpecificWorker::controlParadaBase()
 
 }
 
+
+/**************************************/
+// From the RoboCompBatteryStatus you can use this types:
+// RoboCompBatteryStatus::TBattery
+
+/**************************************/
+// From the RoboCompDifferentialRobot you can use this types:
+// RoboCompDifferentialRobot::TMechParams
+
+/**************************************/
+// From the RoboCompRSSIStatus you can use this types:
+// RoboCompRSSIStatus::TRSSI
+
+/**************************************/
+// From the RoboCompUltrasound you can use this types:
+// RoboCompUltrasound::BusParams
+// RoboCompUltrasound::SensorParams
+// RoboCompUltrasound::SonarPose
+
+/**************************************/
+// From the RoboCompJoystickAdapter you can use this types:
+// RoboCompJoystickAdapter::AxisParams
+// RoboCompJoystickAdapter::ButtonParams
+// RoboCompJoystickAdapter::TData
 

@@ -74,58 +74,76 @@ class SpecificWorker(GenericWorker):
         # realsense configuration
         try:
             config = rs.config()
-            config.enable_device(self.params["device_serial"])
+            config.enable_device(self.params["device_serial_left"])
+
+            config2 = rs.config()
+            config2.enable_device(self.params["device_serial_right"])
 
             # OJO AJUSTAR CON LOS VLAORES DE CONFIG
 
             config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
             config.enable_stream(rs.stream.color, 424, 240, rs.format.bgr8, 30)
 
-            self.pointcloud = rs.pointcloud()
+            config2.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+            config2.enable_stream(rs.stream.color, 424, 240, rs.format.bgr8, 30)
+
+            #self.pointcloud = rs.pointcloud()
             self.pipeline = rs.pipeline()
-            cfg = self.pipeline.start(config)
-        #            profile = cfg.get_stream(rs.stream.color) # Fetch stream profile for depth stream
-        #            intr = profile.as_video_stream_profile().get_intrinsics() # Downcast to video_stream_profile and fetch intrinsics
-        #            print (intr.fx, intr.fy)
-        #            depth_scale = cfg.get_device().first_depth_sensor().get_depth_scale()
-        #            print("Depth Scale is: " , depth_scale)
-        #            sys.exit(-1)
+            self.pipeline2 = rs.pipeline()
+
+            self.pipeline.start(config)
+            self.pipeline2.start(config2)
+
         except Exception as e:
             print("Error initializing camera")
             print(e)
             sys.exit(-1)
 
+        #stitcher
+        self.stitcher = cv2.Stitcher.create()
+
     @QtCore.Slot()
     def compute(self):
         frames = self.pipeline.wait_for_frames()
+        frames2 = self.pipeline2.wait_for_frames()
         if not frames:
             return
-
         self.capturetime = time.time()
         depthData = frames.get_depth_frame()
         self.bdepth = np.asanyarray(depthData.get_data(), dtype=np.float32)
         self.bcolor = np.asanyarray(frames.get_color_frame().get_data())
+
+        self.bcolor2 = np.asanyarray(frames2.get_color_frame().get_data())
 
         #if self.width != 640 or self.height != 480:
         #    self.bcolor = cv2.resize(self.bcolor, (self.width, self.height), interpolation=cv2.INTER_AREA)
 
         if self.horizontalflip:
             self.bcolor = cv2.flip(self.bcolor, 1)
+            self.bcolor2 = cv2.flip(self.bcolor2, 1)
             self.bdepth = cv2.flip(self.bdepth, 1)
         if self.verticalflip:
             self.bcolor = cv2.flip(self.bcolor, 0)
+            self.bcolor2 = cv2.flip(self.bcolor2, 0)
             self.bdepth = cv2.flip(self.bdepth, 0)
+
+        (status, self.stitched) = self.stitcher.stitch([self.bcolor, self.bcolor2])
+        print(status)
+
+        if self.viewimage and status==0:
+            cv2.imshow("Color_frame", self.stitched)
+            cv2.setMouseCallback("Color_frame", self.mousecallback)
+            cv2.waitKey(1)
 
         # SWAP
         self.mutex.lock()
-        self.acolor, self.bcolor = self.bcolor, self.acolor
+        self.acolor, self.stitched = self.stitched, self.acolor
         self.adepth, self.bdepth = self.bdepth, self.adepth
         self.mutex.unlock()
 
-        if self.viewimage:
-            cv2.imshow("Color_frame", self.bcolor)
-            cv2.setMouseCallback("Color_frame", self.mousecallback)
-            cv2.waitKey(1)
+
+
+
 
         if self.publishimage:
             im = TImage()
@@ -152,6 +170,8 @@ class SpecificWorker(GenericWorker):
             except Exception as e:
                 print("Error on camerabody data publication")
                 print(e)
+
+
 
         if time.time() - self.start > 1:
             print("FPS:", self.contFPS)

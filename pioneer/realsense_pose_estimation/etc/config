@@ -1,8 +1,11 @@
 # Endpoints for implements interfaces
-FullPoseEstimation.Endpoints=tcp -p 10016
+FullPoseEstimation.Endpoints=tcp -p 10216
 
-device_serial=925122110585
-print=true
+#device_serial=925122110585
+#serial=905312110667
+device_serial=925122110807
+
+print=false
 
 # This property is used by the clients to connect to IceStorm.
 TopicManager.Proxy=IceStorm/TopicManager:default -p 9999

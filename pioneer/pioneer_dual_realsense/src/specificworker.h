@@ -29,6 +29,9 @@
 
 #include <genericworker.h>
 #include <innermodel/innermodel.h>
+#include <librealsense2/rs.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 class SpecificWorker : public GenericWorker
 {
@@ -50,10 +53,23 @@ public slots:
 	void compute();
 	int startup_check();
 	void initialize(int period);
+
 private:
 	std::shared_ptr < InnerModel > innerModel;
 	bool startup_check_flag;
+    mutable std::mutex bufferMutex;
 
+    // Declare RealSense pipeline, encapsulating the actual device and sensors
+    std::string serial_left, serial_right;
+    bool print_output = false;
+    std::vector<rs2::pipeline>  pipelines;
+
+    // Create a configuration for configuring the pipeline with a non default profile
+    rs2::config cfg_left, cfg_right;
+    rs2::context ctx;
+    rs2_intrinsics left_cam_intr, right_cam_intr, left_depth_intr, right_depth_intr;
+
+    cv::Mat mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling );
 };
 
 #endif
