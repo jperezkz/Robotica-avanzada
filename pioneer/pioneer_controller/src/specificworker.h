@@ -158,6 +158,9 @@ class SpecificWorker : public GenericWorker
         // RSSI
         void read_RSSI();
 
+        //Ultrasound
+        void read_sonar();
+
         // Alive roobot
         QTimer timer_alive;
 

@@ -18,11 +18,13 @@
  */
 #include "specificworker.h"
 #include <cppitertools/enumerate.hpp>
+#include <cppitertools/zip_longest.hpp>
 #include <cppitertools/sliding_window.hpp>
 //#include <ranges>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/stitching.hpp>
 #include <Eigen/Dense>
 
 /**
@@ -92,21 +94,21 @@ void SpecificWorker::initialize(int period)
                     QPixmap mypix("../../etc/resources/green.png");
                     label_robot->setPixmap(mypix);
                 }
-                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                catch(const Ice::Exception &e){ std::cout << e.what() << " differentialrobot" << std::endl;}
                 try
                 {
                     fullposeestimation_proxy->ice_ping();
                     QPixmap mypix("../../etc/resources/green.png");
                     label_localization->setPixmap(mypix);
                 }
-                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                catch(const Ice::Exception &e){ std::cout << e.what() << " fullpose" << std::endl;}
                 try
                 {
                     camerargbdsimple_proxy->ice_ping();
                     QPixmap mypix("../../etc/resources/green.png");
                     label_camera->setPixmap(mypix);
                 }
-                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                catch(const Ice::Exception &e){ std::cout << e.what() << " camera" << std::endl;}
             });
     timer_alive.start(2000);
 
@@ -119,17 +121,17 @@ void SpecificWorker::initialize(int period)
     //elastic_band.initialize();
 
     // reset initial state
-//    try
-//    {
-//        float x = 3305;
-//        float y = 0;
-//        float z = -21699;
-//        float rx = 0;
-//        float ry = 0;
-//        float rz = 0;
-//        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
-//    }
-//    catch(const Ice::Exception &e){};
+    try
+    {
+        float x = 3305;
+        float y = -21699;
+        float z = 0;
+        float rx = 0;
+        float ry = 0;
+        float rz = 0;
+        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
+    }
+    catch(const Ice::Exception &e){};
 
 
     this->Period = period;
@@ -141,14 +143,16 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
-    qInfo() << __FUNCTION__;
-    read_robot_pose(&scene);
+    //qInfo() << __FUNCTION__;
+    //read_robot_pose(&scene);
     // camara
-    auto cdata = read_rgb_camera(false);
+    auto cdata = read_rgb_camera(true);
     // battery
-    //read_battery();
+    read_battery();
     // RSSI
     read_RSSI();
+    //sonar
+    read_sonar();
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
     //check_target(robot);
 
@@ -173,6 +177,23 @@ void SpecificWorker::read_RSSI()
     }
     catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
 }
+
+void SpecificWorker::read_sonar()
+{
+    try
+    {
+        auto sonar = ultrasound_proxy->getAllSensorDistances();
+        auto sonarPose = ultrasound_proxy->getAllSonarPose();
+        for (auto  &&[p, s] :  iter::zip(sonarPose, sonar)){
+            std::cout << "Sonar " << " X: " << p.x << " Y: " << p.y << " Rango: " << s << std::endl;
+        }
+
+
+        qInfo() << "--------------------";
+    }
+    catch (const Ice::Exception &e) {std::cout << e.what() <<  " Ultrasound" << std::endl; }
+}
+
 void SpecificWorker::read_robot_pose(Robot2DScene *scene)
 {
     try
@@ -187,6 +208,7 @@ void SpecificWorker::read_robot_pose(Robot2DScene *scene)
     }
     catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
 }
+
 float SpecificWorker::sigmoid(float t)
 {
     return 2.f / (1.f + exp(-t * 1.4)) - 1.f;
@@ -215,59 +237,89 @@ RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
     { std::cout << "Error reading from DifferentialRobot" << e.what() << std::endl; }
     return bState;
 }
-RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
-{
-    try
-    {
-        auto cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
-    }
-    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl:}
-
-    if(draw)
-    {
-        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image.image).data();
-        cv::Mat img(cdata.image.height, cdata.image.width, CV_8UC3, rgb_img_data);
-        cv::flip(img, img, 0);
-        cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
-        //cv::imshow("rgb", img);
-        //const std::vector<uint8_t> &tmp = cdata.depth.depth;
-        //float *depth_array = (float *) cdata.depth.depth.data();
-        //const auto STEP = sizeof(float);
-        /*std::vector<std::uint8_t> gray_image(tmp.size() / STEP);
-        for (std::size_t i = 0; i < tmp.size() / STEP; i++)
-            gray_image[i] = (int) (depth_array[i] * 15);  // ONLY VALID FOR SHORT RANGE, INDOOR SCENES
-        cv::Mat depth(cdata.depth.height, cdata.depth.width, CV_8UC1, const_cast<std::vector<uint8_t> &>(gray_image).data());*/
-        //cv::imshow("depth", depth);
-        //cv::waitKey(1);
-        auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.image.width, cdata.image.height, QImage::Format_RGB888));
-        label_rgb->setPixmap(pix);
-    }
-    return cdata;
-}
+//RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
+//{
+//    try
+//    {
+//        auto cdata = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
+//    }
+//    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl:}
+//
+//    if(draw)
+//    {
+//        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image.image).data();
+//        cv::Mat img(cdata.image.height, cdata.image.width, CV_8UC3, rgb_img_data);
+//        cv::flip(img, img, 0);
+//        cv::cvtColor(img ,img, cv::COLOR_RGB2BGR);
+//        //cv::imshow("rgb", img);
+//        //const std::vector<uint8_t> &tmp = cdata.depth.depth;
+//        //float *depth_array = (float *) cdata.depth.depth.data();
+//        //const auto STEP = sizeof(float);
+//        /*std::vector<std::uint8_t> gray_image(tmp.size() / STEP);
+//        for (std::size_t i = 0; i < tmp.size() / STEP; i++)
+//            gray_image[i] = (int) (depth_array[i] * 15);  // ONLY VALID FOR SHORT RANGE, INDOOR SCENES
+//        cv::Mat depth(cdata.depth.height, cdata.depth.width, CV_8UC1, const_cast<std::vector<uint8_t> &>(gray_image).data());*/
+//        //cv::imshow("depth", depth);
+//        //cv::waitKey(1);
+//        auto pix = QPixmap::fromImage(QImage(rgb_img_data, cdata.image.width, cdata.image.height, QImage::Format_RGB888));
+//        label_rgb->setPixmap(pix);
+//    }
+//    return cdata;
+//}
 RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
 {
-    auto cdata = camerargbdsimple_proxy->getImage("pioneer_head_camera_0");
+    RoboCompCameraRGBDSimple::TImage cdata_left, cdata_right;
+    //cv::Ptr<cv::Stitcher> stitcher = cv::Stitcher::create();
+    std::vector<cv::Mat> images_array;
+    cv::Stitcher::Status status;
+
+    try
+    {
+        cdata_left = camerargbdsimple_proxy->getImage("pioneer_head_camera_0");
+    }
+    catch (const Ice::Exception &e){std::cout << e.what() << std::endl;}
+
 
     if(draw)
     {
-        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
-        cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
-        cv::flip(img, img, -1);
-        cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
-        cv::Mat img_resized(640, 480, CV_8UC3);
-        cv::resize(img, img_resized, cv::Size(640, 480));
+        try
+        {
+            cdata_right = camerargbdsimple1_proxy->getImage("pioneer_head_camera_0");
+        }
+        catch (const Ice::Exception &e){std::cout << e.what() << std::endl;}
+
+        const auto &rgb_img_data_left = const_cast<std::vector<uint8_t> &>(cdata_left.image).data();
+        cv::Mat image_left(cdata_left.height, cdata_left.width, CV_8UC3, rgb_img_data_left);
+        const auto &rgb_img_data_right = const_cast<std::vector<uint8_t> &>(cdata_right.image).data();
+        cv::Mat image_right(cdata_right.height, cdata_right.width, CV_8UC3, rgb_img_data_right);
+
+        cv::Mat image_total(cdata_left.height, cdata_left.width*2, CV_8UC3);
+        cv::hconcat(image_left, image_right, image_total);
+
+        //images_array.push_back(image_left);
+        //images_array.push_back(image_right);
+
+        //status = stitcher->stitch(images_array, image_total);
+
+        //cv::flip(image_total, image_total, -1);
+        //cv::cvtColor(image_left, image_left, cv::COLOR_RGB2GRAY);
+        //cv::cvtColor(image_right, image_right, cv::COLOR_RGB2GRAY);
+        cv::cvtColor(image_total, image_total, cv::COLOR_BGR2RGB);
+        //cv::Mat img_resized = image_total;
+        cv::Mat img_resized(label_rgb->width(), label_rgb->height(), CV_8UC3);
+        cv::resize(image_total, img_resized, cv::Size(label_rgb->width(), label_rgb->height()));
         auto pix = QPixmap::fromImage(QImage(img_resized.data, img_resized.cols, img_resized.rows, QImage::Format_RGB888));
         label_rgb->setPixmap(pix);
     }
     else //coppelia
     {
-        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
-        cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
+        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata_left.image).data();
+        cv::Mat img(cdata_left.height, cdata_left.width, CV_8UC3, rgb_img_data);
         //cv::flip(img, img, 0);
         auto pix = QPixmap::fromImage(QImage(img.data, img.cols, img.rows, QImage::Format_RGB888));
         label_rgb->setPixmap(pix);
     }
-    return cdata;
+    return cdata_left;
 }
 void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> robot, const Target &target)
 {
@@ -299,23 +351,23 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
     }
     if(target.is_active())
     {
-//        try
-//        {
-//            if (not robot->at_target(target))
-//            {
-//                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
-//                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
-//                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
-//                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
-//                differentialrobot_proxy->setSpeedBase(adv_speed, rot_speed);
-//            } else
-//            {
-//                target.set_active(false);
-//                differentialrobot_proxy->setSpeedBase(0, 0);
-//            }
-//        }
-//        catch (const Ice::Exception &e)
-//        { std::cout << e.what() << std::endl; };
+        try
+        {
+            if (not robot->at_target(target))
+            {
+                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
+                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
+                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
+                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
+                differentialrobot_proxy->setSpeedBase(adv_speed, rot_speed);
+            } else
+            {
+                target.set_active(false);
+                differentialrobot_proxy->setSpeedBase(0, 0);
+            }
+        }
+        catch (const Ice::Exception &e)
+        { std::cout << e.what() << std::endl; };
     }
 }
 std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata, Robot2DScene *scene,bool draw,unsigned short subsampling )
@@ -508,10 +560,35 @@ int SpecificWorker::startup_check()
 // RoboCompDifferentialRobot::TMechParams
 
 /**************************************/
+// From the RoboCompFullPoseEstimation you can call this methods:
+// this->fullposeestimation_proxy->getFullPoseEuler(...)
+// this->fullposeestimation_proxy->getFullPoseMatrix(...)
+// this->fullposeestimation_proxy->setInitialPose(...)
+
+/**************************************/
+// From the RoboCompFullPoseEstimation you can use this types:
+// RoboCompFullPoseEstimation::FullPoseMatrix
+// RoboCompFullPoseEstimation::FullPoseEuler
+
+/**************************************/
 // From the RoboCompRSSIStatus you can call this methods:
 // this->rssistatus_proxy->getRSSIState(...)
 
 /**************************************/
 // From the RoboCompRSSIStatus you can use this types:
 // RoboCompRSSIStatus::TRSSI
+
+/**************************************/
+// From the RoboCompUltrasound you can call this methods:
+// this->ultrasound_proxy->getAllSensorDistances(...)
+// this->ultrasound_proxy->getAllSensorParams(...)
+// this->ultrasound_proxy->getAllSonarPose(...)
+// this->ultrasound_proxy->getBusParams(...)
+// this->ultrasound_proxy->getSensorDistance(...)
+// this->ultrasound_proxy->getSensorParams(...)
+
+/**************************************/
+// From the RoboCompUltrasound you can use this types:
+// RoboCompUltrasound::BusParams
+// RoboCompUltrasound::SensorParams
 
