@@ -1,0 +1,12 @@
+import "CameraRGBDSimple.idsl";
+import "Laser.idsl";
+
+Component pioneer_dual_realsense
+{
+    Communications
+    {
+        implements Laser, CameraRGBDSimple;
+    };
+    language Cpp11;
+};
+

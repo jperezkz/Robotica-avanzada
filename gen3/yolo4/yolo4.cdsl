@@ -1,0 +1,11 @@
+import "YoloServer.idsl";
+
+Component yolo4
+{
+    Communications
+    {
+        implements YoloServer;
+    };
+    language python;
+};
+

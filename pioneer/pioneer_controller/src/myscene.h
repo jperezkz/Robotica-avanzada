@@ -36,7 +36,7 @@ class Robot2DScene : public QGraphicsScene
 {
     Q_OBJECT
     public:
-        QGraphicsItem *robot_polygon;
+        QGraphicsPolygonItem *robot_polygon, *robot_polygon_projected;
         using Dimensions = struct{ float HMIN = -2500, VMIN = -2500, WIDTH = 5000, HEIGHT = 5000, TILE_SIZE = 40; };
         Dimensions get_dimensions() const { return dim; };
         std::vector<QPolygonF> get_obstacles() const { return obstacles; };
@@ -77,13 +77,17 @@ class Robot2DScene : public QGraphicsScene
                     << QPointF(robotXWidth/2, robotZLong/2)
                     << QPointF(robotXWidth/2, -robotZLong/2);
             QPolygonF marca(QRectF(-25,-25, 50, 50));
-            QColor rc("DarkRed"); rc.setAlpha(80);
+            QColor rcp("DarkRed"); rcp.setAlpha(80);
+            QColor rc("MAgenta"); rc.setAlpha(80);
             robot_polygon = this->addPolygon(poly2, QPen(QColor("DarkRed")), QBrush(rc));
             auto marca_polygon = this->addPolygon(marca, QPen(QColor("White")), QBrush("White"));
             marca_polygon->setParentItem(robot_polygon);
             marca_polygon->setPos (QPointF(0, robotZLong/2 - 40));
             robot_polygon->setZValue(5);
             robot_polygon->setPos(0, 0);
+            robot_polygon_projected = this-> addPolygon(poly2, QPen(QColor("Magenta")), QBrush(rcp));
+            robot_polygon_projected->setPos(0,0);
+            robot_polygon->setZValue(4);
 
             connect(this, &Robot2DScene::new_target, this, target_slot);
             return robot_polygon;
