@@ -27,6 +27,7 @@
 #include <opencv2/stitching.hpp>
 #include <Eigen/Dense>
 #include <opencv2/imgcodecs.hpp>
+#include <cppitertools/zip.hpp>
 
 
 /**
@@ -61,7 +62,6 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 void SpecificWorker::initialize(int period)
 {
     std::cout << "Initialize worker" << std::endl;
-
     // draw
     //QFileInfo info1("../../etc/informatica.simscene.xml");
     //QFileInfo info2("../../etc/informatica.json");
@@ -141,6 +141,9 @@ void SpecificWorker::initialize(int period)
 	    this->startup_check();
 	else
 		timer.start(Period);
+
+	// Resize numero de sonars
+    datosSonar.resize(ultrasound_proxy->getSonarsNumber());
 }
 
 void SpecificWorker::compute()
@@ -148,26 +151,26 @@ void SpecificWorker::compute()
     //qInfo() << __FUNCTION__;
     //read_robot_pose(&scene);
     // camara
-<<<<<<< HEAD
-    auto cdata = read_rgb_camera(true);
-=======
-    auto &&[cdata_left, cdata_right] = read_rgbd_camera(false);
-    auto vframe = mosaic(cdata_left, cdata_right, 1);
-    vframe = project_robot_on_image(vframe, cdata_left.image.focalx);
-
-    auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
-    label_rgb->setPixmap(pix);
-
->>>>>>> 080a90257bc76a1a33008052b748eb57c8b2d6f5
+//<<<<<<< HEAD
+//    auto cdata = read_rgb_camera(true);
+//=======
+//    auto &&[cdata_left, cdata_right] = read_rgbd_camera(false);
+//    auto vframe = mosaic(cdata_left, cdata_right, 1);
+//    vframe = project_robot_on_image(vframe, cdata_left.image.focalx);
+//
+//    auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
+//    label_rgb->setPixmap(pix);
+//
+//>>>>>>> 080a90257bc76a1a33008052b748eb57c8b2d6f5
     // battery
     read_battery();
     // RSSI
     read_RSSI();
-<<<<<<< HEAD
+//<<<<<<< HEAD
     //sonar
     read_sonar();
-=======
->>>>>>> 080a90257bc76a1a33008052b748eb57c8b2d6f5
+//=======
+//>>>>>>> 080a90257bc76a1a33008052b748eb57c8b2d6f5
     //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
     //check_target(robot);
 
@@ -195,41 +198,43 @@ void SpecificWorker::read_RSSI()
 
 void SpecificWorker::read_sonar()
 {
+    int i = 0;
     try
     {
         auto sonar = ultrasound_proxy->getAllSensorDistances();
         auto sonarPose = ultrasound_proxy->getAllSonarPose();
         for (auto  &&[p, s] :  iter::zip(sonarPose, sonar)){
             std::cout << "Sonar " << " X: " << p.x << " Y: " << p.y << " Rango: " << s << std::endl;
+            datosSonar[i].x = p.x;
+            datosSonar[i].y = p.y;
+            datosSonar[i].s = s;
         }
-
-
         qInfo() << "--------------------";
     }
     catch (const Ice::Exception &e) {std::cout << e.what() <<  " Ultrasound" << std::endl; }
 }
 
-void SpecificWorker::read_robot_pose(Robot2DScene *scene)
-{
-    RoboCompFullPoseEstimation::FullPoseEuler pose;
-    try
-    {
-        pose = fullposeestimation_proxy->getFullPoseEuler();  // en metros
-    }
-    catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
-    //qInfo() << __FUNCTION__ << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz << pose.vx << pose.vy << pose.vz << pose.vrx << pose.vry << pose.vrz;
-    scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz));
-    scene->robot_polygon->setPos(pose.x, pose.y);
-    // projected robot
-    int delta_time = 1;  // 1 sec
-    // linear velocities are WRT world axes, so local speed has to be computed WRT to the robot's moving frame
-    //
-    QPointF offset = scene->robot_polygon->mapToScene(0,robot->state.vy * delta_time );  //should be advance speed
-    scene->robot_polygon_projected->setPos(offset);
-    scene->robot_polygon_projected->setRotation(qRadiansToDegrees(pose.rz));
-    robot->update_state(Robot::State{pose.x, pose.y, pose.z, pose.rx, pose.ry, pose.rz, pose.vx, pose.vy, pose.vz, pose.vrx, pose.vry, pose.vrz});
-
-}
+//void SpecificWorker::read_robot_pose(Robot2DScene *scene)
+//{
+//    RoboCompFullPoseEstimation::FullPoseEuler pose;
+//    try
+//    {
+//        pose = fullposeestimation_proxy->getFullPoseEuler();  // en metros
+//    }
+//    catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
+//    //qInfo() << __FUNCTION__ << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz << pose.vx << pose.vy << pose.vz << pose.vrx << pose.vry << pose.vrz;
+//    scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz));
+//    scene->robot_polygon->setPos(pose.x, pose.y);
+//    // projected robot
+//    int delta_time = 1;  // 1 sec
+//    // linear velocities are WRT world axes, so local speed has to be computed WRT to the robot's moving frame
+//    //
+//    QPointF offset = scene->robot_polygon->mapToScene(0,robot->state.vy * delta_time );  //should be advance speed
+//    scene->robot_polygon_projected->setPos(offset);
+//    scene->robot_polygon_projected->setRotation(qRadiansToDegrees(pose.rz));
+//    robot->update_state(Robot::State{pose.x, pose.y, pose.z, pose.rx, pose.ry, pose.rz, pose.vx, pose.vy, pose.vz, pose.vrx, pose.vry, pose.vrz});
+//
+//}
 
 float SpecificWorker::sigmoid(float t)
 {
@@ -259,7 +264,7 @@ RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
     { std::cout << "Error reading from DifferentialRobot" << e.what() << std::endl; }
     return bState;
 }
-<<<<<<< HEAD
+//<<<<<<< HEAD
 //RoboCompCameraRGBDSimple::TRGBD SpecificWorker::read_rgbd_camera(bool draw)
 //{
 //    try
@@ -300,9 +305,9 @@ RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
     {
         cdata_left = camerargbdsimple_proxy->getImage("pioneer_head_camera_0");
     }
-    catch (const Ice::Exception &e){std::cout << e.what() << std::endl;}
+    catch (const Ice::Exception &e){std::cout << e.what() << std::endl;}}
 
-=======
+//=======
 std::tuple<RoboCompCameraRGBDSimple::TRGBD, RoboCompCameraRGBDSimple::TRGBD> SpecificWorker::read_rgbd_camera(bool draw)
 {
     RoboCompCameraRGBDSimple::TRGBD cdata_left, cdata_right;
@@ -336,52 +341,52 @@ std::tuple<RoboCompCameraRGBDSimple::TRGBD, RoboCompCameraRGBDSimple::TRGBD> Spe
     }
     return std::make_tuple(cdata_left,cdata_right);
 }
-RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
-{
-    auto cdata = camerargbdsimple_proxy->getImage("pioneer_head_camera_0");
->>>>>>> 080a90257bc76a1a33008052b748eb57c8b2d6f5
-
-    if(draw)
-    {
-        try
-        {
-            cdata_right = camerargbdsimple1_proxy->getImage("pioneer_head_camera_0");
-        }
-        catch (const Ice::Exception &e){std::cout << e.what() << std::endl;}
-
-        const auto &rgb_img_data_left = const_cast<std::vector<uint8_t> &>(cdata_left.image).data();
-        cv::Mat image_left(cdata_left.height, cdata_left.width, CV_8UC3, rgb_img_data_left);
-        const auto &rgb_img_data_right = const_cast<std::vector<uint8_t> &>(cdata_right.image).data();
-        cv::Mat image_right(cdata_right.height, cdata_right.width, CV_8UC3, rgb_img_data_right);
-
-        cv::Mat image_total(cdata_left.height, cdata_left.width*2, CV_8UC3);
-        cv::hconcat(image_left, image_right, image_total);
-
-        //images_array.push_back(image_left);
-        //images_array.push_back(image_right);
-
-        //status = stitcher->stitch(images_array, image_total);
-
-        //cv::flip(image_total, image_total, -1);
-        //cv::cvtColor(image_left, image_left, cv::COLOR_RGB2GRAY);
-        //cv::cvtColor(image_right, image_right, cv::COLOR_RGB2GRAY);
-        cv::cvtColor(image_total, image_total, cv::COLOR_BGR2RGB);
-        //cv::Mat img_resized = image_total;
-        cv::Mat img_resized(label_rgb->width(), label_rgb->height(), CV_8UC3);
-        cv::resize(image_total, img_resized, cv::Size(label_rgb->width(), label_rgb->height()));
-        auto pix = QPixmap::fromImage(QImage(img_resized.data, img_resized.cols, img_resized.rows, QImage::Format_RGB888));
-        label_rgb->setPixmap(pix);
-    }
-    else //coppelia
-    {
-        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata_left.image).data();
-        cv::Mat img(cdata_left.height, cdata_left.width, CV_8UC3, rgb_img_data);
-        //cv::flip(img, img, 0);
-        auto pix = QPixmap::fromImage(QImage(img.data, img.cols, img.rows, QImage::Format_RGB888));
-        label_rgb->setPixmap(pix);
-    }
-    return cdata_left;
-}
+//RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
+//{
+//    auto cdata = camerargbdsimple_proxy->getImage("pioneer_head_camera_0");
+////>>>>>>> 080a90257bc76a1a33008052b748eb57c8b2d6f5
+//
+//    if(draw)
+//    {
+//        try
+//        {
+//            cdata_right = camerargbdsimple1_proxy->getImage("pioneer_head_camera_0");
+//        }
+//        catch (const Ice::Exception &e){std::cout << e.what() << std::endl;}
+//
+//        const auto &rgb_img_data_left = const_cast<std::vector<uint8_t> &>(cdata_left.image).data();
+//        cv::Mat image_left(cdata_left.height, cdata_left.width, CV_8UC3, rgb_img_data_left);
+//        const auto &rgb_img_data_right = const_cast<std::vector<uint8_t> &>(cdata_right.image).data();
+//        cv::Mat image_right(cdata_right.height, cdata_right.width, CV_8UC3, rgb_img_data_right);
+//
+//        cv::Mat image_total(cdata_left.height, cdata_left.width*2, CV_8UC3);
+//        cv::hconcat(image_left, image_right, image_total);
+//
+//        //images_array.push_back(image_left);
+//        //images_array.push_back(image_right);
+//
+//        //status = stitcher->stitch(images_array, image_total);
+//
+//        //cv::flip(image_total, image_total, -1);
+//        //cv::cvtColor(image_left, image_left, cv::COLOR_RGB2GRAY);
+//        //cv::cvtColor(image_right, image_right, cv::COLOR_RGB2GRAY);
+//        cv::cvtColor(image_total, image_total, cv::COLOR_BGR2RGB);
+//        //cv::Mat img_resized = image_total;
+//        cv::Mat img_resized(label_rgb->width(), label_rgb->height(), CV_8UC3);
+//        cv::resize(image_total, img_resized, cv::Size(label_rgb->width(), label_rgb->height()));
+//        auto pix = QPixmap::fromImage(QImage(img_resized.data, img_resized.cols, img_resized.rows, QImage::Format_RGB888));
+//        label_rgb->setPixmap(pix);
+//    }
+//    else //coppelia
+//    {
+//        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata_left.image).data();
+//        cv::Mat img(cdata_left.height, cdata_left.width, CV_8UC3, rgb_img_data);
+//        //cv::flip(img, img, 0);
+//        auto pix = QPixmap::fromImage(QImage(img.data, img.cols, img.rows, QImage::Format_RGB888));
+//        label_rgb->setPixmap(pix);
+//    }
+//    return cdata_left;
+//}
 void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> robot, const Target &target)
 {
     static QGraphicsEllipseItem *target_draw = nullptr;
@@ -856,6 +861,7 @@ int SpecificWorker::startup_check()
 // this->ultrasound_proxy->getBusParams(...)
 // this->ultrasound_proxy->getSensorDistance(...)
 // this->ultrasound_proxy->getSensorParams(...)
+// this->ultrasound_proxy->getSonarsNumber(...)
 
 /**************************************/
 // From the RoboCompUltrasound you can use this types:
