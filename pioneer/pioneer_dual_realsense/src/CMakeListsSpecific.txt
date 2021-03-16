@@ -10,8 +10,11 @@ SET ( HEADERS
   specificmonitor.h
 )
 
-set(CMAKE_CXX_STANDARD 17)
+INCLUDE( $ENV{ROBOCOMP}/cmake/modules/opencv4.cmake )
 
-SET (LIBS ${LIBS}  )
+set(CMAKE_CXX_STANDARD 17)
+add_definitions(-O3 -march=native  -fmax-errors=5 )
+SET (LIBS ${LIBS} realsense2 )
+
 
 

@@ -50,21 +50,31 @@ public:
 	void DifferentialRobot_setSpeedBase(float adv, float rot);
 	void DifferentialRobot_stopBase();
 	void moveWheels();
+    void fillSonarDistances();
+    void fillSonarPose();
     void JoystickAdapter_sendData(RoboCompJoystickAdapter::TData data);
+
 
     RoboCompUltrasound::SensorsState Ultrasound_getAllSensorDistances();
     RoboCompUltrasound::SensorParamsList Ultrasound_getAllSensorParams();
+    RoboCompUltrasound::SonarPoseList Ultrasound_getAllSonarPose();
     RoboCompUltrasound::BusParams Ultrasound_getBusParams();
     int Ultrasound_getSensorDistance(std::string sensor);
     RoboCompUltrasound::SensorParams Ultrasound_getSensorParams(std::string sensor);
 
+    RoboCompRSSIStatus::TRSSI RSSIStatus_getRSSIState();
 
 public slots:
 	void compute();
 	int startup_check();
 	void initialize(int period);
+<<<<<<< HEAD
 	int rate();
 	void controlParadaBase(bool flag);
+=======
+	void rate();
+	void controlParadaBase();
+>>>>>>> 0ec44278b574f95a99cb73598076d5525141b76a
 
 signals:
     void controlTime(bool);
@@ -76,6 +86,7 @@ private:
 	// Pioneer
     const float MAX_ADV = 1000.f;
     const float MAX_ROT = 1.f;
+    bool ejecución=true;
 
 	// Aria
     ArRobot *robot;
@@ -83,6 +94,22 @@ private:
 
     //Timer
     QTimer timerRSSI;
+    QTimer timerWatchdog;
+
+    // rsssi
+    std::atomic<int> quality_rssi;
+
+    //Watchdog
+    QTime reloj_seguridad;
+    std::atomic<bool> new_command;
+
+    //Ultrasound
+    int numSonars = 0;
+    int sonarDistance;
+    //std::vector<int> sonar;
+    RoboCompUltrasound::SensorsState sonar;
+    RoboCompUltrasound::SonarPoseList sonarPose;
+
 };
 
 #endif

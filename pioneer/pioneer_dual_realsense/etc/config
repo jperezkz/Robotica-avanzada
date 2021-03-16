@@ -1,12 +1,13 @@
-CommonBehavior.Endpoints=tcp -p 10000
+CommonBehavior.Endpoints=tcp -p 10111
 
 # Endpoints for implements interfaces
-CameraRGBDSimple.Endpoints=tcp -p 0
-Laser.Endpoints=tcp -p 0
+CameraRGBDSimple.Endpoints=tcp -p 10096
+Laser.Endpoints=tcp -p 10003
 
+device_serial_left=839112061901
+device_serial_right=839112060624
+display=true
 
-
-InnerModelPath = innermodel.xml
 
 Ice.Warn.Connections=0
 Ice.Trace.Network=0

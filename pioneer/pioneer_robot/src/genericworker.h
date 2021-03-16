@@ -28,6 +28,7 @@
 #include <DifferentialRobot.h>
 #include <GenericBase.h>
 #include <JoystickAdapter.h>
+#include <RSSIStatus.h>
 #include <Ultrasound.h>
 
 
@@ -61,8 +62,10 @@ public:
 	virtual void DifferentialRobot_setOdometerPose(int x, int z, float alpha) = 0;
 	virtual void DifferentialRobot_setSpeedBase(float adv, float rot) = 0;
 	virtual void DifferentialRobot_stopBase() = 0;
+	virtual RoboCompRSSIStatus::TRSSI RSSIStatus_getRSSIState() = 0;
 	virtual RoboCompUltrasound::SensorsState Ultrasound_getAllSensorDistances() = 0;
 	virtual RoboCompUltrasound::SensorParamsList Ultrasound_getAllSensorParams() = 0;
+	virtual RoboCompUltrasound::SonarPoseList Ultrasound_getAllSonarPose() = 0;
 	virtual RoboCompUltrasound::BusParams Ultrasound_getBusParams() = 0;
 	virtual int Ultrasound_getSensorDistance(std::string sensor) = 0;
 	virtual RoboCompUltrasound::SensorParams Ultrasound_getSensorParams(std::string sensor) = 0;
