@@ -70,6 +70,11 @@ private:
     rs2_intrinsics left_cam_intr, right_cam_intr, left_depth_intr, right_depth_intr;
 
     cv::Mat mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling );
+
+    template <typename T>
+    bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
+
+    struct LaserPoint{ float dist; float angle;};
 };
 
 #endif
