@@ -26,6 +26,8 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+from yolov4 import Detector
+from PIL import Image
 
 class SpecificWorker(GenericWorker):
     def __init__(self, proxy_map, startup_check=False):
@@ -35,7 +37,7 @@ class SpecificWorker(GenericWorker):
         self.image = []
         self.depth = []
         self.camera_name = "camera_arm"
-
+        self.d = Detector(gpu_id=0)
         self.Period = 100
         if startup_check:
             self.startup_check()
@@ -57,14 +59,15 @@ class SpecificWorker(GenericWorker):
 
     @QtCore.Slot()
     def compute(self):
-        print('SpecificWorker.compute...')
+        #print('SpecificWorker.compute...')
         all = self.camerargbdsimple_proxy.getAll(self.camera_name)
         #self.draw_image(all.image)
         #procesar imagen
         centre = self.procesarImagen(all.image)
+        self.yolo(all.image)
 
         #enviar cambio a la pinza
-        self.pinza(centre,all.depth)
+        #self.pinza(centre,all.depth)
 
 
 
@@ -81,6 +84,23 @@ class SpecificWorker(GenericWorker):
 
     def startup_check(self):
         QTimer.singleShot(200, QApplication.instance().quit)
+
+    def yolo(self, color_):
+        color = np.frombuffer(color_.image, np.uint8).reshape(color_.height, color_.width, color_.depth)
+       #color = cv.medianBlur(color, 5)
+        #color = cv.cvtColor(color, cv.COLOR_BGR2GRAY)
+        #cimg = cv.cvtColor(color, cv.COLOR_GRAY2BGR)
+        img = Image.fromarray(color)
+        img_arr = np.array(img.resize((self.d.network_width(), self.d.network_height())))
+        detections = self.d.perform_detect(image_path_or_buf=img_arr, show_image=False)
+        for detection in detections:
+            if detection.class_confidence * 100 > 60:
+                box = detection.left_x, detection.top_y, detection.width, detection.height
+                print(f'{detection.class_name.ljust(10)} | {detection.class_confidence * 100:.1f} % | {box}')
+
+        """img_show = img.resize((d.network_width(), d.network_height()))
+        img_arr = np.array(img.resize((d.network_width(), d.network_height())))
+        detections = d.perform_detect(image_path_or_buf=img_arr, show_image=False)"""
 
     def procesarImagen(self, color_):
         color = np.frombuffer(color_.image, np.uint8).reshape(color_.height, color_.width, color_.depth)
