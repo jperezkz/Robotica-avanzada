@@ -34,14 +34,11 @@
 #include <doublebuffer/DoubleBuffer.h>
 //#include <grid2d/grid2d.h>
 //#include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
-#include <opencv2/viz.hpp>
 #include "elastic_band.h"
 #include <chrono>
 #include "opencv2/imgproc.hpp"
 #include <opencv2/photo.hpp>
-#include <kindr/Core>
-#include <kindr/poses/HomogeneousTransformation.hpp>
-#include <kindr/poses/Pose.hpp>
+
 
 class SpecificWorker : public GenericWorker
 {
@@ -84,7 +81,6 @@ class SpecificWorker : public GenericWorker
         }
 
     private:
-        std::shared_ptr < InnerModel > innerModel;
         bool startup_check_flag;
         RoboCompCommonBehavior::ParameterList confParams;
 
@@ -117,7 +113,11 @@ class SpecificWorker : public GenericWorker
             float TARGET_THRESHOLD_DISTANCE = 100.f;
             float MAX_ROT_SPEED = 1.f; // rads/sg
             float MAX_ADV_SPEED = 1000.f;  // mm/sg
-            struct State { float x; float y; float z; float rx; float ry; float rz; float vx; float vy; float vz; float vrx; float vry; float vrz;};
+            struct State { float x; float y; float z;
+                           float rx; float ry; float rz;
+                           float vx; float vy; float vz;
+                           float vrx; float vry; float vrz;
+                           float adv; };
             State state;
             std::tuple<float, float> to_go(const Target &t) const
                 {
@@ -181,8 +181,7 @@ class SpecificWorker : public GenericWorker
 
         template <typename T>
         bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
-
-        cv::Mat project_robot_on_image(cv::Mat virtual_frame, float focal);
+        cv::Mat project_robot_on_image(std::shared_ptr<Robot> robot, cv::Mat virtual_frame, float focal);
 };
 
 #endif

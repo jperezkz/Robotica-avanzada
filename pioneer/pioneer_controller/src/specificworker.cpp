@@ -45,14 +45,11 @@ SpecificWorker::~SpecificWorker()
 
 bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 {
-    try
-    {
-        RoboCompCommonBehavior::Parameter par = params.at("InnerModelPath");
-        std::string innermodel_path = par.value;
-        innerModel = std::make_shared<InnerModel>(innermodel_path);
-    }
-    catch(const std::exception &e) { qFatal("Error reading config params"); }
-    confParams = params;
+//    try
+//    {
+//    }
+//    catch(const std::exception &e) { qFatal("Error reading config params"); }
+//    confParams = params;
 	return true;
 }
 
@@ -148,7 +145,7 @@ void SpecificWorker::compute()
     // camara
     auto &&[cdata_left, cdata_right] = read_rgbd_camera(false);
     auto vframe = mosaic(cdata_left, cdata_right, 1);
-    vframe = project_robot_on_image(vframe, cdata_left.image.focalx);
+    vframe = project_robot_on_image(robot, vframe, cdata_left.image.focalx);
 
     auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
     label_rgb->setPixmap(pix);
@@ -161,7 +158,6 @@ void SpecificWorker::compute()
     //check_target(robot);
 
 }
-
 ///////////////////////////////////////////////////////////////////////////////////////
 void SpecificWorker::read_battery()
 {
@@ -192,15 +188,19 @@ void SpecificWorker::read_robot_pose(Robot2DScene *scene)
     //qInfo() << __FUNCTION__ << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz << pose.vx << pose.vy << pose.vz << pose.vrx << pose.vry << pose.vrz;
     scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz));
     scene->robot_polygon->setPos(pose.x, pose.y);
+    //qInfo() << "Robot in world" << scene->robot_polygon->mapToScene(scene->robot_polygon->pos()) << scene->robot_polygon->rotation();
     // projected robot
     int delta_time = 1;  // 1 sec
     // linear velocities are WRT world axes, so local speed has to be computed WRT to the robot's moving frame
-    //
-    QPointF offset = scene->robot_polygon->mapToScene(0,robot->state.vy * delta_time );  //should be advance speed
+    Eigen::Matrix<float, 2, 3> model;  // world velocity to robot velocity
+    model << -sin(pose.rz), cos(pose.rz), 0.f,
+             0.f,           0.f,          1.f;
+    Eigen::Vector2f robot_velocity = model * Eigen::Vector3f(pose.vx, pose.vy, pose.vrz);
+    //qInfo() << "robot speed " << robot_velocity.x() << robot_velocity.y();
+    QPointF offset = scene->robot_polygon->mapToScene(0,robot_velocity[0] * delta_time );  //should be advance speed
     scene->robot_polygon_projected->setPos(offset);
     scene->robot_polygon_projected->setRotation(qRadiansToDegrees(pose.rz));
-    robot->update_state(Robot::State{pose.x, pose.y, pose.z, pose.rx, pose.ry, pose.rz, pose.vx, pose.vy, pose.vz, pose.vrx, pose.vry, pose.vrz});
-
+    robot->update_state(Robot::State{pose.x, pose.y, pose.z, pose.rx, pose.ry, pose.rz, pose.vx, pose.vy, pose.vz, pose.vrx, pose.vry, pose.vrz, robot_velocity[0]});
 }
 float SpecificWorker::sigmoid(float t)
 {
@@ -213,22 +213,6 @@ float SpecificWorker::exponential(float value, float xValue, float yValue, float
     float landa = -fabs(xValue) / log(yValue);
     float res = exp(-fabs(value) / landa);
     return std::max(res, min);
-}
-RoboCompGenericBase::TBaseState SpecificWorker::read_base(Robot2DScene *scene)
-{
-    RoboCompGenericBase::TBaseState bState;
-    try
-    {
-        differentialrobot_proxy->getBaseState(bState);
-        // bState.alpha is corrected to comply with InnerModel convention
-        innerModel->updateTransformValues("robot", bState.x, 0, bState.z, 0, -bState.alpha, 0);
-        robot->update_state(Robot::State{bState.x, bState.z, bState.alpha});
-        scene->robot_polygon->setRotation(qRadiansToDegrees(bState.alpha));
-        scene->robot_polygon->setPos(bState.x, bState.z);
-    }
-    catch(const Ice::Exception &e)
-    { std::cout << "Error reading from DifferentialRobot" << e.what() << std::endl; }
-    return bState;
 }
 std::tuple<RoboCompCameraRGBDSimple::TRGBD, RoboCompCameraRGBDSimple::TRGBD> SpecificWorker::read_rgbd_camera(bool draw)
 {
@@ -556,9 +540,9 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
                 color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
             }
             // laser computation
-            if(Z>50 or Z<-450) continue;  // above the robot and on the floor
+            if(Z<-100 or Z>100) continue;
             // accumulate in bins of equal horizontal angle from optical axis
-            float hor_angle = atan2(cols, cdata_left.depth.focalx);
+            float hor_angle = atan2(cols, cdata_left.depth.focalx) - M_PI / 6.0 ;
             // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
             int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
             hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
@@ -619,9 +603,9 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
                 color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
             }
             // laser computation
-            if(Z>50) continue;
+            if(Z<-100 or Z>100) continue;
             // accumulate in bins of equal horizontal angle from optical axis
-            float hor_angle = atan2(cols, cdata_left.depth.focalx);
+            float hor_angle = atan2(cols, cdata_left.depth.focalx) + M_PI / 6.0;
             // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
             int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
             hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
@@ -671,9 +655,12 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
 
     return frame_virtual_final;
 }
-cv::Mat SpecificWorker::project_robot_on_image(cv::Mat virtual_frame, float focal)
+cv::Mat SpecificWorker::project_robot_on_image(std::shared_ptr<Robot> robot, cv::Mat virtual_frame, float focal)
 {
-    // get projectd polygon in local coordinates
+    // only do if advance velocity is greater than 0
+    //qInfo() << robot->state.adv;
+    if(fabs(robot->state.adv) < 100) return virtual_frame;
+    // get projected polygon in local coordinates
     QPolygonF poly = robot->scene->robot_polygon_projected->polygon();
     // transdorm to robot's coordinate frame
     QPolygonF poly_robot = robot->scene->robot_polygon->mapFromItem(robot->scene->robot_polygon_projected, poly);
@@ -684,12 +671,17 @@ cv::Mat SpecificWorker::project_robot_on_image(cv::Mat virtual_frame, float foca
     // project on virtual camera
     std::vector<cv::Point> cv_poly;
     for(const auto &p : poly_robot)
-        cv_poly.emplace_back(cv::Point(focal * Z / p.y() + center_rows, focal * p.x() / p.y() + center_cols));
-
+    {
+        auto col = focal * p.x() / p.y() + center_cols;
+        auto row = focal * Z / p.y() + center_rows;
+        //qInfo() << p.x() << p.y() << Z;
+        if(virtual_frame.rows-row > virtual_frame.rows/2)
+            cv_poly.emplace_back(cv::Point(col, virtual_frame.rows-row));
+    }
     const cv::Point *pts = (const cv::Point*) cv::Mat(cv_poly).data;
     int npts = cv::Mat(cv_poly).rows;
     // draw the polygon
-    cv::polylines(virtual_frame, &pts, &npts, 1, true, cv::Scalar(0, 255, 0));
+    cv::polylines(virtual_frame, &pts, &npts, 1, true, cv::Scalar(0, 255, 0), 12);
     return virtual_frame;
 }
 //////////////////////////////////////////////////////////////////////////////////////
