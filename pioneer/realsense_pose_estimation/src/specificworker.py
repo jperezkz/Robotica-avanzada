@@ -109,6 +109,7 @@ class SpecificWorker(GenericWorker):
     # IMPLEMENTATION of getFullPoseEuler method from FullPoseEstimation interface
     #
     def FullPoseEstimation_getFullPoseEuler(self):
+        print("hola")
         t = self.tm.get_transform("origin", "slam_sensor")
         rot = t[0:3, 0:3]
         angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)

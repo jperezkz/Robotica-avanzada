@@ -18,13 +18,16 @@
  */
 #include "specificworker.h"
 #include <cppitertools/enumerate.hpp>
+#include <cppitertools/zip_longest.hpp>
 #include <cppitertools/sliding_window.hpp>
 //#include <ranges>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/stitching.hpp>
 #include <Eigen/Dense>
 #include <opencv2/imgcodecs.hpp>
+#include <cppitertools/zip.hpp>
 
 
 /**
@@ -56,7 +59,6 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 void SpecificWorker::initialize(int period)
 {
     std::cout << "Initialize worker" << std::endl;
-
     // draw
     //QFileInfo info1("../../etc/informatica.simscene.xml");
     //QFileInfo info2("../../etc/informatica.json");
@@ -91,21 +93,21 @@ void SpecificWorker::initialize(int period)
                     QPixmap mypix("../../etc/resources/green.png");
                     label_robot->setPixmap(mypix);
                 }
-                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                catch(const Ice::Exception &e){ std::cout << e.what() << " differentialrobot" << std::endl;}
                 try
                 {
                     fullposeestimation_proxy->ice_ping();
                     QPixmap mypix("../../etc/resources/green.png");
                     label_localization->setPixmap(mypix);
                 }
-                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                catch(const Ice::Exception &e){ std::cout << e.what() << " fullpose" << std::endl;}
                 try
                 {
                     camerargbdsimple_proxy->ice_ping();
                     QPixmap mypix("../../etc/resources/green.png");
                     label_camera->setPixmap(mypix);
                 }
-                catch(const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+                catch(const Ice::Exception &e){ std::cout << e.what() << " camera" << std::endl;}
             });
     timer_alive.start(2000);
 
@@ -121,8 +123,8 @@ void SpecificWorker::initialize(int period)
 //    try
 //    {
 //        float x = 3305;
-//        float y = 0;
-//        float z = -21699;
+//        float y = -21699;
+//        float z = 0;
 //        float rx = 0;
 //        float ry = 0;
 //        float rz = 0;
@@ -136,26 +138,25 @@ void SpecificWorker::initialize(int period)
 	    this->startup_check();
 	else
 		timer.start(Period);
+
+	// Resize numero de sonars
+    //datosSonar.resize(ultrasound_proxy->getSonarsNumber());
 }
 
 void SpecificWorker::compute()
 {
-    qInfo() << __FUNCTION__;
+    //qInfo() << __FUNCTION__;
     read_robot_pose(&scene);
     // camara
     auto &&[cdata_left, cdata_right] = read_rgbd_camera(false);
     auto vframe = mosaic(cdata_left, cdata_right, 1);
     vframe = project_robot_on_image(robot, vframe, cdata_left.image.focalx);
-
+    // project_laser_on_image();
     auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
     label_rgb->setPixmap(pix);
-
-    // battery
     read_battery();
-    // RSSI
     read_RSSI();
-    //auto laser_data = get_laser_from_rgbd(cdata, &scene, true, 3);
-    //check_target(robot);
+    read_sonar();
 
 }
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -177,18 +178,36 @@ void SpecificWorker::read_RSSI()
     }
     catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
 }
+void SpecificWorker::read_sonar()
+{
+//    int i = 0;
+//    try
+//    {
+//        auto sonar = ultrasound_proxy->getAllSensorDistances();
+//        auto sonarPose = ultrasound_proxy->getAllSonarPose();
+//        for (auto  &&[p, s] :  iter::zip(sonarPose, sonar))
+//        {
+//            std::cout << "Sonar " << " X: " << p.x << " Y: " << p.y << " Rango: " << s << std::endl;
+//            datosSonar[i].x = p.x;
+//            datosSonar[i].y = p.y;
+//            datosSonar[i].s = s;
+//        }
+//        qInfo() << "--------------------";
+//    }
+//    catch (const Ice::Exception &e)
+//    { std::cout << e.what() << __FUNCTION__ << std::endl; };
+}
 void SpecificWorker::read_robot_pose(Robot2DScene *scene)
 {
     RoboCompFullPoseEstimation::FullPoseEuler pose;
     try
     {
-        pose = fullposeestimation_proxy->getFullPoseEuler();  // en metros
+        pose = fullposeestimation_proxy->getFullPoseEuler();
     }
     catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
     //qInfo() << __FUNCTION__ << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz << pose.vx << pose.vy << pose.vz << pose.vrx << pose.vry << pose.vrz;
     scene->robot_polygon->setRotation(qRadiansToDegrees(pose.rz));
     scene->robot_polygon->setPos(pose.x, pose.y);
-    //qInfo() << "Robot in world" << scene->robot_polygon->mapToScene(scene->robot_polygon->pos()) << scene->robot_polygon->rotation();
     // projected robot
     int delta_time = 1;  // 1 sec
     // linear velocities are WRT world axes, so local speed has to be computed WRT to the robot's moving frame
@@ -213,6 +232,15 @@ float SpecificWorker::exponential(float value, float xValue, float yValue, float
     float landa = -fabs(xValue) / log(yValue);
     float res = exp(-fabs(value) / landa);
     return std::max(res, min);
+}
+RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
+{
+    RoboCompCameraRGBDSimple::TImage cdata_left, cdata_right;
+    try
+    {
+        cdata_left = camerargbdsimple_proxy->getImage("pioneer_head_camera_0");
+    }
+    catch (const Ice::Exception &e){std::cout << e.what() << std::endl;}
 }
 std::tuple<RoboCompCameraRGBDSimple::TRGBD, RoboCompCameraRGBDSimple::TRGBD> SpecificWorker::read_rgbd_camera(bool draw)
 {
@@ -247,31 +275,6 @@ std::tuple<RoboCompCameraRGBDSimple::TRGBD, RoboCompCameraRGBDSimple::TRGBD> Spe
     }
     return std::make_tuple(cdata_left,cdata_right);
 }
-RoboCompCameraRGBDSimple::TImage SpecificWorker::read_rgb_camera(bool draw)
-{
-    auto cdata = camerargbdsimple_proxy->getImage("pioneer_head_camera_0");
-
-    if(draw)
-    {
-        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
-        cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
-        cv::flip(img, img, -1);
-        cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
-        cv::Mat img_resized(640, 480, CV_8UC3);
-        cv::resize(img, img_resized, cv::Size(640, 480));
-        auto pix = QPixmap::fromImage(QImage(img_resized.data, img_resized.cols, img_resized.rows, QImage::Format_RGB888));
-        label_rgb->setPixmap(pix);
-    }
-    else //coppelia
-    {
-        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata.image).data();
-        cv::Mat img(cdata.height, cdata.width, CV_8UC3, rgb_img_data);
-        //cv::flip(img, img, 0);
-        auto pix = QPixmap::fromImage(QImage(img.data, img.cols, img.rows, QImage::Format_RGB888));
-        label_rgb->setPixmap(pix);
-    }
-    return cdata;
-}
 void SpecificWorker::draw_target(Robot2DScene *scene, std::shared_ptr<Robot> robot, const Target &target)
 {
     static QGraphicsEllipseItem *target_draw = nullptr;
@@ -302,23 +305,23 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
     }
     if(target.is_active())
     {
-//        try
-//        {
-//            if (not robot->at_target(target))
-//            {
-//                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
-//                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
-//                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
-//                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
-//                differentialrobot_proxy->setSpeedBase(adv_speed, rot_speed);
-//            } else
-//            {
-//                target.set_active(false);
-//                differentialrobot_proxy->setSpeedBase(0, 0);
-//            }
-//        }
-//        catch (const Ice::Exception &e)
-//        { std::cout << e.what() << std::endl; };
+        try
+        {
+            if (not robot->at_target(target))
+            {
+                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
+                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
+                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
+                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
+                differentialrobot_proxy->setSpeedBase(adv_speed, rot_speed);
+            } else
+            {
+                target.set_active(false);
+                differentialrobot_proxy->setSpeedBase(0, 0);
+            }
+        }
+        catch (const Ice::Exception &e)
+        { std::cout << e.what() << std::endl; };
     }
 }
 std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata, Robot2DScene *scene,bool draw,unsigned short subsampling )
@@ -726,4 +729,38 @@ int SpecificWorker::startup_check()
 /**************************************/
 // From the RoboCompDifferentialRobot you can use this types:
 // RoboCompDifferentialRobot::TMechParams
+
+/**************************************/
+// From the RoboCompFullPoseEstimation you can call this methods:
+// this->fullposeestimation_proxy->getFullPoseEuler(...)
+// this->fullposeestimation_proxy->getFullPoseMatrix(...)
+// this->fullposeestimation_proxy->setInitialPose(...)
+
+/**************************************/
+// From the RoboCompFullPoseEstimation you can use this types:
+// RoboCompFullPoseEstimation::FullPoseMatrix
+// RoboCompFullPoseEstimation::FullPoseEuler
+
+/**************************************/
+// From the RoboCompRSSIStatus you can call this methods:
+// this->rssistatus_proxy->getRSSIState(...)
+
+/**************************************/
+// From the RoboCompRSSIStatus you can use this types:
+// RoboCompRSSIStatus::TRSSI
+
+/**************************************/
+// From the RoboCompUltrasound you can call this methods:
+// this->ultrasound_proxy->getAllSensorDistances(...)
+// this->ultrasound_proxy->getAllSensorParams(...)
+// this->ultrasound_proxy->getAllSonarPose(...)
+// this->ultrasound_proxy->getBusParams(...)
+// this->ultrasound_proxy->getSensorDistance(...)
+// this->ultrasound_proxy->getSensorParams(...)
+// this->ultrasound_proxy->getSonarsNumber(...)
+
+/**************************************/
+// From the RoboCompUltrasound you can use this types:
+// RoboCompUltrasound::BusParams
+// RoboCompUltrasound::SensorParams
 

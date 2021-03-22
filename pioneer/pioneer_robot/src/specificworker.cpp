@@ -17,7 +17,7 @@
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "specificworker.h"
-
+#include <cppitertools/zip.hpp>
 /**
 * \brief Default constructor
 */
@@ -51,8 +51,9 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 	return true;
 }
 
+<<<<<<< HEAD
 
-void SpecificWorker::rate(){
+int SpecificWorker::rate(){
         // instantiate dynamically to avoid stack unwinding before the process terminates
         QProcess *iwconfig = new QProcess();
         // catch data output
@@ -70,9 +71,12 @@ void SpecificWorker::rate(){
 
         // start the process after making signal/slots connections
     iwconfig->start("iwconfig");
+    return 0;
 }
 
 
+=======
+>>>>>>> 0ec44278b574f95a99cb73598076d5525141b76a
 void SpecificWorker::initialize(int period)
 {
 
@@ -87,36 +91,82 @@ void SpecificWorker::initialize(int period)
     //ArRobotConnector robotConnector(argparser, robot);
     if(!conn->connectRobot())
     {
-        qInfo()<<"SimpleMotionCommands: Could not connect to the robot->";
+        qInfo()<< __FUNCTION__ << " SimpleMotionCommands: Could not connect to the robot->";
         std::terminate();
     }
 
     robot->runAsync(true);
     robot->lock();
         robot->enableMotors();
-        robot->disableSonar();
+        robot->enableSonar();
+        numSonars = robot->getNumSonar();
     robot->unlock();
+    // Tamaño vectores sonars
+    sonar.resize(numSonars);
+    sonarPose.resize(numSonars);
 
     connect(&timerRSSI, &QTimer::timeout, this, &SpecificWorker::rate);
     timerRSSI.start(1000);
-    connect(this, SIGNAL(&SpecificWorker::controlTime(bool)), this, SLOT(&SpecificWorker::controlParadaBase(bool)));
 
+    reloj_seguridad.restart();
+    new_command.store(false);
+    connect(&timerWatchdog, &QTimer::timeout, this, &SpecificWorker::controlParadaBase);
+    timerWatchdog.start(1000);
 
     this->Period = period;
 	if(this->startup_check_flag)
-	{
 		this->startup_check();
-	}
 	else
-	{
 		timer.start(Period);
-	}
 }
+
+void manejador(int Snum);
 
 void SpecificWorker::compute()
 {
+   // if(!ejecucion) break;
+    if(new_command.load())
+        reloj_seguridad.restart();
 
+    //signal(SIGUSR1,manejador);
+    fillSonarDistances();
+    fillSonarPose();
 }
+
+//void manejador(int Snum){
+//    ejecucion=false;
+//}
+
+//Hay que quitar el void por el numero; debemos devolver el num en el controller
+void SpecificWorker::rate()
+{
+    // instantiate dynamically to avoid stack unwinding before the process terminates
+    QProcess *iwconfig = new QProcess();
+    // catch data output
+
+    QObject::connect(iwconfig, &QProcess::readyRead, [iwconfig, this] () {
+        char c4 [3];
+        QByteArray a = iwconfig->readAll();
+        int indexRate = a.indexOf("=", 11);
+        c4[0] = a.at(indexRate+1);;
+        c4[1] = a.at(indexRate+2);
+        c4[2] = a.at(indexRate+3);;
+        this->quality_rssi.store(atoi(c4));
+        // qInfo()<<"Link Quality: " << this->quality_rssi << "/100";
+
+    });
+
+    // delete process instance when done, and get the exit status to handle errors.
+    QObject::connect(iwconfig, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                     [=](int exitCode, QProcess::ExitStatus /*exitStatus*/){
+                         qDebug()<< "process exited with code " << exitCode;
+                         iwconfig->deleteLater();
+                     });
+
+    // start the process after making signal/slots connections
+    iwconfig->start("iwconfig");
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////
 /// SERVANTS
@@ -191,7 +241,8 @@ void SpecificWorker::DifferentialRobot_stopBase()
 
 /**************************************/
 // From the RoboCompDifferentialRobot you can use this types:
-// RoboCompDifferentialRobot::TMechParams
+// RoboCompDifferentialRobot::Tstatic QTime reloj = QTime::currentTime();
+
 
 int SpecificWorker::startup_check()
 {
@@ -200,16 +251,45 @@ int SpecificWorker::startup_check()
     return 0;
 }
 
-RoboCompUltrasound::SensorsState SpecificWorker::Ultrasound_getAllSensorDistances()
+RoboCompUltrasound::SensorsState SpecificWorker::Ultrasound_getAllSensorDistances() 
 {
 //implementCODE
+    return sonar;
+}
 
+void SpecificWorker::fillSonarDistances(){
+    try{
+        robot->lock();
+        for (int i = 0; i < numSonars; i++){
+            sonar[i] = robot->getSonarReading(i)->getRange();
+        }
+        robot->unlock();
+    } catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
+    
+}
+
+void SpecificWorker::fillSonarPose(){
+    try{
+        robot->lock();
+        for(int i = 0; i < numSonars; i++){
+            ArPose aux =  robot->getSonarReading(i)->getSensorPosition();
+            sonarPose[i].x = aux.getX();
+            sonarPose[i].y = aux.getY();
+        }
+    robot->unlock();
+    } catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
 }
 
 RoboCompUltrasound::SensorParamsList SpecificWorker::Ultrasound_getAllSensorParams()
 {
-//implementCODE
+  //implemetCODE
 
+}
+
+RoboCompUltrasound::SonarPoseList SpecificWorker::Ultrasound_getAllSonarPose()
+{
+//implementCODE
+    return sonarPose;
 }
 
 RoboCompUltrasound::BusParams SpecificWorker::Ultrasound_getBusParams()
@@ -231,6 +311,14 @@ RoboCompUltrasound::SensorParams SpecificWorker::Ultrasound_getSensorParams(std:
 }
 
 
+RoboCompRSSIStatus::TRSSI SpecificWorker::RSSIStatus_getRSSIState()
+{
+    RoboCompRSSIStatus::TRSSI res;
+    res.percentage = this->quality_rssi.load();
+    return res;
+}
+
+
 /**************************************/
 // From the RoboCompJoystickAdapter you can use this types:
 // RoboCompJoystickAdapter::AxisParams
@@ -242,31 +330,68 @@ void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData dat
 {
     float adv_speed = 0;
     float rot_speed = 0;
-    for(auto a : data.axes)
+    for(auto  &&[a, b] :  iter::zip(data.axes, data.buttons))
     {
-        if(a.name == "advance")
+        if(a.name == "advance" && a.value > 4){
             adv_speed = std::clamp(a.value, -1000.f, 1000.f);
+            std::cout << "Advance" << std::endl;
+        }
         if(a.name == "turn")
             rot_speed = std::clamp(a.value, -100.f, 100.f);
-        if(a.name == "back") {
-            adv_speed = -(std::clamp(a.value, -1000.f, 1000.f));
+        
+        if(b.name == "back") {
+            adv_speed = -50.f; //(std::clamp(-50.f, -1000.f, 1000.f));
             std::cout << "BACK" << std::endl;
         }
-        emit controlTime(true);
     }
-
+    
     if(fabs(rot_speed) < 1) rot_speed = 0;
     if(fabs(adv_speed) < 4) adv_speed = 0;
+    
+    if(adv_speed != 0 or rot_speed !=0)
+        this->new_command.store(true);
 
-    robot->lock();
-    qInfo() << adv_speed;
-    robot->setVel(adv_speed);
-    robot->setRotVel(rot_speed);
+        robot->lock();
+    	qInfo() << adv_speed;
+        robot->setVel(adv_speed);
+        robot->setRotVel(rot_speed);
     robot->unlock();
 }
 
-void SpecificWorker::controlParadaBase(bool flag){
-    //DifferentialRobot_stopBase();
+void SpecificWorker::controlParadaBase()
+{
+    qInfo() << __FUNCTION__ << "entro en controlPAradaa";
+    if(reloj_seguridad.elapsed() > 3000)
+    {
+        robot->lock();
+            robot->stop();
+        robot->unlock();
+    }
+
 }
 
+
+/**************************************/
+// From the RoboCompBatteryStatus you can use this types:
+// RoboCompBatteryStatus::TBattery
+
+/**************************************/
+// From the RoboCompDifferentialRobot you can use this types:
+// RoboCompDifferentialRobot::TMechParams
+
+/**************************************/
+// From the RoboCompRSSIStatus you can use this types:
+// RoboCompRSSIStatus::TRSSI
+
+/**************************************/
+// From the RoboCompUltrasound you can use this types:
+// RoboCompUltrasound::BusParams
+// RoboCompUltrasound::SensorParams
+// RoboCompUltrasound::SonarPose
+
+/**************************************/
+// From the RoboCompJoystickAdapter you can use this types:
+// RoboCompJoystickAdapter::AxisParams
+// RoboCompJoystickAdapter::ButtonParams
+// RoboCompJoystickAdapter::TData
 

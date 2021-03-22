@@ -39,6 +39,9 @@
 #include "opencv2/imgproc.hpp"
 #include <opencv2/photo.hpp>
 
+//#include <kindr/Core>
+//#include <kindr/poses/HomogeneousTransformation.hpp>
+//#include <kindr/poses/Pose.hpp>
 
 class SpecificWorker : public GenericWorker
 {
@@ -169,6 +172,15 @@ class SpecificWorker : public GenericWorker
 
         // RSSI
         void read_RSSI();
+
+        //Ultrasound
+        struct sonarData{
+            double x, y;
+            int s;
+        };
+
+        void read_sonar();
+        std::vector<sonarData> datosSonar;
 
         // Alive roobot
         QTimer timer_alive;

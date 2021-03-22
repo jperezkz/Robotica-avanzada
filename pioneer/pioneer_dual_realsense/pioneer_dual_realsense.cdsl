@@ -8,5 +8,6 @@ Component pioneer_dual_realsense
         implements Laser, CameraRGBDSimple;
     };
     language Cpp11;
+    //gui Qt(QWidget);
 };
 
