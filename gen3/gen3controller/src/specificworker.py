@@ -44,7 +44,9 @@ class SpecificWorker(GenericWorker):
         else:
             self.timer.timeout.connect(self.compute)
             self.timer.start(self.Period)
-
+        self.position = 0
+        self.objetos = {"cup":[]}
+        self.centros= False
     def __del__(self):
         print('SpecificWorker destructor')
 
@@ -64,13 +66,8 @@ class SpecificWorker(GenericWorker):
         #self.draw_image(all.image)
         #procesar imagen
         centre = self.procesarImagen(all.image)
-        self.yolo(all.image)
-
-        #enviar cambio a la pinza
-        #self.pinza(centre,all.depth)
-
-
-
+        detections = self.yolo(all.image)
+        #self.coger(detections, all.image)
         return True
 
     # ===================================================================
@@ -86,21 +83,22 @@ class SpecificWorker(GenericWorker):
         QTimer.singleShot(200, QApplication.instance().quit)
 
     def yolo(self, color_):
+
         color = np.frombuffer(color_.image, np.uint8).reshape(color_.height, color_.width, color_.depth)
-       #color = cv.medianBlur(color, 5)
-        #color = cv.cvtColor(color, cv.COLOR_BGR2GRAY)
-        #cimg = cv.cvtColor(color, cv.COLOR_GRAY2BGR)
+
         img = Image.fromarray(color)
         img_arr = np.array(img.resize((self.d.network_width(), self.d.network_height())))
         detections = self.d.perform_detect(image_path_or_buf=img_arr, show_image=False)
         for detection in detections:
-            if detection.class_confidence * 100 > 60:
+            if detection.class_confidence * 100 > 10:
                 box = detection.left_x, detection.top_y, detection.width, detection.height
                 print(f'{detection.class_name.ljust(10)} | {detection.class_confidence * 100:.1f} % | {box}')
 
-        """img_show = img.resize((d.network_width(), d.network_height()))
-        img_arr = np.array(img.resize((d.network_width(), d.network_height())))
-        detections = d.perform_detect(image_path_or_buf=img_arr, show_image=False)"""
+            else:
+                print("Objeto no detectado")
+        print("-"*100)
+
+        return detections
 
     def procesarImagen(self, color_):
         color = np.frombuffer(color_.image, np.uint8).reshape(color_.height, color_.width, color_.depth)
@@ -117,6 +115,7 @@ class SpecificWorker(GenericWorker):
                 cv.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
                 centre.append(i[0])
                 centre.append(i[1])
+                centre.append(i[2])
             print(centre[0], centre[1])
         plt.figure(1)
         plt.clf()
@@ -126,37 +125,63 @@ class SpecificWorker(GenericWorker):
         plt.imshow(cimg)
             #self.draw_image(cimg)
         return centre
-        
-        
 
-    def pinza(self, centre,depth):
+    def coger(self, detections, image):
+        for detection in detections:
+            box = detection.width, detection.height
+            if detection.class_name == 'cup':
+                self.objetos[detection.class_name] = box
+
+        centre = self.procesarImagen(image)
+        if centre or self.centros==True:
+            self.centros=True
+            self.pinza(centre)
+        elif self.centros==False:
+            self.mover(self.objetos["cup"])
+
+    def mover(self,box):
+        #tip = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
+        pos = RoboCompKinovaArm.TPose()
+
+
+        pos.x = pos.x - box[0] / 100
+        pos.y = pos.y - box[1] / 100
+        pos.z = 0
+        self.kinovaarm_proxy.setCenterOfTool(pos, RoboCompKinovaArm.ArmJoints.base)
+
+    def pinza(self, centre):
         tip = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
         pos = RoboCompKinovaArm.TPose()
-        print(tip.z)
+        print(tip.x)
+        print(tip.y)
         if centre:
+            print(centre[0] / 100)
+            print(centre[1] / 100)
+            print("*"*100)
             pos.x=tip.x - centre[0]/100
             pos.y=tip.y - centre[1]/100
             pos.z=0
             """print(tip.x,tip.y)
             print(pos.x,pos.y)
             print(centre)"""
-
+            """elif pos.x-tip.x<centre[2]:
+            pos.x=5
+            pos.y=0
+            pos.z=0"""
         elif tip.z > 0.08:
             pos.x=0
             pos.y=0
-            pos.z=-5
+            pos.z=-3
         else:
             pos.x=0
             pos.y=0
             pos.z=0
             self.kinovaarm_proxy.closeGripper()
 
-        self.kinovaarm_proxy.setCenterOfTool(pos ,RoboCompKinovaArm.ArmJoints.base)
-
-
+        self.kinovaarm_proxy.setCenterOfTool(pos, RoboCompKinovaArm.ArmJoints.base)
 
         #self.kinovaarm_proxy.openGripper()
-        print(tip)
+        #print(tip)
 
     ######################
     # From the RoboCompCameraRGBDSimple you can call this methods:
