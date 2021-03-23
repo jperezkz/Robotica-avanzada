@@ -68,13 +68,16 @@ private:
     rs2::config cfg_left, cfg_right;
     rs2::context ctx;
     rs2_intrinsics left_cam_intr, right_cam_intr, left_depth_intr, right_depth_intr;
-
-    cv::Mat mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling );
-
+    //cv::Mat mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling );
+    cv::Mat mosaic(  const rs2::points &points_left, const rs2::points &points_right, const rs2::frameset &cdata_left, const rs2::frameset &cdata_right);
     template <typename T>
     bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
-
     struct LaserPoint{ float dist; float angle;};
+    // data
+    rs2::pointcloud pointclouds[2];
+    rs2::points points[2];
+    rs2::frame rgb_list[2];
+    rs2::frame depth_list[2];
 };
 
 #endif
