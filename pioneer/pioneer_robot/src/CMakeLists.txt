@@ -26,6 +26,7 @@ SET ( SOURCES
   genericworker.cpp
   batterystatusI.cpp
   differentialrobotI.cpp
+  rssistatusI.cpp
   ultrasoundI.cpp
   joystickadapterI.cpp
 )
@@ -38,8 +39,8 @@ FIND_PACKAGE( Ice REQUIRED COMPONENTS Ice++11 IceStorm++11)
 
 #ROBOCOMP
 ROBOCOMP_INITIALIZE( $ENV{ROBOCOMP}/ )
-ROBOCOMP_IDSL_TO_ICE( CommonBehavior BatteryStatus DifferentialRobot GenericBase JoystickAdapter Ultrasound)
-ROBOCOMP_ICE_TO_SRC( CommonBehavior BatteryStatus DifferentialRobot GenericBase JoystickAdapter Ultrasound)
+ROBOCOMP_IDSL_TO_ICE( CommonBehavior BatteryStatus DifferentialRobot GenericBase JoystickAdapter RSSIStatus Ultrasound)
+ROBOCOMP_ICE_TO_SRC( CommonBehavior BatteryStatus DifferentialRobot GenericBase JoystickAdapter RSSIStatus Ultrasound)
 SET (EXECUTABLE_OUTPUT_PATH ${RC_COMPONENT_DEVEL_PATH}/bin)
 
 

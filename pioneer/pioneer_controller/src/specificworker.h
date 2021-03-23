@@ -32,13 +32,22 @@
 #include <QGraphicsLineItem>
 #include <myscene.h>
 #include <doublebuffer/DoubleBuffer.h>
-#include <grid2d/grid2d.h>
-#include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
-#include <opencv2/viz.hpp>
+//#include <grid2d/grid2d.h>
+//#include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
 #include "elastic_band.h"
+#include <chrono>
+#include "opencv2/imgproc.hpp"
+#include <opencv2/photo.hpp>
+
+//#include <kindr/Core>
+//#include <kindr/poses/HomogeneousTransformation.hpp>
+//#include <kindr/poses/Pose.hpp>
 
 class SpecificWorker : public GenericWorker
 {
+    using myclock = std::chrono::system_clock;
+    using msec = std::chrono::duration<double, std::milli>;
+
     Q_OBJECT
     public:
         SpecificWorker(TuplePrx tprx, bool startup_check);
@@ -75,7 +84,6 @@ class SpecificWorker : public GenericWorker
         }
 
     private:
-        std::shared_ptr < InnerModel > innerModel;
         bool startup_check_flag;
         RoboCompCommonBehavior::ParameterList confParams;
 
@@ -108,7 +116,11 @@ class SpecificWorker : public GenericWorker
             float TARGET_THRESHOLD_DISTANCE = 100.f;
             float MAX_ROT_SPEED = 1.f; // rads/sg
             float MAX_ADV_SPEED = 1000.f;  // mm/sg
-            struct State { float x; float y; float ang;};
+            struct State { float x; float y; float z;
+                           float rx; float ry; float rz;
+                           float vx; float vy; float vz;
+                           float vrx; float vry; float vrz;
+                           float adv; };
             State state;
             std::tuple<float, float> to_go(const Target &t) const
                 {
@@ -149,8 +161,11 @@ class SpecificWorker : public GenericWorker
         void draw_laser(Robot2DScene *scene, QPolygonF &laser_poly); // robot coordinates
 
         // cameras
-        RoboCompCameraRGBDSimple::TRGBD read_rgbd_camera(bool draw);
+        std::tuple<RoboCompCameraRGBDSimple::TRGBD, RoboCompCameraRGBDSimple::TRGBD> read_rgbd_camera(bool draw);
         RoboCompCameraRGBDSimple::TImage read_rgb_camera(bool draw);
+        cv::Mat mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_left,
+                        const RoboCompCameraRGBDSimple::TRGBD &cdata_right,
+                        unsigned short subsampling);
 
         // battery
         void read_battery();
@@ -158,14 +173,27 @@ class SpecificWorker : public GenericWorker
         // RSSI
         void read_RSSI();
 
+        //Ultrasound
+        struct sonarData{
+            double x, y;
+            int s;
+        };
+
+        void read_sonar();
+        std::vector<sonarData> datosSonar;
+
         // Alive roobot
         QTimer timer_alive;
 
         // Grid
-        Grid<> grid;
+        //Grid<> grid;
 
         // Elastic band
-        ElasticBand elastic_band;
+        //ElasticBand elastic_band;
+
+        template <typename T>
+        bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
+        cv::Mat project_robot_on_image(std::shared_ptr<Robot> robot, cv::Mat virtual_frame, float focal);
 };
 
 #endif

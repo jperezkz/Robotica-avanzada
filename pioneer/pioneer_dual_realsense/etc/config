@@ -1,0 +1,15 @@
+CommonBehavior.Endpoints=tcp -p 10111
+
+# Endpoints for implements interfaces
+CameraRGBDSimple.Endpoints=tcp -p 10096
+Laser.Endpoints=tcp -p 10003
+
+device_serial_left=839112061901
+device_serial_right=839112060624
+display=true
+
+
+Ice.Warn.Connections=0
+Ice.Trace.Network=0
+Ice.Trace.Protocol=0
+Ice.MessageSizeMax=20004800

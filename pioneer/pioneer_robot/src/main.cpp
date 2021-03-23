@@ -83,6 +83,7 @@
 
 #include <batterystatusI.h>
 #include <differentialrobotI.h>
+#include <rssistatusI.h>
 #include <ultrasoundI.h>
 #include <joystickadapterI.h>
 
@@ -221,6 +222,24 @@ int ::pioneer::run(int argc, char* argv[])
 		}
 		catch (const IceStorm::TopicExists&){
 			cout << "[" << PROGRAM_NAME << "]: ERROR creating or activating adapter for DifferentialRobot\n";
+		}
+
+
+		try
+		{
+			// Server adapter creation and publication
+			if (not GenericMonitor::configGetString(communicator(), prefix, "RSSIStatus.Endpoints", tmp, ""))
+			{
+				cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy RSSIStatus";
+			}
+			Ice::ObjectAdapterPtr adapterRSSIStatus = communicator()->createObjectAdapterWithEndpoints("RSSIStatus", tmp);
+			auto rssistatus = std::make_shared<RSSIStatusI>(worker);
+			adapterRSSIStatus->add(rssistatus, Ice::stringToIdentity("rssistatus"));
+			adapterRSSIStatus->activate();
+			cout << "[" << PROGRAM_NAME << "]: RSSIStatus adapter created in port " << tmp << endl;
+		}
+		catch (const IceStorm::TopicExists&){
+			cout << "[" << PROGRAM_NAME << "]: ERROR creating or activating adapter for RSSIStatus\n";
 		}
 
 
