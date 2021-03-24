@@ -114,11 +114,10 @@ void SpecificWorker::initialize(int period)
 
     // grid and planner
     auto dim = scene.get_dimensions();
-    //grid.initialize(&scene, Grid<>::Dimensions{dim.TILE_SIZE, dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT });
-    //grid.fill_with_obstacles(scene. get_obstacles());
+    grid.initialize(&scene, Grid<>::Dimensions{dim.TILE_SIZE, dim.HMIN, dim.VMIN, dim.WIDTH, dim.HEIGHT });
+    grid.fill_with_obstacles(scene. get_obstacles());
 
-    // elastic band
-    //elastic_band.initialize();
+    elastic_band.initialize();
 
     // reset initial state
 //    try
@@ -157,7 +156,8 @@ void SpecificWorker::compute()
     label_rgb->setPixmap(pix);
     read_battery();
     read_RSSI();
-    read_sonar();
+    //read_sonar();
+    check_target(robot);
 
 }
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -181,22 +181,22 @@ void SpecificWorker::read_RSSI()
 }
 void SpecificWorker::read_sonar()
 {
-//    int i = 0;
-//    try
-//    {
-//        auto sonar = ultrasound_proxy->getAllSensorDistances();
-//        auto sonarPose = ultrasound_proxy->getAllSonarPose();
-//        for (auto  &&[p, s] :  iter::zip(sonarPose, sonar))
-//        {
-//            std::cout << "Sonar " << " X: " << p.x << " Y: " << p.y << " Rango: " << s << std::endl;
-//            datosSonar[i].x = p.x;
-//            datosSonar[i].y = p.y;
-//            datosSonar[i].s = s;
-//        }
-//        qInfo() << "--------------------";
-//    }
-//    catch (const Ice::Exception &e)
-//    { std::cout << e.what() << __FUNCTION__ << std::endl; };
+    int i = 0;
+    try
+    {
+        auto sonar = ultrasound_proxy->getAllSensorDistances();
+        auto sonarPose = ultrasound_proxy->getAllSonarPose();
+        for (auto  &&[p, s] :  iter::zip(sonarPose, sonar))
+        {
+            std::cout << "Sonar " << " X: " << p.x << " Y: " << p.y << " Rango: " << s << std::endl;
+            datosSonar[i].x = p.x;
+            datosSonar[i].y = p.y;
+            datosSonar[i].s = s;
+        }
+        qInfo() << "--------------------";
+    }
+    catch (const Ice::Exception &e)
+    { std::cout << e.what() << __FUNCTION__ << std::endl; };
 }
 void SpecificWorker::read_robot_pose(Robot2DScene *scene)
 {
@@ -216,6 +216,7 @@ void SpecificWorker::read_robot_pose(Robot2DScene *scene)
     model << -sin(pose.rz), cos(pose.rz), 0.f,
              0.f,           0.f,          1.f;
     Eigen::Vector2f robot_velocity = model * Eigen::Vector3f(pose.vx, pose.vy, pose.vrz);
+
     //qInfo() << "robot speed " << robot_velocity.x() << robot_velocity.y();
     QPointF offset = scene->robot_polygon->mapToScene(0,robot_velocity[0] * delta_time );  //should be advance speed
     scene->robot_polygon_projected->setPos(offset);
@@ -301,20 +302,29 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
         qInfo() << __FUNCTION__ << t.value().pos;
         target.set_new_value(t.value());
         draw_target(&scene, robot, target);
-        //auto path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
-        //grid.draw_path(&scene, path, robot->WIDTH/3 );
+        path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
+        grid.draw_path(&scene, path, robot->WIDTH/3 );
     }
+
     if(target.is_active())
     {
         try
         {
             if (not robot->at_target(target))
             {
-                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
+                while(robot->at_target(path.front())){
+                    path.pop_front();
+                }
+
+                auto &&[dist_to_go, ang_to_go] = robot->to_go(path.front());
+                qInfo()<<"X: " << path.front().x() << " Y: " << path.front().y();
+                qInfo()<< "Dist: " << dist_to_go << " ang: " << ang_to_go;
                 float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
                 float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
                 adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
-                differentialrobot_proxy->setSpeedBase(adv_speed, rot_speed);
+
+                qInfo()<<"Velocidad: " << adv_speed << "Angulo :" << rot_speed;
+                differentialrobot_proxy->setSpeedBase(adv_speed,rot_speed);
             } else
             {
                 target.set_active(false);

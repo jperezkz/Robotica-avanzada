@@ -132,7 +132,6 @@ int ::pioneer_controller::run(int argc, char* argv[])
 
 	RoboCompBatteryStatus::BatteryStatusPrxPtr batterystatus_proxy;
 	RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr camerargbdsimple_proxy;
-	RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr camerargbdsimple1_proxy;
 	RoboCompDifferentialRobot::DifferentialRobotPrxPtr differentialrobot_proxy;
 	RoboCompFullPoseEstimation::FullPoseEstimationPrxPtr fullposeestimation_proxy;
 	RoboCompRSSIStatus::RSSIStatusPrxPtr rssistatus_proxy;
@@ -171,22 +170,6 @@ int ::pioneer_controller::run(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 	rInfo("CameraRGBDSimpleProxy initialized Ok!");
-
-
-	try
-	{
-		if (not GenericMonitor::configGetString(communicator(), prefix, "CameraRGBDSimple1Proxy", proxy, ""))
-		{
-			cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy CameraRGBDSimpleProxy\n";
-		}
-		camerargbdsimple1_proxy = Ice::uncheckedCast<RoboCompCameraRGBDSimple::CameraRGBDSimplePrx>( communicator()->stringToProxy( proxy ) );
-	}
-	catch(const Ice::Exception& ex)
-	{
-		cout << "[" << PROGRAM_NAME << "]: Exception creating proxy CameraRGBDSimple1: " << ex;
-		return EXIT_FAILURE;
-	}
-	rInfo("CameraRGBDSimpleProxy1 initialized Ok!");
 
 
 	try
@@ -253,7 +236,7 @@ int ::pioneer_controller::run(int argc, char* argv[])
 	rInfo("UltrasoundProxy initialized Ok!");
 
 
-	tprx = std::make_tuple(batterystatus_proxy,camerargbdsimple_proxy,camerargbdsimple1_proxy,differentialrobot_proxy,fullposeestimation_proxy,rssistatus_proxy,ultrasound_proxy);
+	tprx = std::make_tuple(batterystatus_proxy,camerargbdsimple_proxy,differentialrobot_proxy,fullposeestimation_proxy,rssistatus_proxy,ultrasound_proxy);
 	SpecificWorker *worker = new SpecificWorker(tprx, startup_check_flag);
 	//Monitor thread
 	SpecificMonitor *monitor = new SpecificMonitor(worker,communicator());

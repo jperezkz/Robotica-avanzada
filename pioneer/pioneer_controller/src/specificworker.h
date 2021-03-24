@@ -32,8 +32,8 @@
 #include <QGraphicsLineItem>
 #include <myscene.h>
 #include <doublebuffer/DoubleBuffer.h>
-//#include <grid2d/grid2d.h>
-//#include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
+#include <grid2d/grid2d.h>
+#include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
 #include "elastic_band.h"
 #include <chrono>
 #include "opencv2/imgproc.hpp"
@@ -130,11 +130,24 @@ class SpecificWorker : public GenericWorker
                     float dist = QVector2D(tr).length();
                     return std::make_tuple(dist, ang);
                 };
+
+        std::tuple<float, float> to_go(const QPointF p) const
+        {
+            //auto tr = innerModel->transform("robot", QVec::vec3(t.pos.x(), 0, t.pos.y()), "world");
+            auto tr = scene->robot_polygon->mapFromScene(p);
+            float ang = atan2(tr.x(), tr.y());
+            float dist = QVector2D(tr).length();
+            return std::make_tuple(dist, ang);
+        };
             bool at_target(Target &t)
             {
                 return QVector2D(scene->robot_polygon->mapFromScene(t.pos)).length() < TARGET_THRESHOLD_DISTANCE;
 
             }
+        bool at_target(QPointF p)
+        {
+            return QVector2D(scene->robot_polygon->mapFromScene(p)).length() < 400;
+        }
             void update_state( const State &s)
             {
                 state = s;
@@ -186,10 +199,11 @@ class SpecificWorker : public GenericWorker
         QTimer timer_alive;
 
         // Grid
-        //Grid<> grid;
+        Grid<> grid;
+        list<QPointF> path;
 
         // Elastic band
-        //ElasticBand elastic_band;
+        ElasticBand elastic_band;
 
         template <typename T>
         bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
