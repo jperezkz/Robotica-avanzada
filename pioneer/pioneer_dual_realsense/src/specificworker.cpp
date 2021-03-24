@@ -193,10 +193,8 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
                 float XV = coseno * vertices[i].x - seno * vertices[i].z + h_offset;
                 float ZV = seno * vertices[i].x + coseno * vertices[i].z;
                 // project
-                float col_virtual = static_cast<int>(fabs(
-                        frame_virtual_focalx * XV / ZV + center_virtual_cols));
-                float row_virtual = static_cast<int>(fabs(
-                        frame_virtual_focalx * vertices[i].y / ZV + center_virtual_rows));
+                float col_virtual = fabs(frame_virtual_focalx * XV / ZV + center_virtual_cols);
+                float row_virtual = fabs(frame_virtual_focalx * vertices[i].y / ZV + center_virtual_rows);
                 //qInfo() << "coor " << vertices[i].x << vertices[i].y << vertices[i].z << col_virtual << row_virtual;
                 if (col_virtual > 1279 or row_virtual > 479) continue;
 
@@ -223,7 +221,7 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
             }
         }
     }
-    cv::medianBlur(frame_virtual, frame_virtual, 1);
+    //cv::medianBlur(frame_virtual, frame_virtual, 3);
     return frame_virtual;
 }
 
