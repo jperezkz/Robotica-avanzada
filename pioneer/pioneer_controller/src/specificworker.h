@@ -128,7 +128,7 @@ class SpecificWorker : public GenericWorker
                     auto tr = scene->robot_polygon->mapFromScene(t.pos);
                     float ang = atan2(tr.x(), tr.y());
                     float dist = QVector2D(tr).length();
-                    return std::make_tuple(dist, ang);
+                    return std::make_tuple(dist, -ang);
                 };
 
         std::tuple<float, float> to_go(const QPointF p) const
@@ -137,7 +137,7 @@ class SpecificWorker : public GenericWorker
             auto tr = scene->robot_polygon->mapFromScene(p);
             float ang = atan2(tr.x(), tr.y());
             float dist = QVector2D(tr).length();
-            return std::make_tuple(dist, ang);
+            return std::make_tuple(dist, -ang);
         };
             bool at_target(Target &t)
             {
@@ -208,6 +208,7 @@ class SpecificWorker : public GenericWorker
         template <typename T>
         bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
         cv::Mat project_robot_on_image(std::shared_ptr<Robot> robot, cv::Mat virtual_frame, float focal);
+        cv::Mat project_point_on_image(std::shared_ptr<Robot> robot, cv::Mat virtual_frame, float focal);
 };
 
 #endif

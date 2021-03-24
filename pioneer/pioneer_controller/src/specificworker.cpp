@@ -151,6 +151,7 @@ void SpecificWorker::compute()
     auto &&[cdata_left, cdata_right] = read_rgbd_camera(false);
     auto vframe = mosaic(cdata_left, cdata_right, 1);
     vframe = project_robot_on_image(robot, vframe, cdata_left.image.focalx);
+    //vframe = project_point_on_image(robot, vframe, cdata_left.image.focalx);
     // project_laser_on_image();
     auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
     label_rgb->setPixmap(pix);
@@ -302,8 +303,8 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
         qInfo() << __FUNCTION__ << t.value().pos;
         target.set_new_value(t.value());
         draw_target(&scene, robot, target);
-        path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
-        grid.draw_path(&scene, path, robot->WIDTH/3 );
+//        path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
+//        grid.draw_path(&scene, path, robot->WIDTH/3 );
     }
 
     if(target.is_active())
@@ -312,16 +313,22 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
         {
             if (not robot->at_target(target))
             {
-                while(robot->at_target(path.front())){
-                    path.pop_front();
-                }
+//                while(robot->at_target(path.front()) && !path.empty()){
+//                    path.pop_front();
+//                }
 
-                auto &&[dist_to_go, ang_to_go] = robot->to_go(path.front());
-                qInfo()<<"X: " << path.front().x() << " Y: " << path.front().y();
+                //auto &&[dist_to_go, ang_to_go] = robot->to_go(path.front());
+                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
+//                qInfo()<<"X: " << path.front().x() << " Y: " << path.front().y();
+//                qInfo()<< "Dist: " << dist_to_go << " ang: " << ang_to_go;
+                qInfo()<<"X: " << target.pos.x() << " Y: " << target.pos.y();
                 qInfo()<< "Dist: " << dist_to_go << " ang: " << ang_to_go;
                 float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
-                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.3, 0.1, 0), dist_to_go);
+                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.5, 0.5, 0), dist_to_go);
                 adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
+
+                if(fabs(rot_speed) < 0.15)
+                    rot_speed = 0;
 
                 qInfo()<<"Velocidad: " << adv_speed << "Angulo :" << rot_speed;
                 differentialrobot_proxy->setSpeedBase(adv_speed,rot_speed);
@@ -669,6 +676,7 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
 
     return frame_virtual_final;
 }
+//////////////////////////////////////////////////////////////////////////////////////
 cv::Mat SpecificWorker::project_robot_on_image(std::shared_ptr<Robot> robot, cv::Mat virtual_frame, float focal)
 {
     // only do if advance velocity is greater than 0
@@ -696,6 +704,26 @@ cv::Mat SpecificWorker::project_robot_on_image(std::shared_ptr<Robot> robot, cv:
     int npts = cv::Mat(cv_poly).rows;
     // draw the polygon
     cv::polylines(virtual_frame, &pts, &npts, 1, true, cv::Scalar(0, 255, 0), 12);
+    return virtual_frame;
+}
+
+cv::Mat SpecificWorker::project_point_on_image(std::shared_ptr<Robot> robot, cv::Mat virtual_frame, float focal)
+{
+    // transform to robot's coordinate frame
+    QPointF point = robot->scene->robot_polygon->mapFromScene(path.front());
+
+    float Z = 100.f;  // translation to virtual camera coordinate system  Y outwards
+    float center_cols = virtual_frame.cols/2;
+    float center_rows = virtual_frame.rows/2;
+
+    auto col = focal * point.x() / point.y() + center_cols;
+    auto row = focal * Z / point.y() + center_rows;
+    //qInfo() << p.x() << p.y() << Z;
+
+    cv::Point p (col, row);
+
+    // draw the polygon
+    cv::circle(virtual_frame, p, 20, cv::Scalar(0, 0, 255), cv::FILLED);
     return virtual_frame;
 }
 //////////////////////////////////////////////////////////////////////////////////////
