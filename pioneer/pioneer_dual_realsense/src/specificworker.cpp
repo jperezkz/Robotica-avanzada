@@ -113,37 +113,42 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
                                  const rs2::frameset &cdata_left, const rs2::frameset &cdata_right) {
     rs2::video_frame left_image = cdata_left.get_color_frame();
     rs2::video_frame right_image = cdata_right.get_color_frame();
-    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(left_cam_intr.width * 3, left_cam_intr.height), CV_8UC3);
-    float center_virtual_i = frame_virtual.cols / 2.0;
-    float center_virtual_j = frame_virtual.rows / 2.0;
+    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(left_cam_intr.width * 2.5, left_cam_intr.height), CV_8UC3);
+    float center_virtual_cols = frame_virtual.cols / 2.0;
+    float center_virtual_rows = frame_virtual.rows / 2.0;
     float frame_virtual_focalx = left_cam_intr.fx;
     {
         auto left_ptr = (uint8_t *) left_image.get_data();
         auto left_stride = left_image.get_stride_in_bytes();
         float coseno = cos(-M_PI / 6.0);
         float seno = sin(-M_PI / 6.0);
-        float h_offset = -0.1;
+        float h_offset = 0.08;
         const rs2::vertex *vertices = points_left.get_vertices();
         auto tex_coords = points_left.get_texture_coordinates(); // and texture coordinates, u v coor of rgb image
-        for (size_t i = 0; i < points_left.size(); i++) {
-            if (vertices[i].z) {
-                // (Y outwards and Z up)
+        for (size_t i = 0; i < points_left.size(); i++)
+        {
+            if (vertices[i].z)
+            {
+                // Y downwards and Z outwards
                 // transform to virtual camera CS at center of both cameras. Assume equal height (Z). Needs angle and translation
                 float XV = coseno * vertices[i].x - seno * vertices[i].z + h_offset;
                 float ZV = seno * vertices[i].x + coseno * vertices[i].z;
                 // project
-                int row_virtual = static_cast<int>(fabs(
-                        frame_virtual_focalx * XV / ZV + center_virtual_i));
-                int col_virtual = static_cast<int>(fabs(
-                        frame_virtual_focalx * vertices[i].y / ZV + center_virtual_j));
-                if (col_virtual > 1279 or row_virtual > 479) continue;
+                int col_virtual = static_cast<int>(fabs(frame_virtual_focalx * XV / ZV + center_virtual_cols));
+                int row_virtual = static_cast<int>(fabs(frame_virtual_focalx * vertices[i].y / ZV + center_virtual_rows));
+
+                if (col_virtual >= frame_virtual.cols or row_virtual >= frame_virtual.rows) continue;
+
+                //col_virtual += center_virtual_j/2;
                 //qInfo() << "coor " << vertices[i].x << vertices[i].y << vertices[i].z << col_virtual << row_virtual;
                 cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(row_virtual, col_virtual);
 
-                int k = tex_coords[i].u * left_image.get_height();
-                int l = tex_coords[i].v * left_image.get_width();
-                if (k < 0 or k > 479 or l < 0 or l > 639) continue;
-                color[0] = int(left_ptr[k * left_stride + (3 * l)]);
+                int k = tex_coords[i].v * left_image.get_height();
+                int l = tex_coords[i].u * left_image.get_width();
+
+                if (k < 0 or k >= left_image.get_height() or l < 0 or l > left_image.get_width()) continue;
+
+                color[0] = int(left_ptr[k * left_stride + (3 * l)]    );
                 color[1] = int(left_ptr[k * left_stride + (3 * l) + 1]);
                 color[2] = int(left_ptr[k * left_stride + (3 * l) + 2]);
             }
@@ -154,28 +159,32 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
         auto right_stride = right_image.get_stride_in_bytes();
         float coseno = cos(M_PI / 6.0);
         float seno = sin(M_PI / 6.0);
-        float h_offset = 0.1;
+        float h_offset = -0.08;
         const rs2::vertex *vertices = points_right.get_vertices();
         auto tex_coords = points_right.get_texture_coordinates(); // and texture coordinates, u v coor of rgb image
 
-        for (size_t i = 0; i < points_right.size(); i++) {
-            if (vertices[i].z) {
+        for (size_t i = 0; i < points_right.size(); i++)
+        {
+            if (vertices[i].z)
+            {
                 // (Y outwards and Z up)
                 // transform to virtual camera CS at center of both cameras. Assume equal height (Z). Needs angle and translation
                 float XV = coseno * vertices[i].x - seno * vertices[i].z + h_offset;
                 float ZV = seno * vertices[i].x + coseno * vertices[i].z;
                 // project
-                int row_virtual = static_cast<int>(fabs(
-                        frame_virtual_focalx * XV / ZV + center_virtual_i));
                 int col_virtual = static_cast<int>(fabs(
-                        frame_virtual_focalx * vertices[i].y / ZV + center_virtual_j));
+                        frame_virtual_focalx * XV / ZV + center_virtual_cols));
+                int row_virtual = static_cast<int>(fabs(
+                        frame_virtual_focalx * vertices[i].y / ZV + center_virtual_rows));
                 //qInfo() << "coor " << vertices[i].x << vertices[i].y << vertices[i].z << col_virtual << row_virtual;
                 if (col_virtual > 1279 or row_virtual > 479) continue;
+
                 cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(row_virtual, col_virtual);
 
-                int k = tex_coords[i].u * right_image.get_height();
-                int l = tex_coords[i].v * right_image.get_width();
+                int k = tex_coords[i].v * right_image.get_height();
+                int l = tex_coords[i].u * right_image.get_width();
                 if (k < 0 or k > 479 or l < 0 or l > 639) continue;
+
                 color[0] = int(right_ptr[k * right_stride + (3 * l)]);
                 color[1] = int(right_ptr[k * right_stride + (3 * l) + 1]);
                 color[2] = int(right_ptr[k * right_stride + (3 * l) + 2]);

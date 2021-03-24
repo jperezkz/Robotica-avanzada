@@ -93,7 +93,8 @@ void SpecificWorker::initialize(int period)
                     QPixmap mypix("../../etc/resources/green.png");
                     label_robot->setPixmap(mypix);
                 }
-                catch(const Ice::Exception &e){ std::cout << e.what() << " differentialrobot" << std::endl;}
+                catch(const Ice::Exception &e){ std
+::cout << e.what() << " differentialrobot" << std::endl;}
                 try
                 {
                     fullposeestimation_proxy->ice_ping();

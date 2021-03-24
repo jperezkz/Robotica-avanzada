@@ -78,6 +78,18 @@ private:
     rs2::points points[2];
     rs2::frame rgb_list[2];
     rs2::frame depth_list[2];
+
+//    struct filter_options
+//    {
+//        public:
+//            filter_options(const std::string name, rs2::process_interface& filter);
+//            filter_options(filter_options&& other);
+//            std::string filter_name;                                   //Friendly name of the filter
+//            rs2::process_interface& rs2::filter;                            //The filter in use
+//            std::atomic_bool is_enabled;                               //A boolean controlled by the user that determines whether to apply the filter or not
+//    };
+//    std::vector<filter_options> filters;
+
 };
 
 #endif
