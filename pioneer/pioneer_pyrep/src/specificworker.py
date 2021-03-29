@@ -38,6 +38,9 @@ from itertools import zip_longest
 import cv2
 import imutils
 from threading import Lock
+from sorted_collection import SortedCollection
+from collections import namedtuple
+import math
 
 class TimeControl:
     def __init__(self, period_):
@@ -104,7 +107,7 @@ class SpecificWorker(GenericWorker):
         self.front_right_camera_name = "pioneer_head_camera_1"
         cam = VisionSensor(self.front_right_camera_name)
         self.cameras_write[self.front_right_camera_name] = {"handle": cam,
-                                                     "id": 0,
+                                                     "id": 1,
                                                      "angle": np.radians(cam.get_perspective_angle()),
                                                      "width": cam.get_resolution()[0],
                                                      "height": cam.get_resolution()[1],
@@ -112,6 +115,18 @@ class SpecificWorker(GenericWorker):
                                                          np.radians(cam.get_perspective_angle() / 2)),
                                                      "rgb": np.array(0),
                                                      "depth": np.ndarray(0)}
+
+        self.virtual_camera_name = "virtual_camera"
+        self.cameras_write[self.virtual_camera_name] = {"handle": None,
+                                                            "id": 2,
+                                                            "angle": np.radians(cam.get_perspective_angle()),
+                                                            "width": cam.get_resolution()[0],
+                                                            "height": cam.get_resolution()[1],
+                                                            "focal": (cam.get_resolution()[0] / 2) / np.tan(
+                                                                np.radians(cam.get_perspective_angle() / 2)),
+                                                            "rgb": np.array(0),
+                                                            "depth": np.ndarray(0)}
+
         self.cameras_read = self.cameras_write.copy()
         self.mutex_c = Lock()
 
@@ -132,6 +147,7 @@ class SpecificWorker(GenericWorker):
         while True:
             self.pr.step()
             self.read_cameras([self.front_left_camera_name, self.front_right_camera_name])
+            #self.stitch_cameras(self.front_left_camera_name, self.front_right_camera_name)
             self.read_joystick()
             self.read_robot_pose()
             self.move_robot()
@@ -167,6 +183,122 @@ class SpecificWorker(GenericWorker):
             # except Ice.Exception as e:
             #    print(e)
 
+    def is_in_bounds(self, value, low, high):
+        return not (value < low) and (value < high)
+
+    def stitch_cameras(self, left_camera_name, right_camera_name):
+        virtual_cam = self.cameras_write["virtual_camera"]
+        cdata_left = self.cameras_write[left_camera_name]
+        cdata_right = self.cameras_write[right_camera_name]
+
+        frame_virtual = np.zeros((cdata_left["rgb"].height, cdata_left["rgb"].width * 3, 3), np.uint8)
+        fv_cols = frame_virtual.shape[1]
+        fv_rows = frame_virtual.shape[0]
+        center_virtual_cols = frame_virtual.shape[1] / 2.0
+        center_virtual_rows = frame_virtual.shape[0] / 2.0
+        frame_virtual_focalx = cdata_left["rgb"].focalx
+        print(frame_virtual.shape)
+        MAX_LASER_BINS = 100
+        TOTAL_HOR_ANGLE = 2.094
+
+        Point = namedtuple('Point', 'x y z')
+        s = SortedCollection(key=lambda a, b: a.x * a.x + a.y * a.y + a.z * a.z < b.x * b.x + b.y * b.y + b.z * b.z)
+        hor_bins = [] # MAX_LASER_BINS;
+
+        # Left image
+        if cdata_left["rgb"].width == cdata_left["depth"].width and cdata_left["rgb"].height == cdata_left["depth"].height:
+            depth_array = np.frombuffer(cdata_left["depth"].depth, dtype=np.float32)
+            rgb_img_data = np.frombuffer(cdata_left["rgb"].image, np.uint8)
+            coseno = np.cos(-np.pi / 6.0)
+            seno = np.sin(-np.pi / 6.0)
+            h_offset = -100
+            for i in range(len(depth_array)):
+                cols = (i % cdata_left["depth"].width) - (cdata_left["depth"].width / 2);
+                rows = (cdata_left["depth"].height / 2) - (i / cdata_left["depth"].height);
+                # compute axis coordinates according to the camera's coordinate system (Y outwards and Z up)
+                Y = depth_array[i] * 1000.0
+                # we transform measurements to millimeters
+                if Y < 100:
+                    continue
+                X = -cols * Y / cdata_left["depth"].focalx
+                Z = rows * Y / cdata_left["depth"].focalx
+                # transform to virtual camera CS at center of both cameras.Assume equal height(Z).Needs angle and translation
+                #print(X, Y, Z)
+                XV = coseno * X - seno * Y + h_offset
+                YV = seno * X + coseno * Y
+                # project on virtual camera
+                #print(XV, YV, Z)
+                col_virtual = frame_virtual_focalx * XV / YV + center_virtual_cols
+                row_virtual = frame_virtual_focalx * Z / YV + center_virtual_rows
+                # if self.is_in_bounds(math.floor(col_virtual), 0, fv_cols) and self.is_in_bounds(math.floor(row_virtual), 0, fv_rows):
+                #     frame_virtual[math.floor(row_virtual), math.floor(col_virtual)] = [rgb_img_data[i*3], rgb_img_data[i*3+1], rgb_img_data[i*3+2]]
+                #
+                # if self.is_in_bounds(math.ceil(col_virtual), 0, fv_cols) and self.is_in_bounds(math.ceil(row_virtual), 0, fv_rows):
+                #     frame_virtual[math.ceil(row_virtual), math.ceil(col_virtual)] = [rgb_img_data[i * 3], rgb_img_data[i * 3 + 1], rgb_img_data[i * 3 + 2]]
+                #
+                # if self.is_in_bounds(math.floor(col_virtual), 0, fv_cols) and self.is_in_bounds(math.ceil(row_virtual), 0, fv_rows):
+                #     frame_virtual[math.ceil(row_virtual), math.floor(col_virtual)] = [rgb_img_data[i*3], rgb_img_data[i*3+1], rgb_img_data[i*3+2]]
+                #
+                # if self.is_in_bounds(math.ceil(col_virtual), 0, fv_cols) and self.is_in_bounds(math.floor(row_virtual), 0, fv_rows):
+                #     frame_virtual[math.floor(row_virtual), math.ceil(col_virtual)] = [rgb_img_data[i * 3], rgb_img_data[i * 3 + 1], rgb_img_data[i * 3 + 2]]
+
+    #         # laser computation
+    #         if (Z < -100 or Z > 100) continue;
+    #         # accumulate in bins of equal horizontal angle from optical axis
+    #         hor_angle = atan2(cols, cdata_left.depth.focalx) - M_PI / 6.0;
+    #         # map from +-MAX_ANGLE  to 0 - MAX_LASER_BINS
+    #         angle_index = (int)((MAX_LASER_BINS / TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS / 2));
+    #         hor_bins[angle_index].emplace(std::make_tuple(X, Y, Z))
+    #
+    #     else:
+    #       qWarning() << __FUNCTION__ << " Depth and RGB sizes not equal";
+    #       return
+    #
+    #
+    # # Fill gaps
+    # // cv::inpaint(frame_virtual, frame_virtual_occupied, frame_virtual, 1.0, cv::INPAINT_TELEA);
+    # cv::medianBlur(frame_virtual, frame_virtual, 3);
+    #
+    # cv::flip(frame_virtual, frame_virtual, -1);
+    # cv::Mat
+    # frame_virtual_final(label_rgb->width(), label_rgb->height(), CV_8UC3);
+    # cv::resize(frame_virtual, frame_virtual_final, cv::Size(
+    #     label_rgb->width(), label_rgb->height()), 0, 0, cv::INTER_LANCZOS4);
+    #
+    # // laser
+    # computation
+    # std::vector < LaserPoint > laser_data(MAX_LASER_BINS);
+    # uint
+    # i = 0;
+    # for (auto & bin : hor_bins)
+    # {
+    #     if (bin.size() > 0)
+    #         {
+    #             const
+    #         auto & [X, Y, Z] = *bin.cbegin();
+    #         laser_data[i] = LaserPoint
+    #         {sqrt(X * X + Y * Y + Z * Z),
+    #          (i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+    #         }
+    #         else
+    #         laser_data[i] = LaserPoint
+    #         {0.
+    #         f, (i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+    #         i + +;
+    #         }
+    #         auto
+    #         laser_poly = filter_laser(laser_data);
+    #         draw_laser( & scene, laser_poly);
+    #
+    #         return frame_virtual_final;
+    #         }
+    #
+    #     #cam["rgb"] = RoboCompCameraRGBDSimple.TImage(cameraID=cam["id"], width=cam["width"], height=cam["height"],
+    #     #                                             depth=3, focalx=cam["focal"], focaly=cam["focal"],
+    #     #                                             alivetime=time.time(), image=image.tobytes())
+
+
+
     ###########################################
     ### JOYSITCK read and move the robot
     ###########################################
@@ -178,11 +310,11 @@ class SpecificWorker(GenericWorker):
             for x in datos.axes:
                 if x.name == "advance":
                     adv = x.value if np.abs(x.value) > 10 else 0
-                if x.name == "rotate":
+                if x.name == "rotate" or x.name == "turn":
                     rot = x.value if np.abs(x.value) > 0.01 else 0
 
             converted = self.convert_base_speed_to_motors_speed(adv, rot)
-            #print("Joystick ", [adv, rot], converted)
+            print("Joystick ", [adv, rot], converted)
             self.joystick_newdata = None
             self.last_received_data_time = time.time()
         else:
