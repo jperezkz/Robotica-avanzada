@@ -59,17 +59,6 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 void SpecificWorker::initialize(int period)
 {
     std::cout << "Initialize worker" << std::endl;
-    // draw
-    //QFileInfo info1("../../etc/informatica.simscene.xml");
-    //QFileInfo info2("../../etc/informatica.json");
-    //qInfo() << info2.lastModified().toSecsSinceEpoch() - info1.lastModified().toSecsSinceEpoch();
-
-    //    qInfo() << info.lastModified().toSecsSinceEpoch();
-    //    if (QDateTime::currentDateTime().toSecsSinceEpoch() - info.lastModified().toSecsSinceEpoch() < 3000)
-    //    {
-    //        QProcess::execute("python3 /home/robocomp/robocomp/components/dsr-graph/scripts/vrep_to_json/vrep_to_qscene_json.py ../etc/escuela.simscene.xml ../etc/escuela.json");
-    //        qInfo() << __FUNCTION__ << " JSON file created from XML";
-    //    }
 
     // 2d scene initialization
     auto target_slot =  [this](QGraphicsSceneMouseEvent *e)
