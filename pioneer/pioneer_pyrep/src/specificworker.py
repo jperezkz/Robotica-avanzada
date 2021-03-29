@@ -334,6 +334,7 @@ class SpecificWorker(GenericWorker):
         self.back_right_wheel.set_joint_target_velocity(right_vel)
         self.front_left_wheel.set_joint_target_velocity(left_vel)
         self.front_right_wheel.set_joint_target_velocity(right_vel)
+        return left_vel, right_vel
 
     ###########################################
     ### ROBOT POSE get and publish robot position
@@ -385,7 +386,7 @@ class SpecificWorker(GenericWorker):
     def move_robot(self):
 
         if self.speed_robot != self.speed_robot_ant:  # or (isMoving and self.speed_robot == [0,0,0]):
-            self.convert_base_speed_to_motors_speed(self.speed_robot)
+            self.convert_base_speed_to_motors_speed(self.speed_robot[0], self.speed_robot[1])
             # print("Velocities sent to robot:", self.speed_robot)
             self.speed_robot_ant = self.speed_robot
 
@@ -469,7 +470,7 @@ class SpecificWorker(GenericWorker):
     # setSpeedBase
     #
     def DifferentialRobot_setSpeedBase(self, advz, rot):
-        self.speed_robot = self.convert_base_speed_to_radians(advz, rot)
+        self.speed_robot = self.convert_base_speed_to_motors_speed(advz, rot)
 
     #
     # stopBase

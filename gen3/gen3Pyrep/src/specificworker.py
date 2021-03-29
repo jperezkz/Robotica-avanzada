@@ -46,6 +46,7 @@ class TimeControl:
         self.period = period_
 
 
+
     def wait(self):
         elapsed = time.time() - self.start
         if elapsed < self.period:
@@ -72,6 +73,8 @@ class SpecificWorker(GenericWorker):
         self.pr = PyRep()
         self.pr.launch(SCENE_FILE, headless=False)
         self.pr.start()
+        self.mode = 0
+        self.bloqueo=True
         
         #self.robot = Viriato()
         #self.robot = YouBot()
@@ -131,6 +134,7 @@ class SpecificWorker(GenericWorker):
     ###########################################
     def read_joystick(self):
         if self.joystick_newdata: #and (time.time() - self.joystick_newdata[1]) > 0.1:
+            print(self.joystick_newdata)
             self.update_joystick(self.joystick_newdata[0])
             self.joystick_newdata = None
             self.last_received_data_time = time.time()
@@ -141,18 +145,31 @@ class SpecificWorker(GenericWorker):
                 pass
     
     def update_joystick(self, datos):
-        adv = 0.0
-        rot = 0.0
-        side = 0.0
+        adv = advR = 0.0
+        rot = rotR = 0.0
+        side = sideR = 0.0
         #linear_vel, ang_vel = self.robot_object.get_velocity()
+        print(datos.buttons)
+        for x in datos.buttons:
+            if x.name == "mode":
+                self.mode += x.step
+                if self.mode%2==1:
+                    self.bloqueo=True
+                else:
+                    self.bloqueo=False
+        #datos.buttons.clear()
+        #print(datos.buttons)
         for x in datos.axes:
             print(x.name + "" + str(x.value))
             if x.name == "X_axis":
                 adv = x.value if np.abs(x.value) > 1 else 0
+                advR = x.value if np.abs(x.value) > 1 else 0
             if x.name == "Y_axis":
                 rot = x.value if np.abs(x.value) > 0.01 else 0
+                rotR = x.value if np.abs(x.value) > 0.01 else 0
             if x.name == "Z_axis":
                 side = x.value if np.abs(x.value) > 1 else 0
+                sideR = x.value if np.abs(x.value) > 1 else 0
             if x.name == "gripper":
 
                 if x.value > 1:
@@ -162,12 +179,16 @@ class SpecificWorker(GenericWorker):
                     print("cerrando")
                     self.pr.script_call("close@RG2", 1)
 
-        #self.robot.set_base_angular_velocites(converted)
-        dummy = Dummy("target")
-        parent_frame_object = None
-        position = dummy.get_position()
-        dummy.set_position([position[0]+adv/1000, position[1]+rot/1000, position[2]+side/1000], parent_frame_object)
-        # dummy.set_orientation([pose.rx, pose.ry, pose.rz], parent_frame_object)
+            dummy = Dummy("target")
+            parent_frame_object = None
+            position = dummy.get_position()
+            orientation= dummy.get_orientation()
+            if self.bloqueo==False:
+                print("modo0\n\n")
+                dummy.set_position([position[0]+adv/1000, position[1]+rot/1000, position[2]+side/1000], parent_frame_object)
+            else:
+                print("modo1\n\n")
+                dummy.set_orientation([orientation[0]+advR/1000, orientation[1]+rotR/1000, orientation[2]+sideR/1000], parent_frame_object)
 
 
     ##################################################################################
