@@ -13,11 +13,11 @@
                     },
                     "OuterRegionRight": {
                         "type": 1,
-                        "value": 25000
+                        "value": 12500
                     },
                     "OuterRegionTop": {
                         "type": 1,
-                        "value": 70000
+                        "value": 35000
                     },
                     "color": {
                         "type": 0,
@@ -1832,6 +1832,29 @@
                 "id": 200,
                 "links": [
                     {
+                        "dst": 201,
+                        "label": "RT",
+                        "linkAttribute": {
+                            "rt_rotation_euler_xyz": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "rt_translation": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            }
+                        },
+                        "src": 200
+                    },
+                    {
                         "dst": 210,
                         "label": "RT",
                         "linkAttribute": {
@@ -1870,6 +1893,29 @@
                                 "type": 3,
                                 "value": [
                                     60,
+                                    0,
+                                    350
+                                ]
+                            }
+                        },
+                        "src": 200
+                    },
+                    {
+                        "dst": 212,
+                        "label": "RT",
+                        "linkAttribute": {
+                            "rt_rotation_euler_xyz": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "rt_translation": {
+                                "type": 3,
+                                "value": [
+                                    0,
                                     0,
                                     350
                                 ]
@@ -2041,6 +2087,51 @@
                 "name": "wall_38",
                 "type": "plane"
             },
+            "201": {
+                "attribute": {
+                    "color": {
+                        "type": 0,
+                        "value": "Red"
+                    },
+                    "depth": {
+                        "type": 1,
+                        "value": 540
+                    },
+                    "height": {
+                        "type": 1,
+                        "value": 10
+                    },
+                    "level": {
+                        "type": 1,
+                        "value": 2
+                    },
+                    "parent": {
+                        "type": 7,
+                        "value": 200
+                    },
+                    "pos_x": {
+                        "type": 2,
+                        "value": 87
+                    },
+                    "pos_y": {
+                        "type": 2,
+                        "value": -390
+                    },
+                    "texture": {
+                        "type": 0,
+                        "value": "#b7e059"
+                    },
+                    "width": {
+                        "type": 1,
+                        "value": 460
+                    }
+                },
+                "id": 201,
+                "links": [
+                ],
+                "name": "pioneer_body",
+                "type": "plane"
+            },
             "210": {
                 "attribute": {
                     "color": {
@@ -2121,6 +2212,43 @@
                 "links": [
                 ],
                 "name": "pioneer_head_camera_1",
+                "type": "rgbd"
+            },
+            "212": {
+                "attribute": {
+                    "color": {
+                        "type": 0,
+                        "value": "Brown"
+                    },
+                    "height": {
+                        "type": 1,
+                        "value": 480
+                    },
+                    "level": {
+                        "type": 1,
+                        "value": 2
+                    },
+                    "parent": {
+                        "type": 7,
+                        "value": 200
+                    },
+                    "pos_x": {
+                        "type": 2,
+                        "value": 265.133224
+                    },
+                    "pos_y": {
+                        "type": 2,
+                        "value": -721.082092
+                    },
+                    "width": {
+                        "type": 1,
+                        "value": 640
+                    }
+                },
+                "id": 212,
+                "links": [
+                ],
+                "name": "pioneer_head_camera_virtual",
                 "type": "rgbd"
             },
             "215": {

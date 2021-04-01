@@ -39,9 +39,6 @@
 #include "opencv2/imgproc.hpp"
 #include <opencv2/photo.hpp>
 
-//#include <kindr/Core>
-//#include <kindr/poses/HomogeneousTransformation.hpp>
-//#include <kindr/poses/Pose.hpp>
 
 class SpecificWorker : public GenericWorker
 {

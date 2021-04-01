@@ -81,13 +81,13 @@ class SpecificWorker : public GenericWorker
         void read_battery();
         void read_RSSI();
 
-        // virtual_frame
-        void update_virtual(const cv::Mat &virtual_frame, float focalx, float focaly);
-        cv::Mat compute_mosaic(int subsampling = 1);
-        float focalx, focaly;
-
         //laser
         struct LaserPoint{ float dist; float angle;};
+
+        // virtual_frame
+        void update_virtual(const cv::Mat &virtual_frame, float focalx, float focaly);
+        std::tuple<cv::Mat, std::vector<LaserPoint>> compute_mosaic(int subsampling = 1);
+        float focalx, focaly;
 
         bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);
         template <typename T>

@@ -122,7 +122,7 @@ void SpecificWorker::compute()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
-cv::Mat SpecificWorker::compute_mosaic(int subsampling)
+std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::compute_mosaic(int subsampling)
 {
     RoboCompCameraRGBDSimple::TRGBD cdata_left, cdata_right;
     try
@@ -214,7 +214,7 @@ cv::Mat SpecificWorker::compute_mosaic(int subsampling)
     else
     {
         qWarning() << __FUNCTION__ << " Depth and RGB sizes not equal";
-        return cv::Mat();
+        return std::make_tuple(cv::Mat(), std::vector<LaserPoint>());
     }
     // right image
     if(cdata_right.image.width == cdata_right.depth.width and cdata_right.image.height == cdata_right.depth.height)
@@ -277,7 +277,7 @@ cv::Mat SpecificWorker::compute_mosaic(int subsampling)
     else
     {
         qWarning() << __FUNCTION__ << " Depth and RGB sizes not equal";
-        return cv::Mat();
+        return std::make_tuple(cv::Mat(), std::vector<LaserPoint>());
     }
     // Fill gaps
     cv::medianBlur(frame_virtual, frame_virtual, 3);
@@ -309,7 +309,7 @@ cv::Mat SpecificWorker::compute_mosaic(int subsampling)
         i++;
     }
     //auto laser_poly = filter_laser(laser_data);
-    return frame_virtual;
+    return std::make_tuple(frame_virtual, laser_data);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
