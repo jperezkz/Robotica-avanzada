@@ -25,6 +25,7 @@
 SpecificWorker::SpecificWorker(TuplePrx tprx, bool startup_check) : GenericWorker(tprx)
 {
 	this->startup_check_flag = startup_check;
+    QLoggingCategory::setFilterRules("*.debug=false\n");
 }
 
 /**
@@ -111,13 +112,227 @@ void SpecificWorker::initialize(int period)
 void SpecificWorker::compute()
 {
     update_robot_localization();
-    update_rgbd();
+    auto [virtual_frame, laser] = compute_mosaic();
+    update_virtual(virtual_frame, focalx, focaly);
+    //update_laser()
+    //update_rgbd();
     //auto cdata = read_rgb_camera(false);
     //read_battery();
     //read_RSSI();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+cv::Mat SpecificWorker::compute_mosaic(int subsampling)
+{
+    RoboCompCameraRGBDSimple::TRGBD cdata_left, cdata_right;
+    try
+    {
+        cdata_left = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
+        this->focalx = cdata_left.image.focalx;
+        this->focaly = cdata_left.image.focaly;
+    }
+    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+    try
+    {
+        cdata_right = camerargbdsimple_proxy->getAll("pioneer_head_camera_1");
+    }
+    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+
+    // check that both cameras are equal
+    // declare frame virtual
+    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(cdata_left.image.width*3, cdata_left.image.height), CV_8UC3);
+    float center_virtual_i = frame_virtual.cols / 2.0;
+    float center_virtual_j = frame_virtual.rows / 2.0;
+    float frame_virtual_focalx = cdata_left.image.focalx;
+    auto before = MyClock::now();
+
+    // laser stuff
+    const int MAX_LASER_BINS = 100;
+    const float TOTAL_HOR_ANGLE = 2.094;  // para 120º
+    using Point = std::tuple< float, float, float>;
+    auto cmp = [](Point a, Point b) { auto &[ax,ay,az] = a; auto &[bx,by,bz] = b; return (ax*ax+ay*ay+az*az) < (bx*bx+by*by+bz*bz);};
+    std::vector<std::set<Point, decltype(cmp)>> hor_bins(MAX_LASER_BINS);
+
+    // Left image check that rgb and depth are equal
+    if(cdata_left.image.width == cdata_left.depth.width and cdata_left.image.height == cdata_left.depth.height)
+    {
+        // cast depth
+        float *depth_array = (float *) cdata_left.depth.depth.data();
+        // cast rgb
+        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata_left.image.image).data();
+        // vars
+        float X, Y, Z;
+        int cols, rows;
+        std::size_t num_pixels = cdata_left.depth.depth.size() / sizeof(float);
+        float coseno = cos(-M_PI / 6.0);
+        float seno = sin(-M_PI / 6.0);
+        float h_offset = -100;
+        for (std::size_t i = 0; i < num_pixels; i += subsampling)
+        {
+            cols = (i % cdata_left.depth.width) - (cdata_left.depth.width / 2);
+            rows = (cdata_left.depth.height / 2) - (i / cdata_left.depth.height);
+            // compute axis coordinates according to the camera's coordinate system (Y outwards and Z up)
+            Y = depth_array[i] * 1000.f; // we transform measurements to millimeters
+            if (Y < 100) continue;
+            X = -cols * Y / cdata_left.depth.focalx;
+            Z = rows * Y / cdata_left.depth.focalx;
+            // transform to virtual camera CS at center of both cameras. Assume equal height (Z). Needs angle and translation
+            float XV = coseno * X - seno * Y + h_offset;
+            float YV = seno * X + coseno * Y;
+            // project on virtual camera
+            auto col_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
+            auto row_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
+            if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), floor(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(ceil(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(ceil(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), ceil(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(ceil(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), floor(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(ceil(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), ceil(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            // laser computation
+            if(Z<-100 or Z>100) continue;
+            // accumulate in bins of equal horizontal angle from optical axis
+            float hor_angle = atan2(cols, cdata_left.depth.focalx) - M_PI / 6.0 ;
+            // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
+            int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
+            hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
+        }
+    }
+    else
+    {
+        qWarning() << __FUNCTION__ << " Depth and RGB sizes not equal";
+        return cv::Mat();
+    }
+    // right image
+    if(cdata_right.image.width == cdata_right.depth.width and cdata_right.image.height == cdata_right.depth.height)
+    {
+        // cast depth
+        float *depth_array = (float *) cdata_right.depth.depth.data();
+        // cast rgb
+        const auto &rgb_img_data = const_cast<std::vector<uint8_t> &>(cdata_right.image.image).data();
+        // vars
+        float X, Y, Z;
+        int cols, rows;
+        std::size_t num_pixels = cdata_right.depth.depth.size() / sizeof(float);
+        float coseno = cos(M_PI / 6.0);
+        float seno = sin(M_PI / 6.0);
+        float h_offset = 100;
+        for (std::size_t i = 0; i < num_pixels; i += subsampling)
+        {
+            cols = (i % cdata_right.depth.width) - (cdata_right.depth.width / 2);
+            rows = (cdata_right.depth.height / 2) - (i / cdata_right.depth.height);
+            // compute axis coordinates according to the camera's coordinate system (Y outwards and Z up)
+            Y = depth_array[i] * 1000.f; // we transform measurements to millimeters
+            if (Y < 100) continue;
+            X = -cols * Y / cdata_right.depth.focalx;
+            Z = rows * Y / cdata_right.depth.focalx;
+            // transform to virtual camera CS at center of both cameras. Assume equal height (Z). Needs angle and translation
+            float XV = coseno * X - seno * Y + h_offset;
+            float YV = seno * X + coseno * Y;
+            // project on virtual camera
+            auto col_virtual = frame_virtual_focalx * XV / YV + center_virtual_i;
+            auto row_virtual = frame_virtual_focalx * Z / YV + center_virtual_j;
+            if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), floor(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(ceil(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(ceil(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), ceil(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(floor(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(ceil(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), floor(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            if (is_in_bounds<float>(ceil(col_virtual), 0, frame_virtual.cols) and is_in_bounds<float>(floor(row_virtual), 0, frame_virtual.rows))
+            {
+                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), ceil(col_virtual));
+                color[0] = rgb_img_data[i * 3]; color[1] = rgb_img_data[i * 3 + 1]; color[2] = rgb_img_data[i * 3 + 2];
+            }
+            // laser computation
+            if(Z<-100 or Z>100) continue;
+            // accumulate in bins of equal horizontal angle from optical axis
+            float hor_angle = atan2(cols, cdata_left.depth.focalx) + M_PI / 6.0;
+            // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
+            int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
+            hor_bins[angle_index].emplace(std::make_tuple(X,Y,Z));
+        }
+    }
+    else
+    {
+        qWarning() << __FUNCTION__ << " Depth and RGB sizes not equal";
+        return cv::Mat();
+    }
+    // Fill gaps
+    cv::medianBlur(frame_virtual, frame_virtual, 3);
+    mSec duration = MyClock::now() - before;
+    before = MyClock::now();   // so it is remembered across QTimer calls to compute()
+
+    // compression
+    //vector<int> compression_params;
+    //compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
+    //compression_params.push_back(50);
+    //vector<uchar> buffer;
+    //cv::imencode(".jpg", frame_virtual, buffer, compression_params);
+    //duration = myclock::now() - before;
+    //std::cout << "Encode took " << duration.count() << "ms" << std::endl;
+    //qInfo() << "comp " << buffer.size();
+
+    // laser computation
+    std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
+    uint i=0;
+    for(auto &bin : hor_bins)
+    {
+        if( bin.size() > 0)
+        {
+            const auto &[X, Y, Z] = *bin.cbegin();
+            laser_data[i] = LaserPoint{sqrt(X * X + Y * Y + Z * Z), (i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+        }
+        else
+            laser_data[i] = LaserPoint{0.f,(i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+        i++;
+    }
+    //auto laser_poly = filter_laser(laser_data);
+    return frame_virtual;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+void SpecificWorker::update_virtual(const cv::Mat &v_image, float focalx, float focaly)
+{
+
+    if( auto node = G->get_node(pioneer_head_camera_virtual_name); node.has_value())
+    {
+        std::vector<uint8_t> rgb; rgb.assign(v_image.data, v_image.data + v_image.total()*v_image.channels());
+        G->add_or_modify_attrib_local<cam_rgb_att>(node.value(),  rgb);
+        G->add_or_modify_attrib_local<cam_rgb_width_att>(node.value(), v_image.cols);
+        G->add_or_modify_attrib_local<cam_rgb_height_att>(node.value(), v_image.rows);
+        G->add_or_modify_attrib_local<cam_rgb_depth_att>(node.value(), v_image.depth());
+        G->add_or_modify_attrib_local<cam_rgb_cameraID_att>(node.value(), 3);
+        G->add_or_modify_attrib_local<cam_rgb_focalx_att>(node.value(), (int)focalx);
+        G->add_or_modify_attrib_local<cam_rgb_focaly_att>(node.value(), (int)focaly);
+        G->add_or_modify_attrib_local<cam_rgb_alivetime_att>(node.value(), (int)std::chrono::time_point_cast<std::chrono::milliseconds>(MyClock::now()).time_since_epoch().count());
+
+        G->update_node(node.value());
+    }
+    else
+        qWarning() << __FUNCTION__ << "Node camera_virtual not found";
+}
 
 void SpecificWorker::update_rgbd()
 {
@@ -176,7 +391,7 @@ void SpecificWorker::update_robot_localization()
     try
     {
         pose = fullposeestimation_proxy->getFullPoseEuler();
-        qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+        //qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
     }
     catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
 

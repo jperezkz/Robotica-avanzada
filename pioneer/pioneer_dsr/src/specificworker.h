@@ -22,8 +22,6 @@
 	@author authorname
 */
 
-
-
 #ifndef SPECIFICWORKER_H
 #define SPECIFICWORKER_H
 
@@ -32,9 +30,13 @@
 #include "dsr/gui/dsr_gui.h"
 #include <doublebuffer/DoubleBuffer.h>
 #include "../../../etc/pioneer_world_names.h"
+#include <opencv2/imgproc.hpp>
 
 class SpecificWorker : public GenericWorker
 {
+    using MyClock = std::chrono::system_clock;
+    using mSec = std::chrono::duration<double, std::milli>;
+
     Q_OBJECT
     public:
         SpecificWorker(TuplePrx tprx, bool startup_check);
@@ -79,9 +81,18 @@ class SpecificWorker : public GenericWorker
         void read_battery();
         void read_RSSI();
 
-    bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);
+        // virtual_frame
+        void update_virtual(const cv::Mat &virtual_frame, float focalx, float focaly);
+        cv::Mat compute_mosaic(int subsampling = 1);
+        float focalx, focaly;
 
-    void update_rgbd();
+        //laser
+        struct LaserPoint{ float dist; float angle;};
+
+        bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);
+        template <typename T>
+        inline bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
+        void update_rgbd();
 };
 
 #endif
