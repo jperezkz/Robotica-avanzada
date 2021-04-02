@@ -12,6 +12,7 @@ const std::string floor_name = "floor";
 const std::string pioneer_head_camera_left_name = "pioneer_head_camera_0";
 const std::string pioneer_head_camera_right_name = "pioneer_head_camera_1";
 const std::string pioneer_head_camera_virtual_name = "pioneer_head_camera_virtual";
+const std::string pioneer_laser_name = "pioneer_laser";
 const std::string battery_name = "battery";
 const std::string wifi_name = "wifi";
 const std::string ultrasound_name = "ultrasound";

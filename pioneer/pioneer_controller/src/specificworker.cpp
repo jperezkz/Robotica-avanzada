@@ -401,6 +401,8 @@ void SpecificWorker::draw_laser(Robot2DScene *scene, QPolygonF &laser_poly)
     laser_polygon = scene->addPolygon(scene->robot_polygon->mapToScene(laser_poly), QPen(QColor("DarkGreen"), 30), QBrush(color));
     laser_polygon->setZValue(3);
 }
+
+//  Simplify contour with Ramer-Douglas-Peucker and filter out spikes
 QPolygonF SpecificWorker::filter_laser(const std::vector<SpecificWorker::LaserPoint> &ldata)
 {
     static const float MAX_RDP_DEVIATION_mm  =  70;

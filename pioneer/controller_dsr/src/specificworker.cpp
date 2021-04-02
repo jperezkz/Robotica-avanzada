@@ -92,6 +92,14 @@ void SpecificWorker::initialize(int period)
         // custom widget
         graph_viewer->add_custom_widget_to_dock("Pioneer Controller", &custom_widget);
 
+        // get camera_api
+        if(auto cam_node = G->get_node(pioneer_head_camera_virtual_name); cam_node.has_value())
+        {
+            cam_api = G->get_camera_api(cam_node.value());
+        }
+        else
+            qFatal("YoloV4_tracker terminate: could not find a camera node");
+
 		this->Period = period;
 		timer.start(Period);
 	}
@@ -99,8 +107,43 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
+    if(auto t = virtual_camera_buffer.try_get(); t.has_value())
+    {
 
+    }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+/// Asynchronous changes on G nodes from G signals
+////////////////////////////////////////////////////////////////////////////////////////////
+void SpecificWorker::update_node_slot(const std::uint64_t id, const std::string &type)
+{
+    // check node type
+    if(type == rgbd_type)
+    {
+        if (auto camera = G->get_node(id); camera.has_value())
+        {
+
+        }
+    }
+
+//    if (type == omnirobot_type)
+//    {
+//        float X,Y,A;
+//        if(auto robot_node = G->get_node(id); robot_node.has_value())
+//            if(auto tx = G->get_attrib_by_name<base_target_x_att>(robot_node.value()); tx.has_value())
+//                X = tx.value();
+//        if(auto robot_node = G->get_node(id); robot_node.has_value())
+//            if(auto ty = G->get_attrib_by_name<base_target_x_att>(robot_node.value()); ty.has_value())
+//                Y = ty.value();
+//        if(auto robot_node = G->get_node(id); robot_node.has_value())
+//            if(auto angle = G->get_attrib_by_name<base_target_angle_att>(robot_node.value()); angle.has_value())
+//                A = angle.value();
+//    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////
 
 int SpecificWorker::startup_check()
 {

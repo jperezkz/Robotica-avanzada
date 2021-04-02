@@ -31,6 +31,8 @@
 #include <doublebuffer/DoubleBuffer.h>
 #include "../../../etc/pioneer_world_names.h"
 #include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 class SpecificWorker : public GenericWorker
 {
@@ -82,11 +84,15 @@ class SpecificWorker : public GenericWorker
         void read_RSSI();
 
         //laser
+        using Point = std::pair<float, float>;
         struct LaserPoint{ float dist; float angle;};
+        void update_laser(const std::vector<LaserPoint> &laser_data);
+        QPolygonF filter_laser(const std::vector<SpecificWorker::LaserPoint> &ldata);
+        void ramer_douglas_peucker(const std::vector<Point> &pointList, double epsilon, std::vector<Point> &out);
 
         // virtual_frame
         void update_virtual(const cv::Mat &virtual_frame, float focalx, float focaly);
-        std::tuple<cv::Mat, std::vector<LaserPoint>> compute_mosaic(int subsampling = 1);
+        std::tuple<cv::Mat, std::vector<LaserPoint> > compute_mosaic(int subsampling = 1);
         float focalx, focaly;
 
         bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);

@@ -36,9 +36,7 @@
 #include <grid2d/grid2d.cpp>  // due to templates populating grid2d.h
 #include "elastic_band.h"
 #include <chrono>
-#include "opencv2/imgproc.hpp"
-#include <opencv2/photo.hpp>
-
+#include <opencv2/opencv.hpp>
 
 class SpecificWorker : public GenericWorker
 {

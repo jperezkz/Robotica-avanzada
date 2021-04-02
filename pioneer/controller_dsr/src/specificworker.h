@@ -33,6 +33,7 @@
 #include <doublebuffer/DoubleBuffer.h>
 #include <custom_widget.h>
 #include  "/home/robocomp/robocomp/components/Robotica-avanzada/etc/pioneer_world_names.h"
+#include <opencv2/opencv.hpp>
 
 class SpecificWorker : public GenericWorker
 {
@@ -48,9 +49,14 @@ public slots:
 	void compute();
 	int startup_check();
 	void initialize(int period);
+    void update_node_slot(const std::uint64_t id, const std::string &type);
+
 private:
 	// DSR graph
 	std::shared_ptr<DSR::DSRGraph> G;
+    std::shared_ptr<DSR::CameraAPI> cam_api;
+    std::shared_ptr<DSR::InnerEigenAPI> inner_eigen;
+    std::shared_ptr<DSR::RT_API> rt_api;
 
 	//DSR params
 	std::string agent_name;
@@ -68,8 +74,14 @@ private:
 	void add_or_assign_attrs_slot(std::uint64_t id, const std::map<std::string, DSR::Attribute> &attribs){};
 	void add_or_assign_edge_slot(std::uint64_t from, std::uint64_t to,  const std::string &type){};
 
-    //local widget
+    // local widget
     Custom_widget custom_widget;
+
+    // DoubleBuffer
+    DoubleBuffer<cv::Mat,cv::Mat> virtual_camera_buffer;
+
+    // virtual_camera
+
 
     void del_edge_slot(std::uint64_t from, std::uint64_t to, const std::string &edge_tag){};
 	void del_node_slot(std::uint64_t from){};     

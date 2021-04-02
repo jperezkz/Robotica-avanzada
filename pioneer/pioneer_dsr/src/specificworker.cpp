@@ -18,6 +18,8 @@
  */
 #include "specificworker.h"
 #include <cppitertools/zip.hpp>
+#include <cppitertools/sliding_window.hpp>
+#include <cppitertools/enumerate.hpp>
 
 /**
 * \brief Default constructor
@@ -114,7 +116,7 @@ void SpecificWorker::compute()
     update_robot_localization();
     auto [virtual_frame, laser] = compute_mosaic();
     update_virtual(virtual_frame, focalx, focaly);
-    //update_laser()
+    update_laser(laser);
     //update_rgbd();
     //auto cdata = read_rgb_camera(false);
     //read_battery();
@@ -122,6 +124,23 @@ void SpecificWorker::compute()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+void SpecificWorker::update_laser(const std::vector<LaserPoint> &laser_data)
+{
+    if( auto node = G->get_node(pioneer_laser_name); node.has_value())
+    {
+        // Transform laserData into two std::vector<float>
+        std::vector<float> dists;
+        std::transform(laser_data.begin(), laser_data.end(), std::back_inserter(dists), [](const auto &l) { return l.dist; });
+        std::vector<float> angles;
+        std::transform(laser_data.begin(), laser_data.end(), std::back_inserter(angles), [](const auto &l) { return l.angle; });
+
+        // update laser in DSR
+        G->add_or_modify_attrib_local<laser_dists_att>(node.value(), dists);
+        G->add_or_modify_attrib_local<laser_angles_att>(node.value(), angles);
+        G->update_node(node.value());
+    }
+}
+
 std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::compute_mosaic(int subsampling)
 {
     RoboCompCameraRGBDSimple::TRGBD cdata_left, cdata_right;
@@ -140,7 +159,7 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
 
     // check that both cameras are equal
     // declare frame virtual
-    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(cdata_left.image.width*3, cdata_left.image.height), CV_8UC3);
+    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(cdata_left.image.width*2.5, cdata_left.image.height), CV_8UC3);
     float center_virtual_i = frame_virtual.cols / 2.0;
     float center_virtual_j = frame_virtual.rows / 2.0;
     float frame_virtual_focalx = cdata_left.image.focalx;
@@ -285,14 +304,15 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
     before = MyClock::now();   // so it is remembered across QTimer calls to compute()
 
     // compression
-    //vector<int> compression_params;
+    vector<int> compression_params{cv::IMWRITE_JPEG_QUALITY, 50};
     //compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
     //compression_params.push_back(50);
-    //vector<uchar> buffer;
-    //cv::imencode(".jpg", frame_virtual, buffer, compression_params);
+    vector<uchar> frame_virtual_encoded;
+    cv::imencode(".jpg", frame_virtual, frame_virtual_encoded, compression_params);
     //duration = myclock::now() - before;
     //std::cout << "Encode took " << duration.count() << "ms" << std::endl;
-    //qInfo() << "comp " << buffer.size();
+    //qInfo() << "virtual_frame " << frame_virtual.cols * frame_virtual.rows * 3;
+    //qInfo() << "virtual_frame_encoded " << frame_virtual_encoded.size();
 
     // laser computation
     std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
@@ -308,11 +328,11 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
             laser_data[i] = LaserPoint{0.f,(i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
         i++;
     }
-    //auto laser_poly = filter_laser(laser_data);
+    auto laser_poly = filter_laser(laser_data);
+    cv::flip(frame_virtual, frame_virtual, -1);
     return std::make_tuple(frame_virtual, laser_data);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
 void SpecificWorker::update_virtual(const cv::Mat &v_image, float focalx, float focaly)
 {
 
@@ -415,6 +435,83 @@ void SpecificWorker::update_robot_localization()
         else  qWarning() << __FUNCTION__ << " No parent found for node " << QString::fromStdString(robot_name);
     }
     else    qWarning() << __FUNCTION__ << " No node " << QString::fromStdString(robot_name);
+}
+
+//  Simplify contour with Ramer-Douglas-Peucker and filter out spikes
+QPolygonF SpecificWorker::filter_laser(const std::vector<SpecificWorker::LaserPoint> &ldata)
+{
+    static const float MAX_RDP_DEVIATION_mm  =  70;
+    static const float MAX_SPIKING_ANGLE_rads = 0.2;
+    QPolygonF laser_poly;
+    try
+    {
+        // Simplify laser contour with Ramer-Douglas-Peucker
+        std::vector<Point> plist(ldata.size()+1);
+        plist[0]=std::make_pair(0,0);
+        std::generate(plist.begin()+1, plist.end(), [ldata, k=0]() mutable
+        { auto &l = ldata[k++]; return std::make_pair(l.dist * sin(l.angle), l.dist * cos(l.angle));});
+        std::vector<Point> pointListOut;
+        ramer_douglas_peucker(plist, MAX_RDP_DEVIATION_mm, pointListOut);
+        laser_poly.resize(pointListOut.size());
+        std::generate(laser_poly.begin(), laser_poly.end(), [pointListOut, this, k=0]() mutable
+        { auto &p = pointListOut[k++]; return QPointF(p.first, p.second);});
+        laser_poly << QPointF(0,0);
+
+        // Filter out spikes. If the angle between two line segments is less than to the specified maximum angle
+        std::vector<QPointF> removed;
+        for(auto &&[k, ps] : iter::sliding_window(laser_poly,3) | iter::enumerate)
+            if( MAX_SPIKING_ANGLE_rads > acos(QVector2D::dotProduct( QVector2D(ps[0] - ps[1]).normalized(), QVector2D(ps[2] - ps[1]).normalized())))
+                removed.push_back(ps[1]);
+        for(auto &&r : removed)
+            laser_poly.erase(std::remove_if(laser_poly.begin(), laser_poly.end(), [r](auto &p) { return p == r; }), laser_poly.end());
+    }
+    catch(const Ice::Exception &e)
+    { std::cout << "Error reading from Laser" << e << std::endl;}
+    laser_poly.pop_back();
+    return laser_poly;  // robot coordinates
+}
+void SpecificWorker::ramer_douglas_peucker(const std::vector<Point> &pointList, double epsilon, std::vector<Point> &out)
+{
+    if(pointList.size()<2)
+    {
+        qWarning() << "Not enough points to simplify";
+        return;
+    }
+    // Find the point with the maximum distance from line between start and end
+    auto line = Eigen::ParametrizedLine<float, 2>::Through(Eigen::Vector2f(pointList.front().first, pointList.front().second),
+                                                           Eigen::Vector2f(pointList.back().first, pointList.back().second));
+    auto max = std::max_element(pointList.begin()+1, pointList.end(), [line](auto &a, auto &b)
+    { return line.distance(Eigen::Vector2f(a.first, a.second)) < line.distance(Eigen::Vector2f(b.first, b.second));});
+    float dmax =  line.distance(Eigen::Vector2f((*max).first, (*max).second));
+
+    // If max distance is greater than epsilon, recursively simplify
+    if(dmax > epsilon)
+    {
+        // Recursive call
+        vector<Point> recResults1;
+        vector<Point> recResults2;
+        vector<Point> firstLine(pointList.begin(), max + 1);
+        vector<Point> lastLine(max, pointList.end());
+
+        ramer_douglas_peucker(firstLine, epsilon, recResults1);
+        ramer_douglas_peucker(lastLine, epsilon, recResults2);
+
+        // Build the result list
+        out.assign(recResults1.begin(), recResults1.end() - 1);
+        out.insert(out.end(), recResults2.begin(), recResults2.end());
+        if (out.size() < 2)
+        {
+            qWarning() << "Problem assembling output";
+            return;
+        }
+    }
+    else
+    {
+        //Just return start and end points
+        out.clear();
+        out.push_back(pointList.front());
+        out.push_back(pointList.back());
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
