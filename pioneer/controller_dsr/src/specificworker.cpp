@@ -24,6 +24,7 @@
 SpecificWorker::SpecificWorker(TuplePrx tprx, bool startup_check) : GenericWorker(tprx)
 {
 	this->startup_check_flag = startup_check;
+    QLoggingCategory::setFilterRules("*.debug=false\n");
 }
 
 /**
@@ -91,41 +92,52 @@ void SpecificWorker::initialize(int period)
 
         // custom widget
         graph_viewer->add_custom_widget_to_dock("Pioneer Controller", &custom_widget);
+        custom_widget.show();
 
         // get camera_api
-        if(auto cam_node = G->get_node(pioneer_head_camera_virtual_name); cam_node.has_value())
-        {
+        if(auto cam_node = G->get_node(pioneer_camera_virtual_name); cam_node.has_value())
             cam_api = G->get_camera_api(cam_node.value());
-        }
         else
-            qFatal("YoloV4_tracker terminate: could not find a camera node");
+        {
+            std::cout << "Controller-DSR terminate: could not find a camera node named " << pioneer_camera_virtual_name << std::endl;
+            std::terminate();
+        }
 
-		this->Period = period;
+        //Inner Api
+        inner_eigen = G->get_inner_eigen_api();
+
+        this->Period = period;
 		timer.start(Period);
 	}
 }
 
 void SpecificWorker::compute()
 {
-    if(auto t = virtual_camera_buffer.try_get(); t.has_value())
+    if(auto vframe_t = virtual_camera_buffer.try_get(); vframe_t.has_value())
     {
-
+        auto vframe = vframe_t.value();
+        qInfo() << vframe.cols << vframe.rows << vframe.depth();
+        auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
+        custom_widget.label_rgb->setPixmap(pix);
     }
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 /// Asynchronous changes on G nodes from G signals
 ////////////////////////////////////////////////////////////////////////////////////////////
-void SpecificWorker::update_node_slot(const std::uint64_t id, const std::string &type)
+void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::string &type)
 {
-    // check node type
-    if(type == rgbd_type)
-    {
-        if (auto camera = G->get_node(id); camera.has_value())
-        {
-
-        }
-    }
+    if(type == rgbd_type and id == cam_api->get_id())
+        if(auto cam_node = G->get_node(id); cam_node.has_value())
+            if (const auto g_image = G->get_attrib_by_name<cam_rgb_att>(cam_node.value()); g_image.has_value())
+            {
+                virtual_camera_buffer.put(std::move(g_image.value().get()),
+                           [this](const std::vector<std::uint8_t> &in, cv::Mat &out)
+                           {
+                               out = cv::Mat(cam_api->get_height(), cam_api->get_width(), CV_8UC3, const_cast<std::vector<uint8_t> &>(in).data());
+                           });
+            }
 
 //    if (type == omnirobot_type)
 //    {

@@ -1,14 +1,11 @@
-CommonBehavior.Endpoints=tcp -p 10000
+CommonBehavior.Endpoints=tcp -p 10117
 
-agent_id = 0 # Change id
+agent_id = 17 # Change id
 agent_name = controller_dsr
-tree_view = true
+tree_view = false
 graph_view = true
 2d_view = true
-3d_view = true
-#Ice.MessageSizeMax=20004800
-
-InnerModelPath = innermodel.xml
+3d_view = false
 
 Ice.Warn.Connections=0
 Ice.Trace.Network=0

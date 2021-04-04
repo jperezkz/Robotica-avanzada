@@ -2170,7 +2170,7 @@
                 "id": 210,
                 "links": [
                 ],
-                "name": "pioneer_head_camera_0",
+                "name": "pioneer_camera_left",
                 "type": "rgbd"
             },
             "211": {
@@ -2211,7 +2211,7 @@
                 "id": 211,
                 "links": [
                 ],
-                "name": "pioneer_head_camera_1",
+                "name": "pioneer_camera_right",
                 "type": "rgbd"
             },
             "212": {
@@ -2248,7 +2248,7 @@
                 "id": 212,
                 "links": [
                 ],
-                "name": "pioneer_head_camera_virtual",
+                "name": "pioneer_camera_virtual",
                 "type": "rgbd"
             },
             "215": {

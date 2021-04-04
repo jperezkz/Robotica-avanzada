@@ -146,15 +146,13 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
     RoboCompCameraRGBDSimple::TRGBD cdata_left, cdata_right;
     try
     {
-        cdata_left = camerargbdsimple_proxy->getAll("pioneer_head_camera_0");
+        cdata_left = camerargbdsimple_proxy->getAll("pioneer_camera_left");
         this->focalx = cdata_left.image.focalx;
         this->focaly = cdata_left.image.focaly;
     }
     catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
     try
-    {
-        cdata_right = camerargbdsimple_proxy->getAll("pioneer_head_camera_1");
-    }
+    {  cdata_right = camerargbdsimple_proxy->getAll("pioneer_camera_right"); }
     catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
 
     // check that both cameras are equal
@@ -336,7 +334,7 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
 void SpecificWorker::update_virtual(const cv::Mat &v_image, float focalx, float focaly)
 {
 
-    if( auto node = G->get_node(pioneer_head_camera_virtual_name); node.has_value())
+    if( auto node = G->get_node(pioneer_camera_virtual_name); node.has_value())
     {
         std::vector<uint8_t> rgb; rgb.assign(v_image.data, v_image.data + v_image.total()*v_image.channels());
         G->add_or_modify_attrib_local<cam_rgb_att>(node.value(),  rgb);

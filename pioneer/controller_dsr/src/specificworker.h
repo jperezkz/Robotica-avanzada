@@ -49,7 +49,6 @@ public slots:
 	void compute();
 	int startup_check();
 	void initialize(int period);
-    void update_node_slot(const std::uint64_t id, const std::string &type);
 
 private:
 	// DSR graph
@@ -70,7 +69,7 @@ private:
 	// DSR graph viewer
 	std::unique_ptr<DSR::DSRViewer> graph_viewer;
 	QHBoxLayout mainLayout;
-	void add_or_assign_node_slot(std::uint64_t, const std::string &type){};
+	void add_or_assign_node_slot(std::uint64_t, const std::string &type);
 	void add_or_assign_attrs_slot(std::uint64_t id, const std::map<std::string, DSR::Attribute> &attribs){};
 	void add_or_assign_edge_slot(std::uint64_t from, std::uint64_t to,  const std::string &type){};
 
@@ -78,7 +77,7 @@ private:
     Custom_widget custom_widget;
 
     // DoubleBuffer
-    DoubleBuffer<cv::Mat,cv::Mat> virtual_camera_buffer;
+    DoubleBuffer<std::vector<std::uint8_t>, cv::Mat> virtual_camera_buffer;
 
     // virtual_camera
 
