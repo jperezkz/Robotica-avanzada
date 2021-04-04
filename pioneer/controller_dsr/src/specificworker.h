@@ -72,6 +72,9 @@ private:
 	void add_or_assign_node_slot(std::uint64_t, const std::string &type);
 	void add_or_assign_attrs_slot(std::uint64_t id, const std::map<std::string, DSR::Attribute> &attribs){};
 	void add_or_assign_edge_slot(std::uint64_t from, std::uint64_t to,  const std::string &type){};
+    void del_edge_slot(std::uint64_t from, std::uint64_t to, const std::string &edge_tag){};
+	void del_node_slot(std::uint64_t from){};     
+	bool startup_check_flag;
 
     // local widget
     Custom_widget custom_widget;
@@ -79,12 +82,12 @@ private:
     // DoubleBuffer
     DoubleBuffer<std::vector<std::uint8_t>, cv::Mat> virtual_camera_buffer;
 
-    // virtual_camera
+    // Robot shape
+    QPolygonF robot_polygon;
 
-
-    void del_edge_slot(std::uint64_t from, std::uint64_t to, const std::string &edge_tag){};
-	void del_node_slot(std::uint64_t from){};     
-	bool startup_check_flag;
+    // Project
+    cv::Mat project_robot_on_image(const QPolygonF &robot_polygon, cv::Mat virtual_frame, float focal);
+    cv::Mat project_laser_on_image(const QPolygonF &laser_polygon, cv::Mat virtual_frame, float focal);
 
 };
 

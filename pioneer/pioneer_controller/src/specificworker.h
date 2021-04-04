@@ -126,27 +126,27 @@ class SpecificWorker : public GenericWorker
                     return std::make_tuple(dist, -ang);
                 };
 
-        std::tuple<float, float> to_go(const QPointF p) const
-        {
-            //auto tr = innerModel->transform("robot", QVec::vec3(t.pos.x(), 0, t.pos.y()), "world");
-            auto tr = scene->robot_polygon->mapFromScene(p);
-            float ang = atan2(tr.x(), tr.y());
-            float dist = QVector2D(tr).length();
-            return std::make_tuple(dist, -ang);
-        };
-            bool at_target(Target &t)
+            std::tuple<float, float> to_go(const QPointF p) const
             {
-                return QVector2D(scene->robot_polygon->mapFromScene(t.pos)).length() < TARGET_THRESHOLD_DISTANCE;
+                //auto tr = innerModel->transform("robot", QVec::vec3(t.pos.x(), 0, t.pos.y()), "world");
+                auto tr = scene->robot_polygon->mapFromScene(p);
+                float ang = atan2(tr.x(), tr.y());
+                float dist = QVector2D(tr).length();
+                return std::make_tuple(dist, -ang);
+            };
+                bool at_target(Target &t)
+                {
+                    return QVector2D(scene->robot_polygon->mapFromScene(t.pos)).length() < TARGET_THRESHOLD_DISTANCE;
 
-            }
-        bool at_target(QPointF p)
-        {
-            return QVector2D(scene->robot_polygon->mapFromScene(p)).length() < 400;
-        }
-            void update_state( const State &s)
+                }
+            bool at_target(QPointF p)
             {
-                state = s;
+                return QVector2D(scene->robot_polygon->mapFromScene(p)).length() < 400;
             }
+                void update_state( const State &s)
+                {
+                    state = s;
+                }
         };
         std::shared_ptr<Robot> robot;
         RoboCompGenericBase::TBaseState read_base(Robot2DScene *scene);

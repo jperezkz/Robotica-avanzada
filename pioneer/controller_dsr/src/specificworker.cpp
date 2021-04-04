@@ -17,6 +17,7 @@
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "specificworker.h"
+#include <cppitertools/enumerate.hpp>
 
 /**
 * \brief Default constructor
@@ -103,9 +104,31 @@ void SpecificWorker::initialize(int period)
             std::terminate();
         }
 
-        //Inner Api
+        // Inner Api
         inner_eigen = G->get_inner_eigen_api();
 
+        // Robot polygon
+        if(auto robot_body = G->get_node(robot_body_name); robot_body.has_value())
+        {
+            auto width = G->get_attrib_by_name<width_att>(robot_body.value());
+            auto height = G->get_attrib_by_name<depth_att>(robot_body.value());
+            if (width.has_value() and height.has_value())
+            {
+                robot_polygon << QPointF(-width.value() / 2, -height.value() / 2)
+                              << QPointF(-width.value() / 2, -height.value() / 2)
+                              << QPointF(width.value() / 2, height.value() / 2)
+                              << QPointF(width.value() / 2, -height.value() / 2);
+            } else
+            {
+                std::cout << __FUNCTION__ << " No robot body width or depth found. Terminating..." << std::endl;
+                std::terminate();
+            }
+        }
+        else
+        {
+            std::cout << __FUNCTION__ << " No robot body found. Terminating..." << std::endl;
+            std::terminate();
+        }
         this->Period = period;
 		timer.start(Period);
 	}
@@ -113,16 +136,80 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
+    // reemplazar con read_camera
+    cv::Mat vframe;
     if(auto vframe_t = virtual_camera_buffer.try_get(); vframe_t.has_value())
     {
-        auto vframe = vframe_t.value();
+        vframe = vframe_t.value();
         qInfo() << vframe.cols << vframe.rows << vframe.depth();
         auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
         custom_widget.label_rgb->setPixmap(pix);
     }
+    // meter la proyección del robot
+    project_robot_on_image(robot_polygon, vframe, cam_api->get_focal_x());
+    // meter la proyección del laser
+    // ventana de gestión de misiones
+    //
 
 }
+/////////////////////////////////////////////////////////////////////////////////////////////
+cv::Mat SpecificWorker::project_robot_on_image(const QPolygonF &robot_polygon, cv::Mat virtual_frame, float focal)
+{
+    if (auto robot_body = G->get_node(robot_body_name); robot_body.has_value())
+    {
+        if (auto local_velocity = G->get_attrib_by_name<robot_local_linear_velocity_att>(robot_body.value()))
+        {
+            float robot_adv_speed = local_velocity.value().get()[1];   // Y component of linear speed in robot's coordinate frame
+            int delta_time = 1;  // 1 sec
+            if (fabs(robot_adv_speed) < 50) return virtual_frame;    // only do if advance velocity is greater than 0
+            // displace robot polygon by offset
+            QPolygonF robot_polygon_projected(robot_polygon);
+            robot_polygon_projected.translate(0, robot_adv_speed * delta_time);
+            // transform projected polygon to virtal camera coordinate frame
+            for (const auto p : robot_polygon)
+                auto r = inner_eigen->transform(pioneer_camera_virtual_name, Eigen::Vector3d(p.x(), p.y(), 0.f), robot_name);
+            //project into virtual camera
+            std::vector<cv::Point> cv_poly(robot_polygon.size());
+            for (auto &&[i, p] : iter::enumerate(robot_polygon))
+            {
+                if(auto projected_point = inner_eigen->transform(pioneer_camera_virtual_name, Eigen::Vector3d(p.x(), p.y(), 0.f), robot_name); projected_point.has_value())
+                {
+                    auto point = cam_api->project(projected_point.value(), virtual_frame.cols / 2, virtual_frame.rows / 2);
+                    if (virtual_frame.rows - point.y() > virtual_frame.rows / 2)
+                        cv_poly[i] = cv::Point(point.x(), virtual_frame.rows - point.y());
+                }
+            }
+            const cv::Point *pts = (const cv::Point *) cv::Mat(cv_poly).data;
+            int npts = cv::Mat(cv_poly).rows;
+            // draw the polygon
+            cv::polylines(virtual_frame, &pts, &npts, 1, true, cv::Scalar(0, 255, 0), 12);
+        }
+        else{}
+    }
+    else{}
+    return virtual_frame;
+}
 
+cv::Mat SpecificWorker::project_laser_on_image(const QPolygonF &laser_polygon, cv::Mat virtual_frame, float focal)
+    {
+        // transform projected polygon to virtal camera coordinate frame
+        for(const auto p : robot_polygon)
+            auto r = inner_eigen->transform(pioneer_camera_virtual_name, Eigen::Vector3d(p.x(), p.y(), 0.f), robot_name);
+        //project laser into virtual camera
+        std::vector<cv::Point> cv_poly(robot_polygon.size());
+        for(auto &&[i, p] : iter::enumerate(robot_polygon))
+        {
+            auto projected_point = inner_eigen->transform(pioneer_camera_virtual_name, Eigen::Vector3d(p.x(), p.y(), 0.f), robot_name);
+            auto point = cam_api->project(projected_point.value(), virtual_frame.cols / 2, virtual_frame.rows / 2);
+            if (virtual_frame.rows - point.y() > virtual_frame.rows / 2)
+                cv_poly[i] = cv::Point(point.x(), virtual_frame.rows - point.y());
+        }
+        const cv::Point *pts = (const cv::Point*) cv::Mat(cv_poly).data;
+        int npts = cv::Mat(cv_poly).rows;
+        // draw the polygon
+        cv::polylines(virtual_frame, &pts, &npts, 1, true, cv::Scalar(0, 255, 0), 12);
+        return virtual_frame;
+}
 /////////////////////////////////////////////////////////////////////////////////////////////
 /// Asynchronous changes on G nodes from G signals
 ////////////////////////////////////////////////////////////////////////////////////////////

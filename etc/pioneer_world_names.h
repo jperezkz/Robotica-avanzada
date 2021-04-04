@@ -7,6 +7,7 @@
 
 // NODES
 const std::string robot_name = "pioneer";
+const std::string robot_body_name = "pioneer_body";
 const std::string world_name = "world";
 const std::string floor_name = "floor";
 const std::string pioneer_head_camera_left_name = "pioneer_camera_left";

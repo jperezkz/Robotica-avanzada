@@ -390,7 +390,12 @@ void SpecificWorker::read_battery()
 {
     try
     {
-        auto battery = batterystatus_proxy->getBatteryState();
+        auto battery_level = batterystatus_proxy->getBatteryState();
+        if( auto battery = G->get_node(battery_name); battery.has_value())
+        {
+            G->add_or_modify_attrib_local<battery_load_att>(battery.value(), (int)battery_level.percentage);
+            G->update_node(battery.value());
+        }
     }
     catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
 }
@@ -424,9 +429,14 @@ void SpecificWorker::update_robot_localization()
                 auto edge = rt->get_edge_RT(parent.value(), robot->id()).value();
                 G->modify_attrib_local<rt_rotation_euler_xyz_att>(edge, std::vector < float > {0.0, 0.0, pose.rz});
                 G->modify_attrib_local<rt_translation_att>(edge, std::vector < float > {pose.x, pose.y, 0.0});
-                //G->modify_attrib_local<robot_current_linear_speed_att>(edge, std::vector<float>{pose.vel_x, pose.vel_y, pose.vel_z});
-                //G->modify_attrib_local<robot_current_angular_speed_att>(edge, std::vector<float>{pose.rot.x, pos.rot.y, pose.rot_z});
+                G->modify_attrib_local<rt_translation_velocity_att>(edge, std::vector<float>{pose.vx, pose.vy, pose.vz});
+                G->modify_attrib_local<rt_rotation_euler_xyz_velocity_att>(edge, std::vector<float>{pose.vrx, pose.vry, pose.vrz});
+                // linear velocities are WRT world axes, so local speed has to be computed WRT to the robot's moving frame
+                float adv_velocity = -sin(pose.rz) * pose.vx + cos(pose.rz) * pose.vy;
+                float side_velocity = -cos(pose.rz) * pose.vx + sin(pose.rz) * pose.vy;
+                G->modify_attrib_local<robot_local_linear_velocity_att>(robot.value(), std::vector<float>{adv_velocity, side_velocity, pose.rz});
                 G->insert_or_assign_edge(edge);
+                G->update_node(robot.value());
                 last_state = pose;
             }
         }
