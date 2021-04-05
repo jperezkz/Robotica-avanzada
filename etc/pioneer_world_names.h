@@ -22,6 +22,7 @@ const std::string ultrasound_name = "ultrasound";
 //NODE TYPES
 const std::string differentialrobot_type = "differentialrobot";
 const std::string rgbd_type = "rgbd";
+const std::string laser_type = "laser";
 const std::string intention_type = "intention";
 const std::string path_to_target_type = "path_to_target";
 

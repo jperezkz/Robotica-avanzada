@@ -327,6 +327,11 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
         i++;
     }
     auto laser_poly = filter_laser(laser_data);
+//    vector<SpecificWorker::LaserPoint> laser_data_filtered;
+//    for(auto &l : laser_poly)
+//        laser_data_filtered.emplace_back(LaserPoint{(float)l.x(), (float)l.y()});
+
+    //std::generate(laser_data_filtered.begin(), laser_data_filtered.end(), [&laser_poly]() mutable {  auto n = laser_poly.takeFirst(); return LaserPoint{(float)n.x(), (float)n.y()};});
     cv::flip(frame_virtual, frame_virtual, -1);
     return std::make_tuple(frame_virtual, laser_data);
 }
