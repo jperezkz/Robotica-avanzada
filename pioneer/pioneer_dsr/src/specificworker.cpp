@@ -432,10 +432,10 @@ void SpecificWorker::update_robot_localization()
                 G->modify_attrib_local<rt_translation_velocity_att>(edge, std::vector<float>{pose.vx, pose.vy, pose.vz});
                 G->modify_attrib_local<rt_rotation_euler_xyz_velocity_att>(edge, std::vector<float>{pose.vrx, pose.vry, pose.vrz});
                 // linear velocities are WRT world axes, so local speed has to be computed WRT to the robot's moving frame
-                float adv_velocity = -sin(pose.rz) * pose.vx + cos(pose.rz) * pose.vy;
-                float side_velocity = -cos(pose.rz) * pose.vx + sin(pose.rz) * pose.vy;
-                G->modify_attrib_local<robot_local_linear_velocity_att>(robot.value(), std::vector<float>{adv_velocity, side_velocity, pose.rz});
+                float side_velocity = -sin(pose.rz) * pose.vx + cos(pose.rz) * pose.vy;
+                float adv_velocity = -cos(pose.rz) * pose.vx + sin(pose.rz) * pose.vy;
                 G->insert_or_assign_edge(edge);
+                G->add_or_modify_attrib_local<robot_local_linear_velocity_att>(robot.value(), std::vector<float>{adv_velocity, side_velocity, pose.rz});
                 G->update_node(robot.value());
                 last_state = pose;
             }

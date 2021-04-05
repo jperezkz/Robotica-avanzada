@@ -86,7 +86,7 @@ private:
     QPolygonF robot_polygon;
 
     // Project
-    cv::Mat project_robot_on_image(const QPolygonF &robot_polygon, cv::Mat virtual_frame, float focal);
+    void project_robot_on_image(const DSR::Node &robot_node, const QPolygonF &robot_polygon, cv::Mat virtual_frame, float focal);
     cv::Mat project_laser_on_image(const QPolygonF &laser_polygon, cv::Mat virtual_frame, float focal);
 
 };

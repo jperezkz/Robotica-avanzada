@@ -14,7 +14,6 @@ tree_view = false
 graph_view = true
 2d_view = true
 3d_view = false
-Ice.MessageSizeMax=20004800
 
 Ice.Warn.Connections=0
 Ice.Trace.Network=0
