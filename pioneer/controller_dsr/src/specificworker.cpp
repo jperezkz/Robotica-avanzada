@@ -93,7 +93,7 @@ void SpecificWorker::initialize(int period)
         setWindowTitle(QString::fromStdString(agent_name + "-") + QString::number(agent_id));
 
         // custom widget
-        graph_viewer->add_custom_widget_to_dock("Pioneer Controller", &custom_widget);
+        graph_viewer->add_custom_widget_to_dock("Pioneer Mission Controller", &custom_widget);
 
         // 2D widget
         widget_2d = qobject_cast<DSR::QScene2dViewer *>(graph_viewer->get_widget(opts::scene));
@@ -134,8 +134,11 @@ void SpecificWorker::initialize(int period)
             std::cout << __FUNCTION__ << " No robot body found. Terminating..." << std::endl;
             std::terminate();
         }
+
+        // Eigen format
         OctaveFormat = Eigen::IOFormat(Eigen::StreamPrecision, 0, ", ", ";\n", "", "", "[", "]");
         CommaInitFmt = Eigen::IOFormat(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", ", ", "", "", " << ", ";");
+
         this->Period = 100;
 		timer.start(Period);
 	}
@@ -154,6 +157,12 @@ void SpecificWorker::compute()
 
         auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
         custom_widget.label_rgb->setPixmap(pix);
+    }
+    if (auto plan_o = plan_buffer.try_get(); plan_o.has_value())
+    {
+        current_plan = plan_o.value();
+        current_plan.print();
+        custom_widget.current_plan->setPlainText(QString::fromStdString(current_plan.to_string()));
     }
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -226,9 +235,14 @@ void SpecificWorker::project_laser_on_image(const DSR::Node &robot_node, const Q
         cv_poly.emplace_back(cv::Point(virtual_frame.cols/2,virtual_frame.rows));
         cv_poly.insert(cv_poly.begin(), cv::Point(virtual_frame.cols/2, virtual_frame.rows));
         // paint on image
+        cv::Mat overlay;  // declaring overlay matrix, we'll copy source image to this matrix
+        double alpha = 0.3;  // defining opacity value, 0 means fully transparent, 1 means fully opaque
+        virtual_frame.copyTo(overlay);
         const cv::Point *pts = (const cv::Point*) cv::Mat(cv_poly).data;
         int npts = cv::Mat(cv_poly).rows;
-        cv::polylines(virtual_frame, &pts, &npts, 1, true, cv::Scalar(0, 5, 200), 4);
+        cv::polylines(overlay, &pts, &npts, 1, true, cv::Scalar(144, 238, 144), 3);
+        cv::fillPoly(overlay, &pts, &npts, 1, cv::Scalar(100, 218, 124));
+        cv::addWeighted(overlay, alpha, virtual_frame, 1 - alpha, 0, virtual_frame);  // blending the overlay (with alpha opacity) with the source image (with 1-alpha opacity)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -300,5 +314,82 @@ int SpecificWorker::startup_check()
 
 // connect to signal and show virtual image
 
+//////////////////////////////////////////////7
+/// parser form JSON plan to Plan structure
+void SpecificWorker::json_to_plan(const std::string &plan_string, Plan &plan)
+{
+    QJsonDocument doc = QJsonDocument::fromJson(QString::fromStdString(plan_string).toUtf8());
+    QJsonObject planJson = doc.object();
+    QJsonArray actionArray = planJson.value("plan").toArray();
+    QJsonObject action_0 = actionArray.at(0).toObject();
+    QString action = action_0.value("action").toString();
+    if (action == "goto")
+    {
+        QJsonObject action_params = action_0.value("params").toObject();
+        QString object = action_params.value("object").toString();
+        QJsonArray location = action_params.value("location").toArray();
+        plan.params["x"] = location.at(0).toDouble();
+        plan.params["y"] = location.at(1).toDouble();
+        plan.params["angle"] = location.at(2).toDouble();
+        plan.action = Plan::Actions::GOTO;
+        plan.target_place = object.toStdString();
+    }
+}
 
+///////////////////////////////////////////////////////
+//// Check new target from mouse
+///////////////////////////////////////////////////////
+void SpecificWorker::new_target_from_mouse(int pos_x, int pos_y, std::uint64_t id)
+{
+    qInfo() << __FUNCTION__ << pos_x, pos_y;
+    // Check if there is not 'intention' node yet in G
+    if (auto intention_nodes = G->get_nodes_by_type(intention_type); intention_nodes.empty())
+    {
+        if(auto robot = G->get_node(robot_name); robot.has_value())
+        {
+            DSR::Node intention_node(agent_id, intention_type);
+            G->add_or_modify_attrib_local<parent_att>(intention_node,  robot.value().id());
+            G->add_or_modify_attrib_local<level_att>(intention_node, G->get_node_level(robot.value()).value() + 1);
+            G->add_or_modify_attrib_local<pos_x_att>(intention_node, (float)-90);
+            G->add_or_modify_attrib_local<pos_y_att>(intention_node, (float)-354);
+            try
+            {
+                if(std::optional<int> intention_node_id = G->insert_node(intention_node); intention_node_id.has_value())
+                {
+                    if(G->insert_or_assign_edge(DSR::Edge(robot.value().id(), intention_node.id(), has_type, agent_id)))
+                    {}
+                    else
+                    {
+                        std::cout << __FILE__ << __FUNCTION__ << " Fatal error inserting new edge: " << robot.value().id() << "->" << intention_node_id.value() << " type: has" << std::endl;
+                        std::terminate();
+                    }
+                }
+                else
+                {
+                    std::cout << __FILE__ << __FUNCTION__ << " Fatal error inserting_new 'intention' node" << std::endl;
+                    std::terminate();
+                }
+            }
+            catch(...)
+            { std::cout << "BYE" << std::endl; std::terminate();}
+        }
+        else
+        {
+            std::cout << __FILE__ << __FUNCTION__ << " No node " << robot_name << " found in G" << std::endl;
+            std::terminate();
+        }
+    }
+    using namespace std::placeholders;
+    if (auto target_node = G->get_node(id); target_node.has_value())
+    {
+        const std::string location =
+                "[" + std::to_string(pos_x) + "," + std::to_string(pos_y) + "," + std::to_string(0) + "]";
+        const std::string plan =
+                "{\"plan\":[{\"action\":\"goto\",\"params\":{\"location\":" + location + ",\"object\":\"" +
+                target_node.value().name() + "\"}}]}";
+        std::cout << plan << std::endl;
+        plan_buffer.put(plan, std::bind(&SpecificWorker::json_to_plan, this, _1, _2));
+    } else
+        qWarning() << __FILE__ << __FUNCTION__ << " No target node  " << QString::number(id) << " found";
+}
 
