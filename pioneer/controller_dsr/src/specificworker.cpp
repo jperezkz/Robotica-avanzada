@@ -161,11 +161,13 @@ void SpecificWorker::compute()
         auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
         custom_widget.label_rgb->setPixmap(pix);
     }
+    // check for existing missions
     if (auto plan_o = plan_buffer.try_get(); plan_o.has_value())
     {
         auto current_plan = plan_o.value();
         current_plan.print();
         custom_widget.current_plan->setPlainText(QString::fromStdString(current_plan.pprint()));
+        // check for path-plan and draw path and project on image
     }
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -300,6 +302,22 @@ void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::
                                      //laser_poly_local << QPointF(0.f, 200.f);
                                      out = std::make_tuple(angles, dists, laser_poly_local, laser_cart_world);
                                  });
+            }
+        }
+    }
+    else if (type == path_to_target_type)
+    {
+        if( auto path_to_target_node = G->get_node(id); path_to_target_node.has_value())
+        {
+            auto x_values_o = G->get_attrib_by_name<laser_angles_att>(path_to_target_node.value());
+            auto y_values_o = G->get_attrib_by_name<laser_dists_att>(path_to_target_node.value());
+            if(x_values_o.has_value() and y_values_o.has_value())
+            {
+                auto x_values = x_values_o.value().get();
+                auto y_values = y_values_o.value().get();
+                std::vector<QPointF> path;
+                for(auto &&[p, q] : iter::zip(x_values,y_values))
+                    path.emplace_back(QPointF(p, q));
             }
         }
     }
