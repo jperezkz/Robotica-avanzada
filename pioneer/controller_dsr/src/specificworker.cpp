@@ -158,6 +158,7 @@ void SpecificWorker::compute()
             project_laser_on_image(robot_node, laser_poly_local, vframe, cam_api->get_focal_x());
         }
 
+        project_path_on_image(path, robot_node, vframe, cam_api->get_focal_x());
         auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
         custom_widget.label_rgb->setPixmap(pix);
     }
@@ -223,6 +224,31 @@ void SpecificWorker::project_robot_on_image(const DSR::Node &robot_node, const Q
     else{ std::cout << __FUNCTION__ << " No robot_local_linear_velocity attribute in robot: " << robot_name << std::endl; }
 }
 
+void SpecificWorker::project_path_on_image(const std::vector<Eigen::Vector3d> &path, const DSR::Node robot_node, cv::Mat virtual_frame, float focal)
+{
+    int cont = 0;
+    std::vector<cv::Point> cv_points;
+    for(const auto &p : path)
+    {
+        // si está más cerca de 400 continue
+        if (auto robot_pose = inner_eigen->transform(world_name, robot_name); robot_pose.has_value()) {
+            auto dist = (p - robot_pose.value()).norm();
+            //if (dist > 400.f and cont++ < 5)
+            {
+                // transform projected polygon to virtal camera coordinate frame and  project into virtual camera
+                if (auto projected_point = inner_eigen->transform(pioneer_camera_virtual_name, p, world_name); projected_point.has_value()) {
+                    auto point = cam_api->project(projected_point.value());
+                    qInfo() << point.x() << point.y();
+                    if (point.x() < virtual_frame.cols and point.y() > virtual_frame.rows/2 and point.y() < virtual_frame.rows and point.x() >= 0 and point.y() >= 0)
+                        cv_points.emplace_back(cv::Point(point.x(), point.y()));
+                }
+            }
+        }
+    }
+    for(const auto &p : cv_points)
+        cv::circle(virtual_frame, p, 8, cv::Scalar(68,86,100), cv::FILLED);
+}
+
 void SpecificWorker::project_laser_on_image(const DSR::Node &robot_node, const QPolygonF &laser_poly_local, cv::Mat virtual_frame, float focal)
 {
         std::vector<cv::Point> cv_poly;
@@ -249,6 +275,7 @@ void SpecificWorker::project_laser_on_image(const DSR::Node &robot_node, const Q
         cv::fillPoly(overlay, &pts, &npts, 1, cv::Scalar(100, 218, 124));
         cv::addWeighted(overlay, alpha, virtual_frame, 1 - alpha, 0, virtual_frame);  // blending the overlay (with alpha opacity) with the source image (with 1-alpha opacity)
 }
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 /// Asynchronous changes on G nodes from G signals
@@ -309,15 +336,15 @@ void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::
     {
         if( auto path_to_target_node = G->get_node(id); path_to_target_node.has_value())
         {
-            auto x_values_o = G->get_attrib_by_name<laser_angles_att>(path_to_target_node.value());
-            auto y_values_o = G->get_attrib_by_name<laser_dists_att>(path_to_target_node.value());
+            auto x_values_o = G->get_attrib_by_name<path_x_values_att>(path_to_target_node.value());
+            auto y_values_o = G->get_attrib_by_name<path_y_values_att >(path_to_target_node.value());
             if(x_values_o.has_value() and y_values_o.has_value())
             {
+                path.clear();
                 auto x_values = x_values_o.value().get();
                 auto y_values = y_values_o.value().get();
-                std::vector<QPointF> path;
                 for(auto &&[p, q] : iter::zip(x_values,y_values))
-                    path.emplace_back(QPointF(p, q));
+                    path.emplace_back(Eigen::Vector3d(p, q, 0.f));
             }
         }
     }

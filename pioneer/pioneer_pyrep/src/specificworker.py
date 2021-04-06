@@ -38,7 +38,6 @@ from itertools import zip_longest
 import cv2
 import imutils
 from threading import Lock
-from sorted_collection import SortedCollection
 from collections import namedtuple
 import math
 

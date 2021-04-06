@@ -99,9 +99,14 @@ private:
     cv::Mat read_camera(const DSR::Node &robot_node);
     void project_robot_on_image(const DSR::Node &robot_node, const QPolygonF &robot_polygon, cv::Mat virtual_frame, float focal);
     void project_laser_on_image(const DSR::Node &robot_node, const QPolygonF &laser_poly_local, cv::Mat virtual_frame, float focal);
+    void project_path_on_image(const std::vector<Eigen::Vector3d> &path, const DSR::Node robot_node, cv::Mat virtual_frame, float focal);
 
     // Missions
     DoubleBuffer<Plan, Plan> plan_buffer;
+
+    //Path
+    std::vector<Eigen::Vector3d> path;
+
 };
 
 #endif
