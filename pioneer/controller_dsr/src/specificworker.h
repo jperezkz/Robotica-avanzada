@@ -34,7 +34,7 @@
 #include <custom_widget.h>
 #include  "/home/robocomp/robocomp/components/Robotica-avanzada/etc/pioneer_world_names.h"
 #include <opencv2/opencv.hpp>
-#include <plan.h>
+#include "plan.h"
 
 class SpecificWorker : public GenericWorker
 {
@@ -51,6 +51,9 @@ public slots:
 	int startup_check();
 	void initialize(int period);
     void new_target_from_mouse(int pos_x, int pos_y, std::uint64_t id);
+    void slot_start_mission();
+    void slot_stop_mission();
+    void slot_cancel_mission();
 
 private:
 	// DSR graph
@@ -97,10 +100,8 @@ private:
     void project_robot_on_image(const DSR::Node &robot_node, const QPolygonF &robot_polygon, cv::Mat virtual_frame, float focal);
     void project_laser_on_image(const DSR::Node &robot_node, const QPolygonF &laser_poly_local, cv::Mat virtual_frame, float focal);
 
-    // Plans
-    DoubleBuffer<std::string, Plan> plan_buffer;
-    Plan current_plan;
-    void json_to_plan(const std::string &plan_string, Plan &plan);
+    // Missions
+    DoubleBuffer<Plan, Plan> plan_buffer;
 };
 
 #endif

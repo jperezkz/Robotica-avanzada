@@ -93,7 +93,10 @@ void SpecificWorker::initialize(int period)
         setWindowTitle(QString::fromStdString(agent_name + "-") + QString::number(agent_id));
 
         // custom widget
-        graph_viewer->add_custom_widget_to_dock("Pioneer Mission Controller", &custom_widget);
+        graph_viewer->add_custom_widget_to_dock("Pioneer Plan Controller", &custom_widget);
+        connect(custom_widget.pushButton_start_mission, SIGNAL(clicked()), this, SLOT(slot_start_mission()));
+        connect(custom_widget.pushButton_stop_mission, SIGNAL(clicked()), this, SLOT(slot_stop_mission()));
+        connect(custom_widget.pushButton_cancel_mission, SIGNAL(clicked()), this, SLOT(slot_cancel_mission()));
 
         // 2D widget
         widget_2d = qobject_cast<DSR::QScene2dViewer *>(graph_viewer->get_widget(opts::scene));
@@ -160,9 +163,9 @@ void SpecificWorker::compute()
     }
     if (auto plan_o = plan_buffer.try_get(); plan_o.has_value())
     {
-        current_plan = plan_o.value();
+        auto current_plan = plan_o.value();
         current_plan.print();
-        custom_widget.current_plan->setPlainText(QString::fromStdString(current_plan.to_string()));
+        custom_widget.current_plan->setPlainText(QString::fromStdString(current_plan.pprint()));
     }
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -313,83 +316,88 @@ int SpecificWorker::startup_check()
 }
 
 // connect to signal and show virtual image
-
-//////////////////////////////////////////////7
-/// parser form JSON plan to Plan structure
-void SpecificWorker::json_to_plan(const std::string &plan_string, Plan &plan)
-{
-    QJsonDocument doc = QJsonDocument::fromJson(QString::fromStdString(plan_string).toUtf8());
-    QJsonObject planJson = doc.object();
-    QJsonArray actionArray = planJson.value("plan").toArray();
-    QJsonObject action_0 = actionArray.at(0).toObject();
-    QString action = action_0.value("action").toString();
-    if (action == "goto")
-    {
-        QJsonObject action_params = action_0.value("params").toObject();
-        QString object = action_params.value("object").toString();
-        QJsonArray location = action_params.value("location").toArray();
-        plan.params["x"] = location.at(0).toDouble();
-        plan.params["y"] = location.at(1).toDouble();
-        plan.params["angle"] = location.at(2).toDouble();
-        plan.action = Plan::Actions::GOTO;
-        plan.target_place = object.toStdString();
-    }
-}
-
 ///////////////////////////////////////////////////////
 //// Check new target from mouse
 ///////////////////////////////////////////////////////
 void SpecificWorker::new_target_from_mouse(int pos_x, int pos_y, std::uint64_t id)
 {
-    qInfo() << __FUNCTION__ << pos_x, pos_y;
+    qInfo() << __FUNCTION__ << " Creating GOTO mission to " << pos_x << pos_y;
+    const std::string location =
+            "[" + std::to_string(pos_x) + "," + std::to_string(pos_y) + "," + std::to_string(0) + "]";
+    const std::string plan_string =
+            "{\"plan\":[{\"action\":\"goto\",\"params\":{\"location\":" + location + ",\"object\":\"" + "floor" + "\"}}]}";
+    std::cout << __FUNCTION__ << " " << plan_string << std::endl;
+    auto plan = Plan(plan_string);
+    plan_buffer.put(plan);
+
     // Check if there is not 'intention' node yet in G
-    if (auto intention_nodes = G->get_nodes_by_type(intention_type); intention_nodes.empty())
+    if(auto robot = G->get_node(robot_name); robot.has_value())
     {
-        if(auto robot = G->get_node(robot_name); robot.has_value())
+        if (auto intention_nodes = G->get_nodes_by_type(intention_type); intention_nodes.empty())
         {
             DSR::Node intention_node(agent_id, intention_type);
-            G->add_or_modify_attrib_local<parent_att>(intention_node,  robot.value().id());
+            G->add_or_modify_attrib_local<parent_att>(intention_node, robot.value().id());
             G->add_or_modify_attrib_local<level_att>(intention_node, G->get_node_level(robot.value()).value() + 1);
-            G->add_or_modify_attrib_local<pos_x_att>(intention_node, (float)-90);
-            G->add_or_modify_attrib_local<pos_y_att>(intention_node, (float)-354);
-            try
+            G->add_or_modify_attrib_local<pos_x_att>(intention_node, (float) -90);
+            G->add_or_modify_attrib_local<pos_y_att>(intention_node, (float) -304);
+            G->add_or_modify_attrib_local<current_intention_att>(intention_node, plan.to_string());
+            if (std::optional<int> intention_node_id = G->insert_node(intention_node); intention_node_id.has_value())
             {
-                if(std::optional<int> intention_node_id = G->insert_node(intention_node); intention_node_id.has_value())
-                {
-                    if(G->insert_or_assign_edge(DSR::Edge(robot.value().id(), intention_node.id(), has_type, agent_id)))
-                    {}
-                    else
-                    {
-                        std::cout << __FILE__ << __FUNCTION__ << " Fatal error inserting new edge: " << robot.value().id() << "->" << intention_node_id.value() << " type: has" << std::endl;
-                        std::terminate();
-                    }
-                }
+                std::cout << __FUNCTION__ << " Node \"Intention\" successfully inserted in G" << std::endl;
+                // insert EDGE
+                if (G->insert_or_assign_edge(DSR::Edge(robot.value().id(), intention_node.id(), has_type, agent_id)))
+                    std::cout << __FUNCTION__ << " Edge \"has_type\" inserted in G" << std::endl;
                 else
-                {
-                    std::cout << __FILE__ << __FUNCTION__ << " Fatal error inserting_new 'intention' node" << std::endl;
-                    std::terminate();
-                }
-            }
-            catch(...)
-            { std::cout << "BYE" << std::endl; std::terminate();}
-        }
-        else
+                    std::cout << __FILE__ << __FUNCTION__ << " Fatal error inserting new edge: " << robot.value().id() << "->" << intention_node_id.value()
+                              << " type: has" << std::endl;
+            } else
+                std::cout << __FUNCTION__ << " Node \"Intention\" could NOT be inserted in G" << std::endl;
+        } else // there is one intention node
         {
-            std::cout << __FILE__ << __FUNCTION__ << " No node " << robot_name << " found in G" << std::endl;
-            std::terminate();
+            DSR::Node intention_node = intention_nodes.front();
+            G->add_or_modify_attrib_local<current_intention_att>(intention_node, plan.to_string());
+            if (G->update_node(intention_node))
+                std::cout << __FUNCTION__ << " Node \"Intention\" successfully updated in G" << std::endl;
+            else
+                std::cout << __FILE__ << __FUNCTION__ << " Fatal error inserting_new 'intention' node" << std::endl;
         }
     }
-    using namespace std::placeholders;
-    if (auto target_node = G->get_node(id); target_node.has_value())
+    else
     {
-        const std::string location =
-                "[" + std::to_string(pos_x) + "," + std::to_string(pos_y) + "," + std::to_string(0) + "]";
-        const std::string plan =
-                "{\"plan\":[{\"action\":\"goto\",\"params\":{\"location\":" + location + ",\"object\":\"" +
-                target_node.value().name() + "\"}}]}";
-        std::cout << plan << std::endl;
-        plan_buffer.put(plan, std::bind(&SpecificWorker::json_to_plan, this, _1, _2));
-    } else
-        qWarning() << __FILE__ << __FUNCTION__ << " No target node  " << QString::number(id) << " found";
+        std::cout << __FILE__ << __FUNCTION__ << " Fatal error. Robot node not found. Terminating" << std::endl;
+        std::terminate();
+    }
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// UI
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void SpecificWorker::slot_start_mission()
+{
+
+}
+
+void SpecificWorker::slot_stop_mission()
+{
+
+}
+
+void SpecificWorker::slot_cancel_mission()
+{
+
+}
+
+
+//    using namespace std::placeholders;
+//    if (auto target_node = G->get_node(id); target_node.has_value())
+//    {
+//        const std::string location =
+//                "[" + std::to_string(pos_x) + "," + std::to_string(pos_y) + "," + std::to_string(0) + "]";
+//        const std::string plan =
+//                "{\"plan\":[{\"action\":\"goto\",\"params\":{\"location\":" + location + ",\"object\":\"" +
+//                target_node.value().name() + "\"}}]}";
+//        std::cout << plan << std::endl;
+//        plan_buffer.put(plan, std::bind(&SpecificWorker::json_to_plan, this, _1, _2));
+//    } else
+//        qWarning() << __FILE__ << __FUNCTION__ << " No target node  " << QString::number(id) << " found";
