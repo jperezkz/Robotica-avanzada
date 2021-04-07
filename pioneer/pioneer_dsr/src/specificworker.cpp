@@ -50,6 +50,7 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 	graph_view = params["graph_view"].value == "true";
 	qscene_2d_view = params["2d_view"].value == "true";
 	osg_3d_view = params["3d_view"].value == "true";
+	robot_real = params["robot_real"].value == "true";
 
     dsr_input_file = params["dsr_input_file"].value;
 
@@ -111,12 +112,20 @@ void SpecificWorker::initialize(int period)
 	}
 }
 
-void SpecificWorker::compute()
-{
+void SpecificWorker::compute() {
     update_robot_localization();
-    auto [virtual_frame, laser] = compute_mosaic();
-    update_virtual(virtual_frame, focalx, focaly);
-    update_laser(laser);
+
+    if (robot_real){
+        //Llamada a metodo para guardar la imagen virtual del robot
+        auto virtual_frame = compute_virtual_frame();
+        update_virtual(virtual_frame, focalx, focaly);
+    }
+    else{
+        auto[virtual_frame, laser] = compute_mosaic();
+        update_virtual(virtual_frame, focalx, focaly);
+        update_laser(laser);
+    }
+
     //update_rgbd();
     //auto cdata = read_rgb_camera(false);
     //read_battery();
@@ -334,6 +343,20 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
     //std::generate(laser_data_filtered.begin(), laser_data_filtered.end(), [&laser_poly]() mutable {  auto n = laser_poly.takeFirst(); return LaserPoint{(float)n.x(), (float)n.y()};});
     cv::flip(frame_virtual, frame_virtual, -1);
     return std::make_tuple(frame_virtual, laser_data);
+}
+
+cv::Mat SpecificWorker::compute_virtual_frame()
+{
+    RoboCompCameraRGBDSimple::TRGBD cdata_virtual;
+    try
+    {
+        cdata_virtual = camerargbdsimple_proxy->getAll("pioneer_camera_virtual");
+        this->focalx = cdata_virtual.image.focalx;
+        this->focaly = cdata_virtual.image.focaly;
+    }
+    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+
+    return cv::Mat(cdata_virtual.image.height, cdata_virtual.image.width, CV_8UC3, &cdata_virtual.image);
 }
 
 void SpecificWorker::update_virtual(const cv::Mat &v_image, float focalx, float focaly)

@@ -246,7 +246,7 @@ void SpecificWorker::project_path_on_image(const std::vector<Eigen::Vector3d> &p
         }
     }
     for(const auto &p : cv_points)
-        cv::circle(virtual_frame, p, 8, cv::Scalar(68,86,100), cv::FILLED);
+        cv::circle(virtual_frame, p, 8, cv::Scalar(173,216,230), cv::FILLED);
 }
 
 void SpecificWorker::project_laser_on_image(const DSR::Node &robot_node, const QPolygonF &laser_poly_local, cv::Mat virtual_frame, float focal)

@@ -56,6 +56,7 @@ class SpecificWorker : public GenericWorker
         std::shared_ptr<DSR::InnerEigenAPI> inner_eigen;
         std::unique_ptr<DSR::RT_API> rt;
 
+
         //DSR params
         int agent_id;
         std::string agent_name;
@@ -66,6 +67,9 @@ class SpecificWorker : public GenericWorker
         bool graph_view;
         bool qscene_2d_view;
         bool osg_3d_view;
+
+        // Flag camara robot
+        bool robot_real;
 
         // DSR graph viewer
         std::unique_ptr<DSR::DSRViewer> graph_viewer;
@@ -92,6 +96,7 @@ class SpecificWorker : public GenericWorker
         // virtual_frame
         void update_virtual(const cv::Mat &virtual_frame, float focalx, float focaly);
         std::tuple<cv::Mat, std::vector<LaserPoint> > compute_mosaic(int subsampling = 1);
+        cv::Mat compute_virtual_frame();
         float focalx, focaly;
 
         bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);
