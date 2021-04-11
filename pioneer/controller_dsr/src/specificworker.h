@@ -95,8 +95,8 @@ private:
     DSR::Node get_robot_node();
 
     // Camera
-    DoubleBuffer<std::vector<std::uint8_t>, cv::Mat> virtual_camera_buffer;
-    cv::Mat read_camera(const DSR::Node &robot_node);
+    //DoubleBuffer<std::vector<std::uint8_t>, cv::Mat> virtual_camera_buffer;
+    DoubleBuffer<std::vector<std::uint8_t>, std::vector<std::uint8_t>> virtual_camera_buffer;
     void project_robot_on_image(const DSR::Node &robot_node, const QPolygonF &robot_polygon, cv::Mat virtual_frame, float focal);
     void project_laser_on_image(const DSR::Node &robot_node, const QPolygonF &laser_poly_local, cv::Mat virtual_frame, float focal);
     void project_path_on_image(const std::vector<Eigen::Vector3d> &path, const DSR::Node robot_node, cv::Mat virtual_frame, float focal);
@@ -106,6 +106,8 @@ private:
 
     //Path
     std::vector<Eigen::Vector3d> path;
+    void draw_path(std::vector<Eigen::Vector3d> &path, QGraphicsScene* viewer_2d);
+
 
 };
 

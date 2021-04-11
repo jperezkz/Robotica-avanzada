@@ -12,7 +12,7 @@ agent_id = 30 # Change id
 agent_name = pioneer_dsr
 tree_view = false
 graph_view = true
-2d_view = true
+2d_view = false
 3d_view = false
 robot_real = false 
 

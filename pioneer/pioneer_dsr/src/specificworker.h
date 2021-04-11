@@ -74,7 +74,7 @@ class SpecificWorker : public GenericWorker
         // DSR graph viewer
         std::unique_ptr<DSR::DSRViewer> graph_viewer;
         QHBoxLayout mainLayout;
-        void add_or_assign_node_slot(std::uint64_t, const std::string &type){}
+        void add_or_assign_node_slot(std::uint64_t, const std::string &type);
         void add_or_assign_attrs_slot(std::uint64_t id, const std::map<std::string, DSR::Attribute> &attribs){};
         void add_or_assign_edge_slot(std::uint64_t from, std::uint64_t to,  const std::string &type){};
         void del_edge_slot(std::uint64_t from, std::uint64_t to, const std::string &edge_tag){};
@@ -95,14 +95,17 @@ class SpecificWorker : public GenericWorker
 
         // virtual_frame
         void update_virtual(const cv::Mat &virtual_frame, float focalx, float focaly);
-        std::tuple<cv::Mat, std::vector<LaserPoint> > compute_mosaic(int subsampling = 1);
+        std::optional<std::tuple<cv::Mat, std::vector<LaserPoint>>> compute_mosaic(int subsampling = 1);
         cv::Mat compute_virtual_frame();
         float focalx, focaly;
-
         bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);
         template <typename T>
         inline bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
         void update_rgbd();
+
+        // robot
+        void check_base_velocity_reference();
+        DoubleBuffer<std::tuple<float, float, float>, std::tuple<float, float, float>> base_target_buffer;
 };
 
 #endif

@@ -19,6 +19,8 @@
 #include "specificworker.h"
 #include <cppitertools/enumerate.hpp>
 #include <cppitertools/zip.hpp>
+#include <cppitertools/filter.hpp>
+#include <cppitertools/sliding_window.hpp>
 
 /**
 * \brief Default constructor
@@ -149,17 +151,22 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
+    static QPixmap pix;
     auto robot_node = get_robot_node();
-    if(auto vframe = read_camera(robot_node); not vframe.empty())
+    if (auto vframe_t = virtual_camera_buffer.try_get(); vframe_t.has_value())
     {
+        //auto vframe = vframe_t.value();
+        auto vframe = cv::Mat(cam_api->get_height(), cam_api->get_width(), CV_8UC3, vframe_t.value().data());
+
+        //project_robot_on_image(robot_node, robot_polygon, vframe, cam_api->get_focal_x());
         if (auto laser_o = laser_buffer.try_get(); laser_o.has_value() and not vframe.empty())
         {
             const auto &[angles, dists, laser_poly_local, laser_cart_world] = laser_o.value();
-            project_laser_on_image(robot_node, laser_poly_local, vframe, cam_api->get_focal_x());
+        //    project_laser_on_image(robot_node, laser_poly_local, vframe, cam_api->get_focal_x());
         }
+        //project_path_on_image(path, robot_node, vframe, cam_api->get_focal_x());
 
-        project_path_on_image(path, robot_node, vframe, cam_api->get_focal_x());
-        auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
+        pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
         custom_widget.label_rgb->setPixmap(pix);
     }
     // check for existing missions
@@ -172,17 +179,6 @@ void SpecificWorker::compute()
     }
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
-cv::Mat SpecificWorker::read_camera(const DSR::Node &robot_node)
-{
-    if (auto vframe_t = virtual_camera_buffer.try_get(); vframe_t.has_value())
-    {
-        auto vframe = vframe_t.value().clone();
-        project_robot_on_image(robot_node, robot_polygon, vframe, cam_api->get_focal_x());
-        return vframe;
-    }
-    else
-        return cv::Mat();
-}
 
 DSR::Node SpecificWorker::get_robot_node()
 {
@@ -228,25 +224,30 @@ void SpecificWorker::project_path_on_image(const std::vector<Eigen::Vector3d> &p
 {
     int cont = 0;
     std::vector<cv::Point> cv_points;
+    Eigen::Hyperplane<double,3> robot_plane(Eigen::Vector3d(0.0, 1.0, 0.0), 1000);
+
+    auto cmp = [](auto &a, auto &b){ return std::get<double>(a) < std::get<double>(b);};
+    std::set<std::tuple<Eigen::Vector3d, double>, decltype(cmp)> ahead_of_robot;
     for(const auto &p : path)
     {
-        // si está más cerca de 400 continue
-        if (auto robot_pose = inner_eigen->transform(world_name, robot_name); robot_pose.has_value()) {
-            auto dist = (p - robot_pose.value()).norm();
-            //if (dist > 400.f and cont++ < 5)
-            {
-                // transform projected polygon to virtal camera coordinate frame and  project into virtual camera
-                if (auto projected_point = inner_eigen->transform(pioneer_camera_virtual_name, p, world_name); projected_point.has_value()) {
-                    auto point = cam_api->project(projected_point.value());
-                    qInfo() << point.x() << point.y();
-                    if (point.x() < virtual_frame.cols and point.y() > virtual_frame.rows/2 and point.y() < virtual_frame.rows and point.x() >= 0 and point.y() >= 0)
-                        cv_points.emplace_back(cv::Point(point.x(), point.y()));
-                }
-            }
-        }
+        auto apr = inner_eigen->transform(robot_name, p, world_name).value();
+        auto d = robot_plane.signedDistance(apr);
+        if(d>0)
+            ahead_of_robot.insert(std::make_tuple(p, d));
     }
+
+    std::transform(ahead_of_robot.cbegin(), ahead_of_robot.cend(), std::back_inserter(cv_points), [this, virtual_frame](auto &p)
+    {
+        if (auto projected_point = inner_eigen->transform(pioneer_camera_virtual_name, std::get<0>(p), world_name); projected_point.has_value())
+        {   auto point = cam_api->project(projected_point.value());
+            if(point.y() > virtual_frame.rows/2)
+            return cv::Point(point.x(), point.y());
+        } else return cv::Point();
+    });
     for(const auto &p : cv_points)
-        cv::circle(virtual_frame, p, 8, cv::Scalar(173,216,230), cv::FILLED);
+        cv::circle(virtual_frame, p, 6, cv::Scalar(13, 16, 230), cv::FILLED);
+    for(auto &&p: iter::sliding_window(cv_points, 2))
+        cv::line(virtual_frame, p[0], p[1], cv::Scalar(120, 130, 240), 2);
 }
 
 void SpecificWorker::project_laser_on_image(const DSR::Node &robot_node, const QPolygonF &laser_poly_local, cv::Mat virtual_frame, float focal)
@@ -276,6 +277,47 @@ void SpecificWorker::project_laser_on_image(const DSR::Node &robot_node, const Q
         cv::addWeighted(overlay, alpha, virtual_frame, 1 - alpha, 0, virtual_frame);  // blending the overlay (with alpha opacity) with the source image (with 1-alpha opacity)
 }
 
+void SpecificWorker::draw_path(std::vector<Eigen::Vector3d> &path, QGraphicsScene* viewer_2d)
+{
+    static std::vector<QGraphicsLineItem *> scene_road_points;
+
+    //clear previous points
+    for (QGraphicsLineItem* item : scene_road_points)
+        viewer_2d->removeItem((QGraphicsItem*)item);
+    scene_road_points.clear();
+
+    /// Draw all points
+    QGraphicsLineItem *line1, *line2;
+    std::string color;
+    for (unsigned int i = 1; i < path.size(); i++)
+        for(auto &&p_pair : iter::sliding_window(path, 2))
+        {
+            if(p_pair.size() < 2)
+                continue;
+            Mat::Vector2d a_point(p_pair[0].x(), p_pair[0].y());
+            Mat::Vector2d b_point(p_pair[1].x(), p_pair[1].y());
+            Mat::Vector2d dir = a_point - b_point;
+            Mat::Vector2d dir_perp = dir.unitOrthogonal();
+            Eigen::ParametrizedLine segment = Eigen::ParametrizedLine<double, 2>::Through(a_point, b_point);
+            Eigen::ParametrizedLine<double, 2> segment_perp((a_point+b_point)/2, dir_perp);
+            auto left = segment_perp.pointAt(50);
+            auto right = segment_perp.pointAt(-50);
+            QLineF qsegment(QPointF(a_point.x(), a_point.y()), QPointF(b_point.x(), b_point.y()));
+            QLineF qsegment_perp(QPointF(left.x(), left.y()), QPointF(right.x(), right.y()));
+
+            if(i == 1 or i == path.size()-1)
+                color = "#00FF00"; //Green
+
+            line1 = viewer_2d->addLine(qsegment, QPen(QBrush(QColor(QString::fromStdString(color))), 20));
+            line2 = viewer_2d->addLine(qsegment_perp, QPen(QBrush(QColor(QString::fromStdString("#F0FF00"))), 20));
+
+            line1->setZValue(2000);
+            line2->setZValue(2000);
+            scene_road_points.push_back(line1);
+            scene_road_points.push_back(line2);
+        }
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 /// Asynchronous changes on G nodes from G signals
@@ -296,9 +338,9 @@ void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::
             if (const auto g_image = G->get_attrib_by_name<cam_rgb_att>(cam_node.value()); g_image.has_value())
             {
                 //virtual_camera_buffer.put(std::move(g_image.value().get()), [this](std::vector<std::uint8_t> &&in, cv::Mat &out)
-                virtual_camera_buffer.put(std::move(g_image.value().get()), [this](const std::vector<std::uint8_t> &in, cv::Mat &out) {
-                    out = cv::Mat(cam_api->get_height(), cam_api->get_width(), CV_8UC3, const_cast<std::vector<uint8_t> &>(in).data());
-                });
+                //virtual_camera_buffer.put(std::move(g_image.value().get()), [this](const std::vector<std::uint8_t> &in, cv::Mat &out)
+                //{  out = cv::Mat(cam_api->get_height(), cam_api->get_width(), CV_8UC3, const_cast<std::vector<uint8_t> &>(in).data()); });
+                virtual_camera_buffer.put(std::move(g_image.value().get()));
             }
     }
     else if (type == laser_type)    // Laser node updated
@@ -322,7 +364,7 @@ void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::
                                          //convert laser polar coordinates to cartesian in the robot's coordinate frame
                                          float x = dist * sin(angle);
                                          float y = dist * cos(angle);
-                                         Mat::Vector3d laserWorld = inner_eigen->transform(world_name,Mat::Vector3d(x, y, 0), pioneer_laser_name).value();
+                                         Mat::Vector3d laserWorld = inner_eigen->transform(world_name,Mat::Vector3d(x, y, 0), laser_name).value();
                                          laser_poly_local << QPointF(x, y);
                                          laser_cart_world.emplace_back(QPointF(laserWorld.x(), laserWorld.y()));
                                      }
@@ -345,6 +387,7 @@ void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::
                 auto y_values = y_values_o.value().get();
                 for(auto &&[p, q] : iter::zip(x_values,y_values))
                     path.emplace_back(Eigen::Vector3d(p, q, 0.f));
+                draw_path(path, &widget_2d->scene);
             }
         }
     }

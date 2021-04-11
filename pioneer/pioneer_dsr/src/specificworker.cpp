@@ -78,10 +78,10 @@ void SpecificWorker::initialize(int period)
 
 		//dsr update signals
 		connect(G.get(), &DSR::DSRGraph::update_node_signal, this, &SpecificWorker::add_or_assign_node_slot);
-		connect(G.get(), &DSR::DSRGraph::update_edge_signal, this, &SpecificWorker::add_or_assign_edge_slot);
-		connect(G.get(), &DSR::DSRGraph::update_attrs_signal, this, &SpecificWorker::add_or_assign_attrs_slot);
-		connect(G.get(), &DSR::DSRGraph::del_edge_signal, this, &SpecificWorker::del_edge_slot);
-		connect(G.get(), &DSR::DSRGraph::del_node_signal, this, &SpecificWorker::del_node_slot);
+		//connect(G.get(), &DSR::DSRGraph::update_edge_signal, this, &SpecificWorker::add_or_assign_edge_slot);
+		//connect(G.get(), &DSR::DSRGraph::update_attrs_signal, this, &SpecificWorker::add_or_assign_attrs_slot);
+		//connect(G.get(), &DSR::DSRGraph::del_edge_signal, this, &SpecificWorker::del_edge_slot);
+		//connect(G.get(), &DSR::DSRGraph::del_node_signal, this, &SpecificWorker::del_node_slot);
 
 		// Graph viewer
 		using opts = DSR::DSRViewer::view;
@@ -112,30 +112,37 @@ void SpecificWorker::initialize(int period)
 	}
 }
 
-void SpecificWorker::compute() {
+void SpecificWorker::compute()
+{
     update_robot_localization();
-
-    if (robot_real){
+    if (robot_real)
+    {
         //Llamada a metodo para guardar la imagen virtual del robot
         auto virtual_frame = compute_virtual_frame();
+        // get laser data from robot and call update_laser
         update_virtual(virtual_frame, focalx, focaly);
     }
-    else{
-        auto[virtual_frame, laser] = compute_mosaic();
-        update_virtual(virtual_frame, focalx, focaly);
-        update_laser(laser);
+    else // Coppelia
+    {
+        if (auto res = compute_mosaic(); res.has_value())
+        {
+            auto &[virtual_frame, laser] = res.value();
+            update_virtual(virtual_frame, focalx, focaly);
+            update_laser(laser);
+        }
     }
 
     //update_rgbd();
     //auto cdata = read_rgb_camera(false);
-    //read_battery();
-    //read_RSSI();
+    read_battery();
+    read_RSSI();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+
 void SpecificWorker::update_laser(const std::vector<LaserPoint> &laser_data)
 {
-    if( auto node = G->get_node(pioneer_laser_name); node.has_value())
+    if( auto node = G->get_node(laser_name); node.has_value())
     {
         // Transform laserData into two std::vector<float>
         std::vector<float> dists;
@@ -149,8 +156,7 @@ void SpecificWorker::update_laser(const std::vector<LaserPoint> &laser_data)
         G->update_node(node.value());
     }
 }
-
-std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::compute_mosaic(int subsampling)
+std::optional<std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>>> SpecificWorker::compute_mosaic(int subsampling)
 {
     RoboCompCameraRGBDSimple::TRGBD cdata_left, cdata_right;
     try
@@ -159,10 +165,10 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
         this->focalx = cdata_left.image.focalx;
         this->focaly = cdata_left.image.focaly;
     }
-    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+    catch (const Ice::Exception &e){ std::cout << e.what() << " No pioneer_camera_left" << std::endl; return {};}
     try
     {  cdata_right = camerargbdsimple_proxy->getAll("pioneer_camera_right"); }
-    catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
+    catch (const Ice::Exception &e){ std::cout << e.what() << " No pioneer_camera_right" << std::endl; return {};}
 
     // check that both cameras are equal
     // declare frame virtual
@@ -311,11 +317,11 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
     before = MyClock::now();   // so it is remembered across QTimer calls to compute()
 
     // compression
-    vector<int> compression_params{cv::IMWRITE_JPEG_QUALITY, 50};
+    //vector<int> compression_params{cv::IMWRITE_JPEG_QUALITY, 50};
     //compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
     //compression_params.push_back(50);
-    vector<uchar> frame_virtual_encoded;
-    cv::imencode(".jpg", frame_virtual, frame_virtual_encoded, compression_params);
+    //vector<uchar> frame_virtual_encoded;
+    //cv::imencode(".jpg", frame_virtual, frame_virtual_encoded, compression_params);
     //duration = myclock::now() - before;
     //std::cout << "Encode took " << duration.count() << "ms" << std::endl;
     //qInfo() << "virtual_frame " << frame_virtual.cols * frame_virtual.rows * 3;
@@ -344,7 +350,6 @@ std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::com
     cv::flip(frame_virtual, frame_virtual, -1);
     return std::make_tuple(frame_virtual, laser_data);
 }
-
 cv::Mat SpecificWorker::compute_virtual_frame()
 {
     RoboCompCameraRGBDSimple::TRGBD cdata_virtual;
@@ -358,7 +363,6 @@ cv::Mat SpecificWorker::compute_virtual_frame()
 
     return cv::Mat(cdata_virtual.image.height, cdata_virtual.image.width, CV_8UC3, &cdata_virtual.image);
 }
-
 void SpecificWorker::update_virtual(const cv::Mat &v_image, float focalx, float focaly)
 {
 
@@ -379,7 +383,6 @@ void SpecificWorker::update_virtual(const cv::Mat &v_image, float focalx, float 
     else
         qWarning() << __FUNCTION__ << "Node camera_virtual not found";
 }
-
 void SpecificWorker::update_rgbd()
 {
     RoboCompCameraRGBDSimple::TImage rgb;
@@ -413,7 +416,6 @@ void SpecificWorker::update_rgbd()
     else
         qWarning() << __FUNCTION__ << "Node not found";
 }
-
 void SpecificWorker::read_battery()
 {
     try
@@ -432,6 +434,11 @@ void SpecificWorker::read_RSSI()
     try
     {
         auto rssi = rssistatus_proxy->getRSSIState();
+        if( auto wifi = G->get_node(wifi_name); wifi.has_value())
+        {
+            G->add_or_modify_attrib_local<wifi_signal_att>(wifi.value(), (int)rssi.percentage);
+            G->update_node(wifi.value());
+        }
     }
     catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
 }
@@ -547,6 +554,36 @@ void SpecificWorker::ramer_douglas_peucker(const std::vector<Point> &pointList, 
         out.clear();
         out.push_back(pointList.front());
         out.push_back(pointList.back());
+    }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+/// Asynchronous changes on G nodes from G signals
+///////////////////////////////////////////////////////////////////
+void SpecificWorker:: add_or_assign_node_slot(std::uint64_t, const std::string &type)
+{
+    if (type == differentialrobot_type)
+    {
+        if (auto robot = G->get_node(robot_name); robot.has_value())
+        {
+            // speed
+            auto ref_adv_speed = G->get_attrib_by_name<robot_ref_adv_speed_att>(robot.value());
+            auto ref_rot_speed = G->get_attrib_by_name<robot_ref_rot_speed_att>(robot.value());
+            auto ref_side_speed = G->get_attrib_by_name<robot_ref_side_speed_att>(robot.value());
+            if (ref_adv_speed.has_value() and ref_rot_speed.has_value() and ref_side_speed.has_value())
+            {
+                // Check de values are within robot's accepted range. Read them from config
+                //const float lowerA = -10, upperA = 10, lowerR = -10, upperR = 5, lowerS = -10, upperS = 10;
+                //std::clamp(ref_adv_speed.value(), lowerA, upperA);
+                std::cout << __FUNCTION__ << ref_side_speed.value() << " "  << ref_adv_speed.value() << " "  << ref_rot_speed.value() << std::endl;
+                try
+                { differentialrobot_proxy->setSpeedBase(ref_adv_speed.value(), ref_rot_speed.value()); }
+                catch (const RoboCompGenericBase::HardwareFailedException &re)
+                { std::cout << "Exception setting base speed " << re << '\n'; }
+                catch (const Ice::Exception &e)
+                { std::cout << e.what() << '\n'; }
+            }
+        }
     }
 }
 
