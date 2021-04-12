@@ -175,7 +175,8 @@ void SpecificWorker::compute()
         auto current_plan = plan_o.value();
         current_plan.print();
         custom_widget.current_plan->setPlainText(QString::fromStdString(current_plan.pprint()));
-        // check for path-plan and draw path and project on image
+        // check for plan completion and remove path and intntion node from G
+        
     }
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
