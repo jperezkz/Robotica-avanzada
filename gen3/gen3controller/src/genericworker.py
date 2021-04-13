@@ -33,6 +33,8 @@ import RoboCompCommonBehavior
 
 Ice.loadSlice("-I ./src/ --all ./src/CameraRGBDSimple.ice")
 import RoboCompCameraRGBDSimple
+Ice.loadSlice("-I ./src/ --all ./src/CoppeliaUtils.ice")
+import RoboCompCoppeliaUtils
 Ice.loadSlice("-I ./src/ --all ./src/KinovaArm.ice")
 import RoboCompKinovaArm
 
@@ -93,6 +95,7 @@ class GenericWorker(QtWidgets.QMainWindow):
         super(GenericWorker, self).__init__()
 
         self.camerargbdsimple_proxy = mprx["CameraRGBDSimpleProxy"]
+        self.coppeliautils_proxy = mprx["CoppeliaUtilsProxy"]
         self.kinovaarm_proxy = mprx["KinovaArmProxy"]
 
         self.ui = Ui_guiDlg()
