@@ -162,9 +162,9 @@ void SpecificWorker::compute()
         if (auto laser_o = laser_buffer.try_get(); laser_o.has_value() and not vframe.empty())
         {
             const auto &[angles, dists, laser_poly_local, laser_cart_world] = laser_o.value();
-            //project_laser_on_image(robot_node, laser_poly_local, vframe, cam_api->get_focal_x());
+            project_laser_on_image(robot_node, laser_poly_local, vframe, cam_api->get_focal_x());
         }
-        //project_path_on_image(path, robot_node, vframe, cam_api->get_focal_x());
+        project_path_on_image(path, robot_node, vframe, cam_api->get_focal_x());
 
         pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
         custom_widget.label_rgb->setPixmap(pix);

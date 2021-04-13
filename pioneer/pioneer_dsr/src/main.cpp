@@ -134,6 +134,7 @@ int ::pioneer_dsr::run(int argc, char* argv[])
 	RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr camerargbdsimple_proxy;
 	RoboCompDifferentialRobot::DifferentialRobotPrxPtr differentialrobot_proxy;
 	RoboCompFullPoseEstimation::FullPoseEstimationPrxPtr fullposeestimation_proxy;
+	RoboCompLaser::LaserPrxPtr laser_proxy;
 	RoboCompRSSIStatus::RSSIStatusPrxPtr rssistatus_proxy;
 	RoboCompUltrasound::UltrasoundPrxPtr ultrasound_proxy;
 
@@ -206,6 +207,22 @@ int ::pioneer_dsr::run(int argc, char* argv[])
 
 	try
 	{
+		if (not GenericMonitor::configGetString(communicator(), prefix, "LaserProxy", proxy, ""))
+		{
+			cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy LaserProxy\n";
+		}
+		laser_proxy = Ice::uncheckedCast<RoboCompLaser::LaserPrx>( communicator()->stringToProxy( proxy ) );
+	}
+	catch(const Ice::Exception& ex)
+	{
+		cout << "[" << PROGRAM_NAME << "]: Exception creating proxy Laser: " << ex;
+		return EXIT_FAILURE;
+	}
+	rInfo("LaserProxy initialized Ok!");
+
+
+	try
+	{
 		if (not GenericMonitor::configGetString(communicator(), prefix, "RSSIStatusProxy", proxy, ""))
 		{
 			cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy RSSIStatusProxy\n";
@@ -236,7 +253,7 @@ int ::pioneer_dsr::run(int argc, char* argv[])
 	rInfo("UltrasoundProxy initialized Ok!");
 
 
-	tprx = std::make_tuple(batterystatus_proxy,camerargbdsimple_proxy,differentialrobot_proxy,fullposeestimation_proxy,rssistatus_proxy,ultrasound_proxy);
+	tprx = std::make_tuple(batterystatus_proxy,camerargbdsimple_proxy,differentialrobot_proxy,fullposeestimation_proxy,laser_proxy,rssistatus_proxy,ultrasound_proxy);
 	SpecificWorker *worker = new SpecificWorker(tprx, startup_check_flag);
 	//Monitor thread
 	SpecificMonitor *monitor = new SpecificMonitor(worker,communicator());
