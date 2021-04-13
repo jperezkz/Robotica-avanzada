@@ -131,6 +131,23 @@ if __name__ == '__main__':
         status = 1
 
 
+    # Remote object connection for CoppeliaUtils
+    try:
+        proxyString = ic.getProperties().getProperty('CoppeliaUtilsProxy')
+        try:
+            basePrx = ic.stringToProxy(proxyString)
+            coppeliautils_proxy = RoboCompCoppeliaUtils.CoppeliaUtilsPrx.uncheckedCast(basePrx)
+            mprx["CoppeliaUtilsProxy"] = coppeliautils_proxy
+        except Ice.Exception:
+            print('Cannot connect to the remote object (CoppeliaUtils)', proxyString)
+            #traceback.print_exc()
+            status = 1
+    except Ice.Exception as e:
+        print(e)
+        print('Cannot get CoppeliaUtilsProxy property.')
+        status = 1
+
+
     # Remote object connection for KinovaArm
     try:
         proxyString = ic.getProperties().getProperty('KinovaArmProxy')
