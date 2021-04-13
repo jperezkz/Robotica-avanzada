@@ -70,10 +70,10 @@ void SpecificWorker::initialize(int period)
 
 		//dsr update signals
 		connect(G.get(), &DSR::DSRGraph::update_node_signal, this, &SpecificWorker::add_or_assign_node_slot);
-		connect(G.get(), &DSR::DSRGraph::update_edge_signal, this, &SpecificWorker::add_or_assign_edge_slot);
-		connect(G.get(), &DSR::DSRGraph::update_attrs_signal, this, &SpecificWorker::add_or_assign_attrs_slot);
-		connect(G.get(), &DSR::DSRGraph::del_edge_signal, this, &SpecificWorker::del_edge_slot);
-		connect(G.get(), &DSR::DSRGraph::del_node_signal, this, &SpecificWorker::del_node_slot);
+//		connect(G.get(), &DSR::DSRGraph::update_edge_signal, this, &SpecificWorker::add_or_assign_edge_slot);
+//		connect(G.get(), &DSR::DSRGraph::update_attrs_signal, this, &SpecificWorker::add_or_assign_attrs_slot);
+//		connect(G.get(), &DSR::DSRGraph::del_edge_signal, this, &SpecificWorker::del_edge_slot);
+//		connect(G.get(), &DSR::DSRGraph::del_node_signal, this, &SpecificWorker::del_node_slot);
 
 		// Graph viewer
 		using opts = DSR::DSRViewer::view;
@@ -84,7 +84,7 @@ void SpecificWorker::initialize(int period)
 		if(graph_view)
 		{
 		    current_opts = current_opts | opts::graph;
-		    main = opts::graph;
+		    //main = opts::graph;
 		}
 		if(qscene_2d_view)
 		    current_opts = current_opts | opts::scene;
@@ -162,7 +162,7 @@ void SpecificWorker::compute()
         if (auto laser_o = laser_buffer.try_get(); laser_o.has_value() and not vframe.empty())
         {
             const auto &[angles, dists, laser_poly_local, laser_cart_world] = laser_o.value();
-        //    project_laser_on_image(robot_node, laser_poly_local, vframe, cam_api->get_focal_x());
+            //project_laser_on_image(robot_node, laser_poly_local, vframe, cam_api->get_focal_x());
         }
         //project_path_on_image(path, robot_node, vframe, cam_api->get_focal_x());
 
@@ -175,9 +175,10 @@ void SpecificWorker::compute()
         auto current_plan = plan_o.value();
         current_plan.print();
         custom_widget.current_plan->setPlainText(QString::fromStdString(current_plan.pprint()));
-        // check for plan completion and remove path and intntion node from G
-        
     }
+    // Follow current mission and check for plan completion and remove path and intntion node from G
+
+
 }
 /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -246,9 +247,9 @@ void SpecificWorker::project_path_on_image(const std::vector<Eigen::Vector3d> &p
         } else return cv::Point();
     });
     for(const auto &p : cv_points)
-        cv::circle(virtual_frame, p, 6, cv::Scalar(13, 16, 230), cv::FILLED);
+        cv::circle(virtual_frame, p, 6, cv::Scalar(51, 165, 50), cv::FILLED);
     for(auto &&p: iter::sliding_window(cv_points, 2))
-        cv::line(virtual_frame, p[0], p[1], cv::Scalar(120, 130, 240), 2);
+        cv::line(virtual_frame, p[0], p[1], cv::Scalar(190, 234, 182), 2);
 }
 
 void SpecificWorker::project_laser_on_image(const DSR::Node &robot_node, const QPolygonF &laser_poly_local, cv::Mat virtual_frame, float focal)
@@ -273,8 +274,8 @@ void SpecificWorker::project_laser_on_image(const DSR::Node &robot_node, const Q
         virtual_frame.copyTo(overlay);
         const cv::Point *pts = (const cv::Point*) cv::Mat(cv_poly).data;
         int npts = cv::Mat(cv_poly).rows;
-        cv::polylines(overlay, &pts, &npts, 1, true, cv::Scalar(144, 238, 144), 3);
-        cv::fillPoly(overlay, &pts, &npts, 1, cv::Scalar(100, 218, 124));
+        cv::polylines(overlay, &pts, &npts, 1, true, cv::Scalar(255,192,203), 3);
+        cv::fillPoly(overlay, &pts, &npts, 1, cv::Scalar(255,182,193));
         cv::addWeighted(overlay, alpha, virtual_frame, 1 - alpha, 0, virtual_frame);  // blending the overlay (with alpha opacity) with the source image (with 1-alpha opacity)
 }
 
@@ -311,7 +312,6 @@ void SpecificWorker::draw_path(std::vector<Eigen::Vector3d> &path, QGraphicsScen
 
             line1 = viewer_2d->addLine(qsegment, QPen(QBrush(QColor(QString::fromStdString(color))), 20));
             line2 = viewer_2d->addLine(qsegment_perp, QPen(QBrush(QColor(QString::fromStdString("#F0FF00"))), 20));
-
             line1->setZValue(2000);
             line2->setZValue(2000);
             scene_road_points.push_back(line1);
@@ -354,7 +354,7 @@ void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::
             if(dists.has_value() and angles.has_value())
             {
                 if(dists.value().get().empty() or angles.value().get().empty()) return;
-                laser_buffer.put(std::make_tuple(angles.value().get(), dists.value().get()),
+                laser_buffer.put(std::move(std::make_tuple(angles.value().get(), dists.value().get())),
                                  [this](const LaserData &in, std::tuple<std::vector<float>, std::vector<float>, QPolygonF,std::vector<QPointF>> &out) {
                                      QPolygonF laser_poly_local;
                                      //laser_poly_local << QPointF(0.f, 200.f);
@@ -384,8 +384,9 @@ void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::
             if(x_values_o.has_value() and y_values_o.has_value())
             {
                 path.clear();
-                auto x_values = x_values_o.value().get();
-                auto y_values = y_values_o.value().get();
+                auto &x_values = x_values_o.value().get();
+                auto &y_values = y_values_o.value().get();
+                path.reserve(x_values.size());
                 for(auto &&[p, q] : iter::zip(x_values,y_values))
                     path.emplace_back(Eigen::Vector3d(p, q, 0.f));
                 draw_path(path, &widget_2d->scene);

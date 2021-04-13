@@ -575,7 +575,7 @@ void SpecificWorker:: add_or_assign_node_slot(std::uint64_t, const std::string &
                 // Check de values are within robot's accepted range. Read them from config
                 //const float lowerA = -10, upperA = 10, lowerR = -10, upperR = 5, lowerS = -10, upperS = 10;
                 //std::clamp(ref_adv_speed.value(), lowerA, upperA);
-                std::cout << __FUNCTION__ << ref_side_speed.value() << " "  << ref_adv_speed.value() << " "  << ref_rot_speed.value() << std::endl;
+                //std::cout << __FUNCTION__ << ref_side_speed.value() << " "  << ref_adv_speed.value() << " "  << ref_rot_speed.value() << std::endl;
                 try
                 { differentialrobot_proxy->setSpeedBase(ref_adv_speed.value(), ref_rot_speed.value()); }
                 catch (const RoboCompGenericBase::HardwareFailedException &re)
