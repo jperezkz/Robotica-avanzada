@@ -1,4 +1,4 @@
-# Install script for directory: /home/robolab/robocomp/components/Robotica-avanzada/pioneer/pioneer_pyrep
+# Install script for directory: /home/salabeta/robocomp/components/Robotica-avanzada/pioneer/pioneer_pyrep
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,7 +39,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("/home/robolab/robocomp/components/Robotica-avanzada/pioneer/pioneer_pyrep/src/cmake_install.cmake")
+  include("/home/salabeta/robocomp/components/Robotica-avanzada/pioneer/pioneer_pyrep/src/cmake_install.cmake")
 
 endif()
 
@@ -51,5 +51,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/robolab/robocomp/components/Robotica-avanzada/pioneer/pioneer_pyrep/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/salabeta/robocomp/components/Robotica-avanzada/pioneer/pioneer_pyrep/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

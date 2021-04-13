@@ -22,8 +22,6 @@
 	@author authorname
 */
 
-
-
 #ifndef SPECIFICWORKER_H
 #define SPECIFICWORKER_H
 
@@ -32,9 +30,15 @@
 #include "dsr/gui/dsr_gui.h"
 #include <doublebuffer/DoubleBuffer.h>
 #include "../../../etc/pioneer_world_names.h"
+#include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 class SpecificWorker : public GenericWorker
 {
+    using MyClock = std::chrono::system_clock;
+    using mSec = std::chrono::duration<double, std::milli>;
+
     Q_OBJECT
     public:
         SpecificWorker(TuplePrx tprx, bool startup_check);
@@ -52,6 +56,7 @@ class SpecificWorker : public GenericWorker
         std::shared_ptr<DSR::InnerEigenAPI> inner_eigen;
         std::unique_ptr<DSR::RT_API> rt;
 
+
         //DSR params
         int agent_id;
         std::string agent_name;
@@ -63,13 +68,15 @@ class SpecificWorker : public GenericWorker
         bool qscene_2d_view;
         bool osg_3d_view;
 
+        // Flag camara robot
+        bool robot_real;
+
         // DSR graph viewer
         std::unique_ptr<DSR::DSRViewer> graph_viewer;
         QHBoxLayout mainLayout;
-        void add_or_assign_node_slot(std::uint64_t, const std::string &type){};
+        void add_or_assign_node_slot(std::uint64_t, const std::string &type);
         void add_or_assign_attrs_slot(std::uint64_t id, const std::map<std::string, DSR::Attribute> &attribs){};
         void add_or_assign_edge_slot(std::uint64_t from, std::uint64_t to,  const std::string &type){};
-
         void del_edge_slot(std::uint64_t from, std::uint64_t to, const std::string &edge_tag){};
         void del_node_slot(std::uint64_t from){};
         bool startup_check_flag;
@@ -79,9 +86,26 @@ class SpecificWorker : public GenericWorker
         void read_battery();
         void read_RSSI();
 
-    bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);
+        //laser
+        using Point = std::pair<float, float>;
+        struct LaserPoint{ float dist; float angle;};
+        void update_laser(const std::vector<LaserPoint> &laser_data);
+        QPolygonF filter_laser(const std::vector<SpecificWorker::LaserPoint> &ldata);
+        void ramer_douglas_peucker(const std::vector<Point> &pointList, double epsilon, std::vector<Point> &out);
 
-    void update_rgbd();
+        // virtual_frame
+        void update_virtual(const cv::Mat &virtual_frame, float focalx, float focaly);
+        std::optional<std::tuple<cv::Mat, std::vector<LaserPoint>>> compute_mosaic(int subsampling = 1);
+        cv::Mat compute_virtual_frame();
+        float focalx, focaly;
+        bool are_different(const vector<float> &a, const vector<float> &b, const vector<float> &epsilon);
+        template <typename T>
+        inline bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
+        void update_rgbd();
+
+        // robot
+        void check_base_velocity_reference();
+        DoubleBuffer<std::tuple<float, float, float>, std::tuple<float, float, float>> base_target_buffer;
 };
 
 #endif

@@ -38,6 +38,8 @@ from itertools import zip_longest
 import cv2
 import imutils
 from threading import Lock
+from collections import namedtuple
+import math
 
 class TimeControl:
     def __init__(self, period_):
@@ -89,7 +91,7 @@ class SpecificWorker(GenericWorker):
         self.cameras_write = {}
         self.cameras_read = {}
 
-        self.front_left_camera_name = "pioneer_head_camera_0"
+        self.front_left_camera_name = "pioneer_camera_left"
         cam = VisionSensor(self.front_left_camera_name)
         self.cameras_write[self.front_left_camera_name] = {"handle": cam,
                                                      "id": 0,
@@ -101,10 +103,10 @@ class SpecificWorker(GenericWorker):
                                                      "rgb": np.array(0),
                                                      "depth": np.ndarray(0)}
 
-        self.front_right_camera_name = "pioneer_head_camera_1"
+        self.front_right_camera_name = "pioneer_camera_right"
         cam = VisionSensor(self.front_right_camera_name)
         self.cameras_write[self.front_right_camera_name] = {"handle": cam,
-                                                     "id": 0,
+                                                     "id": 1,
                                                      "angle": np.radians(cam.get_perspective_angle()),
                                                      "width": cam.get_resolution()[0],
                                                      "height": cam.get_resolution()[1],
@@ -112,6 +114,8 @@ class SpecificWorker(GenericWorker):
                                                          np.radians(cam.get_perspective_angle() / 2)),
                                                      "rgb": np.array(0),
                                                      "depth": np.ndarray(0)}
+
+
         self.cameras_read = self.cameras_write.copy()
         self.mutex_c = Lock()
 
@@ -178,11 +182,11 @@ class SpecificWorker(GenericWorker):
             for x in datos.axes:
                 if x.name == "advance":
                     adv = x.value if np.abs(x.value) > 10 else 0
-                if x.name == "rotate":
+                if x.name == "rotate" or x.name == "turn":
                     rot = x.value if np.abs(x.value) > 0.01 else 0
 
             converted = self.convert_base_speed_to_motors_speed(adv, rot)
-            #print("Joystick ", [adv, rot], converted)
+            print("Joystick ", [adv, rot], converted)
             self.joystick_newdata = None
             self.last_received_data_time = time.time()
         else:
@@ -273,6 +277,10 @@ class SpecificWorker(GenericWorker):
     def CameraRGBDSimple_getAll(self, camera):
         if camera in self.cameras_read.keys():
             return RoboCompCameraRGBDSimple.TRGBD(self.cameras_read[camera]["rgb"], self.cameras_read[camera]["depth"])
+        else:
+            e = RoboCompCameraRGBDSimple.HardwareFailedException()
+            e.what = "No camera found with this name: " + camera
+            raise e
 
     #
     # getDepth
@@ -280,6 +288,10 @@ class SpecificWorker(GenericWorker):
     def CameraRGBDSimple_getDepth(self, camera):
         if camera in self.cameras_read.keys():
             return self.cameras_read[camera]["depth"]
+        else:
+            e = RoboCompCameraRGBDSimple.HardwareFailedException()
+            e.what = "No camera found with this name: " + camera
+            raise e
 
     #
     # getImage
@@ -287,6 +299,10 @@ class SpecificWorker(GenericWorker):
     def CameraRGBDSimple_getImage(self, camera):
         if camera in self.cameras_read.keys():
             return self.cameras_read[camera]["rgb"]
+        else:
+            e = RoboCompCameraRGBDSimple.HardwareFailedException()
+            e.what = "No camera found with this name: " + camera
+            raise e
 
     ##############################################
     ## Omnibase

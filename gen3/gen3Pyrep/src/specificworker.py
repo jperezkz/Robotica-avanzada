@@ -107,6 +107,8 @@ class SpecificWorker(GenericWorker):
 
             if self.pinza:
                 self.pr.script_call("close@RG2", 1)
+            else:
+                self.pr.script_call("open@RG2", 1)
 
             tc.wait()
 
@@ -253,10 +255,9 @@ class SpecificWorker(GenericWorker):
     # IMPLEMENTATION of openGripper method from KinovaArm interface
     #
     def KinovaArm_openGripper(self):
-
-        self.pr.script_call("open@RG2", 1)
+        #self.pr.script_call("open@RG2", 1)
         print("Opening gripper")
-        self.pinza = True
+        self.pinza = False
 
     def KinovaArm_closeGripper(self):
         #self.pr.script_call("close@RG2", 1)

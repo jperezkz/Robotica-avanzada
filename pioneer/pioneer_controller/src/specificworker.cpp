@@ -59,17 +59,6 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 void SpecificWorker::initialize(int period)
 {
     std::cout << "Initialize worker" << std::endl;
-    // draw
-    //QFileInfo info1("../../etc/informatica.simscene.xml");
-    //QFileInfo info2("../../etc/informatica.json");
-    //qInfo() << info2.lastModified().toSecsSinceEpoch() - info1.lastModified().toSecsSinceEpoch();
-
-    //    qInfo() << info.lastModified().toSecsSinceEpoch();
-    //    if (QDateTime::currentDateTime().toSecsSinceEpoch() - info.lastModified().toSecsSinceEpoch() < 3000)
-    //    {
-    //        QProcess::execute("python3 /home/robocomp/robocomp/components/dsr-graph/scripts/vrep_to_json/vrep_to_qscene_json.py ../etc/escuela.simscene.xml ../etc/escuela.json");
-    //        qInfo() << __FUNCTION__ << " JSON file created from XML";
-    //    }
 
     // 2d scene initialization
     auto target_slot =  [this](QGraphicsSceneMouseEvent *e)
@@ -303,44 +292,44 @@ void SpecificWorker::check_target(std::shared_ptr<Robot> robot)
         qInfo() << __FUNCTION__ << t.value().pos;
         target.set_new_value(t.value());
         draw_target(&scene, robot, target);
-//        path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
-//        grid.draw_path(&scene, path, robot->WIDTH/3 );
+        path = grid.computePath(QPointF(robot->state.x, robot->state.y), target.pos);
+        grid.draw_path(&scene, path, robot->WIDTH/3 );
     }
 
-    if(target.is_active())
-    {
-        try
-        {
-            if (not robot->at_target(target))
-            {
-//                while(robot->at_target(path.front()) && !path.empty()){
-//                    path.pop_front();
-//                }
-
-                //auto &&[dist_to_go, ang_to_go] = robot->to_go(path.front());
-                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
-//                qInfo()<<"X: " << path.front().x() << " Y: " << path.front().y();
+//    if(target.is_active())
+//    {
+//        try
+//        {
+//            if (not robot->at_target(target))
+//            {
+////                while(robot->at_target(path.front()) && !path.empty()){
+////                    path.pop_front();
+////                }
+//
+//                //auto &&[dist_to_go, ang_to_go] = robot->to_go(path.front());
+//                auto &&[dist_to_go, ang_to_go] = robot->to_go(target);
+////                qInfo()<<"X: " << path.front().x() << " Y: " << path.front().y();
+////                qInfo()<< "Dist: " << dist_to_go << " ang: " << ang_to_go;
+//                qInfo()<<"X: " << target.pos.x() << " Y: " << target.pos.y();
 //                qInfo()<< "Dist: " << dist_to_go << " ang: " << ang_to_go;
-                qInfo()<<"X: " << target.pos.x() << " Y: " << target.pos.y();
-                qInfo()<< "Dist: " << dist_to_go << " ang: " << ang_to_go;
-                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
-                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.5, 0.5, 0), dist_to_go);
-                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
-
-                if(fabs(rot_speed) < 0.15)
-                    rot_speed = 0;
-
-                qInfo()<<"Velocidad: " << adv_speed << "Angulo :" << rot_speed;
-                differentialrobot_proxy->setSpeedBase(adv_speed,rot_speed);
-            } else
-            {
-                target.set_active(false);
-                differentialrobot_proxy->setSpeedBase(0, 0);
-            }
-        }
-        catch (const Ice::Exception &e)
-        { std::cout << e.what() << std::endl; };
-    }
+//                float rot_speed = std::clamp(sigmoid(ang_to_go), -robot->MAX_ROT_SPEED, robot->MAX_ROT_SPEED);
+//                float adv_speed = std::min(robot->MAX_ADV_SPEED * exponential(rot_speed, 0.5, 0.5, 0), dist_to_go);
+//                adv_speed = std::clamp(adv_speed, 0.f, robot->MAX_ADV_SPEED);
+//
+//                if(fabs(rot_speed) < 0.15)
+//                    rot_speed = 0;
+//
+//                qInfo()<<"Velocidad: " << adv_speed << "Angulo :" << rot_speed;
+//                differentialrobot_proxy->setSpeedBase(adv_speed,rot_speed);
+//            } else
+//            {
+//                target.set_active(false);
+//                differentialrobot_proxy->setSpeedBase(0, 0);
+//            }
+//        }
+//        catch (const Ice::Exception &e)
+//        { std::cout << e.what() << std::endl; };
+//    }
 }
 std::vector<SpecificWorker::LaserPoint>  SpecificWorker::get_laser_from_rgbd( const RoboCompCameraRGBDSimple::TRGBD &cdata, Robot2DScene *scene,bool draw,unsigned short subsampling )
 {
@@ -412,6 +401,8 @@ void SpecificWorker::draw_laser(Robot2DScene *scene, QPolygonF &laser_poly)
     laser_polygon = scene->addPolygon(scene->robot_polygon->mapToScene(laser_poly), QPen(QColor("DarkGreen"), 30), QBrush(color));
     laser_polygon->setZValue(3);
 }
+
+//  Simplify contour with Ramer-Douglas-Peucker and filter out spikes
 QPolygonF SpecificWorker::filter_laser(const std::vector<SpecificWorker::LaserPoint> &ldata)
 {
     static const float MAX_RDP_DEVIATION_mm  =  70;
@@ -641,7 +632,7 @@ cv::Mat SpecificWorker::mosaic( const RoboCompCameraRGBDSimple::TRGBD &cdata_lef
     //cv::inpaint(frame_virtual, frame_virtual_occupied, frame_virtual, 1.0, cv::INPAINT_TELEA);
     cv::medianBlur(frame_virtual, frame_virtual, 3);
     msec duration = myclock::now() - before;
-    std::cout << "It took " << duration.count() << "ms" << std::endl;
+    //std::cout << "It took " << duration.count() << "ms" << std::endl;
     before = myclock::now();   // so it is remembered across QTimer calls to compute()
     //qInfo() << frame_virtual.step[0] * frame_virtual.rows;;
     //vector<int> compression_params;

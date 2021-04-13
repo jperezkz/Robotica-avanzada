@@ -13,11 +13,11 @@
                     },
                     "OuterRegionRight": {
                         "type": 1,
-                        "value": 25000
+                        "value": 12500
                     },
                     "OuterRegionTop": {
                         "type": 1,
-                        "value": 70000
+                        "value": 35000
                     },
                     "color": {
                         "type": 0,
@@ -519,29 +519,6 @@
                                 "value": [
                                     -1032.800048828125,
                                     12576.1123046875,
-                                    1200
-                                ]
-                            }
-                        },
-                        "src": 1
-                    },
-                    {
-                        "dst": 23,
-                        "label": "RT",
-                        "linkAttribute": {
-                            "rt_rotation_euler_xyz": {
-                                "type": 3,
-                                "value": [
-                                    0,
-                                    0,
-                                    1.5707945823669434
-                                ]
-                            },
-                            "rt_translation": {
-                                "type": 3,
-                                "value": [
-                                    -607.7999877929688,
-                                    -13596.6884765625,
                                     1200
                                 ]
                             }
@@ -1832,6 +1809,29 @@
                 "id": 200,
                 "links": [
                     {
+                        "dst": 201,
+                        "label": "RT",
+                        "linkAttribute": {
+                            "rt_rotation_euler_xyz": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "rt_translation": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            }
+                        },
+                        "src": 200
+                    },
+                    {
                         "dst": 210,
                         "label": "RT",
                         "linkAttribute": {
@@ -1870,6 +1870,29 @@
                                 "type": 3,
                                 "value": [
                                     60,
+                                    0,
+                                    350
+                                ]
+                            }
+                        },
+                        "src": 200
+                    },
+                    {
+                        "dst": 212,
+                        "label": "RT",
+                        "linkAttribute": {
+                            "rt_rotation_euler_xyz": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "rt_translation": {
+                                "type": 3,
+                                "value": [
+                                    0,
                                     0,
                                     350
                                 ]
@@ -1985,8 +2008,31 @@
                                 "type": 3,
                                 "value": [
                                     0,
-                                    200,
-                                    200
+                                    0,
+                                    350
+                                ]
+                            }
+                        },
+                        "src": 200
+                    },
+                    {
+                        "dst": 230,
+                        "label": "RT",
+                        "linkAttribute": {
+                            "rt_rotation_euler_xyz": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    0
+                                ]
+                            },
+                            "rt_translation": {
+                                "type": 3,
+                                "value": [
+                                    0,
+                                    0,
+                                    350
                                 ]
                             }
                         },
@@ -1995,6 +2041,51 @@
                 ],
                 "name": "pioneer",
                 "type": "differentialrobot"
+            },
+            "201": {
+                "attribute": {
+                    "color": {
+                        "type": 0,
+                        "value": "Red"
+                    },
+                    "depth": {
+                        "type": 1,
+                        "value": 540
+                    },
+                    "height": {
+                        "type": 1,
+                        "value": 10
+                    },
+                    "level": {
+                        "type": 1,
+                        "value": 2
+                    },
+                    "parent": {
+                        "type": 7,
+                        "value": 200
+                    },
+                    "pos_x": {
+                        "type": 2,
+                        "value": 55.088669
+                    },
+                    "pos_y": {
+                        "type": 2,
+                        "value": -400.637115
+                    },
+                    "texture": {
+                        "type": 0,
+                        "value": "#b7e059"
+                    },
+                    "width": {
+                        "type": 1,
+                        "value": 460
+                    }
+                },
+                "id": 201,
+                "links": [
+                ],
+                "name": "pioneer_body",
+                "type": "plane"
             },
             "21": {
                 "attribute": {
@@ -2069,7 +2160,7 @@
                     },
                     "pos_y": {
                         "type": 2,
-                        "value": -710.726318
+                        "value": -672.432739
                     },
                     "width": {
                         "type": 1,
@@ -2079,7 +2170,7 @@
                 "id": 210,
                 "links": [
                 ],
-                "name": "pioneer_head_camera_0",
+                "name": "pioneer_camera_left",
                 "type": "rgbd"
             },
             "211": {
@@ -2120,7 +2211,44 @@
                 "id": 211,
                 "links": [
                 ],
-                "name": "pioneer_head_camera_1",
+                "name": "pioneer_camera_right",
+                "type": "rgbd"
+            },
+            "212": {
+                "attribute": {
+                    "color": {
+                        "type": 0,
+                        "value": "Brown"
+                    },
+                    "height": {
+                        "type": 1,
+                        "value": 480
+                    },
+                    "level": {
+                        "type": 1,
+                        "value": 2
+                    },
+                    "parent": {
+                        "type": 7,
+                        "value": 200
+                    },
+                    "pos_x": {
+                        "type": 2,
+                        "value": 265.133209
+                    },
+                    "pos_y": {
+                        "type": 2,
+                        "value": -721.082092
+                    },
+                    "width": {
+                        "type": 1,
+                        "value": 640
+                    }
+                },
+                "id": 212,
+                "links": [
+                ],
+                "name": "pioneer_camera_virtual",
                 "type": "rgbd"
             },
             "215": {
@@ -2393,50 +2521,46 @@
                 "name": "ultrasound",
                 "type": "laser"
             },
-            "23": {
+            "230": {
                 "attribute": {
                     "color": {
                         "type": 0,
-                        "value": "Khaki"
+                        "value": "Orange"
                     },
                     "depth": {
                         "type": 1,
-                        "value": 2400
+                        "value": 15
                     },
                     "height": {
                         "type": 1,
-                        "value": 1010
+                        "value": 20
                     },
                     "level": {
                         "type": 1,
-                        "value": 1
+                        "value": 2
                     },
                     "parent": {
                         "type": 7,
-                        "value": 1
+                        "value": 200
                     },
                     "pos_x": {
                         "type": 2,
-                        "value": 71
+                        "value": -81.811905
                     },
                     "pos_y": {
                         "type": 2,
-                        "value": -40
-                    },
-                    "texture": {
-                        "type": 0,
-                        "value": "#3333ff"
+                        "value": -706.797302
                     },
                     "width": {
                         "type": 1,
-                        "value": 150
+                        "value": 70
                     }
                 },
-                "id": 23,
+                "id": 230,
                 "links": [
                 ],
-                "name": "wall_7",
-                "type": "plane"
+                "name": "pioneer_laser",
+                "type": "laser"
             },
             "24": {
                 "attribute": {
