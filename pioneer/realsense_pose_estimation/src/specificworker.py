@@ -28,12 +28,16 @@ import numpy as np
 from pytransform3d.transform_manager import TransformManager
 import pytransform3d.transformations as pytr
 import pytransform3d.rotations as pyrot
+import threading
 
 class SpecificWorker(GenericWorker):
     def __init__(self, proxy_map, startup_check=False):
         super(SpecificWorker, self).__init__(proxy_map)
 
         self.Period = 50
+        self.lock = threading.Lock()
+        self.firsttime = False
+        
         if startup_check:
             self.startup_check()
         else:
@@ -47,7 +51,7 @@ class SpecificWorker(GenericWorker):
 
         self.device_serial = params["device_serial"]
         self.print = params["print"] == "true"
-        print(self.device_serial)
+        print("Serial number: ", self.device_serial)
         # realsense configuration
         try:
             config = rs.config()
@@ -85,19 +89,46 @@ class SpecificWorker(GenericWorker):
         frames = self.pipeline.wait_for_frames()
         f = frames.first_or_default(rs.stream.pose)
         # Cast the frame to pose_frame and get its data
+        self.firsttime = True
         data = f.as_pose_frame().get_pose_data()
+        
+        #with self.lock:
         self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.matrix_from_quaternion
-                                                                    ([data.rotation.w,
-                                                                      data.rotation.x,
-                                                                      data.rotation.y,
-                                                                      data.rotation.z]),
-                                                                    [data.translation.x*1000.0,
-                                                                     data.translation.y*1000.0,
-                                                                     data.translation.z*1000.0]))
+                                                                        ([data.rotation.w,
+                                                                          data.rotation.x,
+                                                                          data.rotation.y,
+                                                                          data.rotation.z]),
+                                                                        [data.translation.x*1000.0,
+                                                                         data.translation.y*1000.0,
+                                                                         data.translation.z*1000.0]))
+
+        
+        self.angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
+        
 
         if self.print:
             print("\r Device Position: ", data.translation, data.rotation, end="\r")
 
+
+    def quaternion_to_euler_angle(self, w, x, y, z):
+        
+        #print(w,x,y,z)
+        qx = x
+        qy = y 
+        qz = z 
+        qw = w
+        
+        a1 = np.arctan2(2*qy*qw-2*qx*qz, 1- 2*qy*qy - 2*qz*qz)
+        a2 = np.arcsin(2*qx*qy + 2*qz*qw)
+        a0 = np.arctan2(2*qx*qw-2*qy*qz , 1 - 2*qx*qx - 2*qz*qz)
+        
+        if np.isclose(qx*qy + qz*qw, 0.5):
+            a1 = 2.0 * np.arctan2(qx,qw)
+            a0 = 0.0
+        if np.isclose(qx*qy + qz*qw, -0.5):
+            a1 = -2.0 * np.arctan2(qx,qw)
+            a0 = 0.0
+        return a0,a1,a2
 
     def startup_check(self):
         QTimer.singleShot(200, QApplication.instance().quit)
@@ -109,17 +140,17 @@ class SpecificWorker(GenericWorker):
     # IMPLEMENTATION of getFullPoseEuler method from FullPoseEstimation interface
     #
     def FullPoseEstimation_getFullPoseEuler(self):
-        print("hola")
-        t = self.tm.get_transform("origin", "slam_sensor")
+        ret = RoboCompFullPoseEstimation.FullPoseEuler()
+        t = self.tm.get_transform("world", "slam_sensor")
         rot = t[0:3, 0:3]
         angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
-        ret = RoboCompFullPoseEstimation.FullPoseEuler()
         ret.x = t[0][3]
         ret.y = t[1][3]
         ret.z = t[2][3]
-        ret.rx = angles[0]
-        ret.ry = angles[1]
-        ret.rz = angles[2]
+        ret.rx = self.angles[0]
+        ret.ry = self.angles[1]
+        ret.rz = self.angles[2]
+         
         return ret
     #
     # IMPLEMENTATION of getFullPoseMatrix method from FullPoseEstimation interface
