@@ -61,6 +61,8 @@ public:
     RoboCompUltrasound::BusParams Ultrasound_getBusParams();
     int Ultrasound_getSensorDistance(std::string sensor);
     RoboCompUltrasound::SensorParams Ultrasound_getSensorParams(std::string sensor);
+    int Ultrasound_getSonarsNumber();
+
 
     RoboCompRSSIStatus::TRSSI RSSIStatus_getRSSIState();
 
@@ -68,13 +70,8 @@ public slots:
 	void compute();
 	int startup_check();
 	void initialize(int period);
-<<<<<<< HEAD
-	int rate();
-	void controlParadaBase(bool flag);
-=======
 	void rate();
 	void controlParadaBase();
->>>>>>> 0ec44278b574f95a99cb73598076d5525141b76a
 
 signals:
     void controlTime(bool);
@@ -106,6 +103,7 @@ private:
     //Ultrasound
     int numSonars = 0;
     int sonarDistance;
+    
     //std::vector<int> sonar;
     RoboCompUltrasound::SensorsState sonar;
     RoboCompUltrasound::SonarPoseList sonarPose;

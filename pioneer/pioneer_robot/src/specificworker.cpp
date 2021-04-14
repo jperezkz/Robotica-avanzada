@@ -51,32 +51,27 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 	return true;
 }
 
-<<<<<<< HEAD
+// int SpecificWorker::rate(){
+//         instantiate dynamically to avoid stack unwinding before the process terminates
+//         QProcess *iwconfig = new QProcess();
+//         catch data output
+//         QObject::connect(iwconfig, &QProcess::readyRead, [iwconfig] () {
+//             QByteArray a = iwconfig->readAll();
+//             qDebug() <<  a;
+//         });
+// 
+//         delete process instance when done, and get the exit status to handle errors.
+//         QObject::connect(iwconfig, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+//                      [=](int exitCode, QProcess::ExitStatus /*exitStatus*/){
+//                          qDebug()<< "process exited with code " << exitCode;
+//                          iwconfig->deleteLater();
+//                      });
+// 
+//         start the process after making signal/slots connections
+//     iwconfig->start("iwconfig");
+//     return 0;
+// }
 
-int SpecificWorker::rate(){
-        // instantiate dynamically to avoid stack unwinding before the process terminates
-        QProcess *iwconfig = new QProcess();
-        // catch data output
-        QObject::connect(iwconfig, &QProcess::readyRead, [iwconfig] () {
-            QByteArray a = iwconfig->readAll();
-            //qDebug() <<  a;
-        });
-
-        // delete process instance when done, and get the exit status to handle errors.
-        QObject::connect(iwconfig, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                     [=](int exitCode, QProcess::ExitStatus /*exitStatus*/){
-                         qDebug()<< "process exited with code " << exitCode;
-                         iwconfig->deleteLater();
-                     });
-
-        // start the process after making signal/slots connections
-    iwconfig->start("iwconfig");
-    return 0;
-}
-
-
-=======
->>>>>>> 0ec44278b574f95a99cb73598076d5525141b76a
 void SpecificWorker::initialize(int period)
 {
 
@@ -310,6 +305,10 @@ RoboCompUltrasound::SensorParams SpecificWorker::Ultrasound_getSensorParams(std:
 
 }
 
+int SpecificWorker::Ultrasound_getSonarsNumber()
+{
+    return numSonars;
+}
 
 RoboCompRSSIStatus::TRSSI SpecificWorker::RSSIStatus_getRSSIState()
 {
