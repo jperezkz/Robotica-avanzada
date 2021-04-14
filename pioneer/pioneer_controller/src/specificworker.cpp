@@ -108,18 +108,18 @@ void SpecificWorker::initialize(int period)
 
     elastic_band.initialize();
 
-    // reset initial state
-//    try
-//    {
-//        float x = 3305;
-//        float y = -21699;
-//        float z = 0;
-//        float rx = 0;
-//        float ry = 0;
-//        float rz = 0;
-//        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
-//    }
-//    catch(const Ice::Exception &e){};
+     reset initial state
+    try
+    {
+        float x = 3305;
+        float y = -21699;
+        float z = 0;
+        float rx = 0;
+        float ry = 0;
+        float rz = 0;
+        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
+    }
+    catch(const Ice::Exception &e){};
 
 
     this->Period = period;

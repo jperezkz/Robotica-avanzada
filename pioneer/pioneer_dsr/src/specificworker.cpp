@@ -108,6 +108,17 @@ void SpecificWorker::initialize(int period)
 		graph_viewer = std::make_unique<DSR::DSRViewer>(this, G, current_opts, main);
 		setWindowTitle(QString::fromStdString(agent_name + "-") + QString::number(agent_id));
 
+                    try
+    {
+        float x = 3305;
+        float y = -21699;
+        float z = 0;
+        float rx = 0;
+        float ry = 0;
+        float rz = 0;
+        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
+    }
+    catch(const Ice::Exception &e){};
 		this->Period = period;
 		timer.start(Period);
 	}
@@ -119,10 +130,10 @@ void SpecificWorker::compute()
     if (robot_real)
     {
         //Llamada a metodo para guardar la imagen virtual del robot
-        //auto virtual_frame = compute_virtual_frame();
+        auto virtual_frame = compute_virtual_frame();
         // get laser data from robot and call update_laser
         //auto laser = read_laser_from_robot();
-        //update_virtual(virtual_frame, focalx, focaly);
+        update_virtual(virtual_frame, focalx, focaly);
         //update_laser(laser);
     }
     else // Coppelia
@@ -367,16 +378,27 @@ std::optional<std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>>> Spec
 }
 cv::Mat SpecificWorker::compute_virtual_frame()
 {
-    RoboCompCameraRGBDSimple::TRGBD cdata_virtual;
+    RoboCompCameraRGBDSimple::TImage cdata_virtual;
+    cv::Mat virtual_frame;
     try
     {
-        cdata_virtual = camerargbdsimple_proxy->getAll("pioneer_camera_virtual");
-        this->focalx = cdata_virtual.image.focalx;
-        this->focaly = cdata_virtual.image.focaly;
+        cdata_virtual = camerargbdsimple_proxy->getImage("pioneer_camera_virtual");
+        this->focalx = cdata_virtual.focalx;
+        this->focaly = cdata_virtual.focaly;
+
+        vector<int> compression_params;
+        compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
+        compression_params.push_back(50);
+        //qInfo() <<"1: "<< m.cols*m.rows*3;
+
+        if(!cdata_virtual.image.empty()) {
+            cv::imdecode(cdata_virtual.image, 1, &virtual_frame);
+            cv::cvtColor(virtual_frame, virtual_frame, cv::COLOR_BGR2RGB);
+        }
     }
     catch (const Ice::Exception &e){ std::cout << e.what() << std::endl;}
 
-    return cv::Mat(cdata_virtual.image.height, cdata_virtual.image.width, CV_8UC3, &cdata_virtual.image);
+    return virtual_frame;
 }
 void SpecificWorker::update_virtual(const cv::Mat &v_image, float focalx, float focaly)
 {
