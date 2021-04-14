@@ -69,6 +69,7 @@ public:
 	virtual RoboCompUltrasound::BusParams Ultrasound_getBusParams() = 0;
 	virtual int Ultrasound_getSensorDistance(std::string sensor) = 0;
 	virtual RoboCompUltrasound::SensorParams Ultrasound_getSensorParams(std::string sensor) = 0;
+	virtual int Ultrasound_getSonarsNumber() = 0;
 	virtual void JoystickAdapter_sendData (RoboCompJoystickAdapter::TData data) = 0;
 
 protected:

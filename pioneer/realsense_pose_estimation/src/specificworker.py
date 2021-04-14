@@ -44,6 +44,7 @@ class SpecificWorker(GenericWorker):
             self.timer.timeout.connect(self.compute)
             self.timer.start(self.Period)
 
+
     def __del__(self):
         print('SpecificWorker destructor')
 
@@ -72,6 +73,10 @@ class SpecificWorker(GenericWorker):
         self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
                                                                     ([0.0,0.0,0.0]),
                                                                      [0.0,0.0,0.0]))
+                                                                     
+        self.tm.add_transform("origin", "world", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+                                                                    ([0.0,0.0,0.0]),
+                                                                     [0.0,0.0,0.0]))
         # get slam_sensor_0 coordinates in the robot's frame. Read them from config file
         self.tm.add_transform("robot", "slam_sensor",
                               pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([0, 0, 0]), [0, 0, 0])
@@ -80,7 +85,6 @@ class SpecificWorker(GenericWorker):
         #
 
         # when requested return an average of both sensors.
-
         return True
 
 
@@ -141,7 +145,7 @@ class SpecificWorker(GenericWorker):
     #
     def FullPoseEstimation_getFullPoseEuler(self):
         ret = RoboCompFullPoseEstimation.FullPoseEuler()
-        t = self.tm.get_transform("world", "slam_sensor")
+        t = self.tm.get_transform("origin", "slam_sensor")
         rot = t[0:3, 0:3]
         angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
         ret.x = t[0][3]

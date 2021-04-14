@@ -17,8 +17,7 @@
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "specificworker.h"
-#include <opencv2/opencv.hpp>
-#include <cppitertools/enumerate.hpp>
+#include <chrono>
 
 /**
 * \brief Default constructor
@@ -67,16 +66,15 @@ void SpecificWorker::initialize(int period)
         right_cam_intr = pipe_right.get_active_profile().get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>().get_intrinsics();
         right_depth_intr = pipe_right.get_active_profile().get_stream(RS2_STREAM_DEPTH).as<rs2::video_stream_profile>().get_intrinsics();
         pipelines.emplace_back(pipe_right);
+
+        filters.emplace_back("Decimate", dec_filter);
+        //filters.emplace_back(disparity_filter_name, depth_to_disparity);
+        filters.emplace_back("Spatial", spat_filter);
+        filters.emplace_back("Temporal", temp_filter);
+        filters.emplace_back("HFilling", holef_filter);
     }
 	catch(...)
 	{ qFatal("Unable to open device, please check config file"); }
-
-	//llenando vector de filtros
-    filters.emplace_back("Decimate", dec_filter);
-    //filters.emplace_back(disparity_filter_name, depth_to_disparity);
-    filters.emplace_back("Spatial", spat_filter);
-    filters.emplace_back("Temporal", temp_filter);
-    filters.emplace_back("HFilling", holef_filter);
 
 	this->Period = 50;
 	if(this->startup_check_flag)
@@ -87,62 +85,69 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
+
+//    future<int> f1= async([]() {return 123;});
+//    future<string> f2 = f1.then([](future<int> f) {
+//        return f.get().to_string();
+//    });
+    auto start = chrono::steady_clock::now();
+    const auto &[points, frame_list] = read_and_filter();
+    m = mosaic(points[0], points[1], frame_list[0],frame_list[1]);
+//    cv::imshow("Virtual" , m);
+//    cv::waitKey(1);
+
+    vector<int> compression_params;
+    compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
+    compression_params.push_back(50);
+    //qInfo() <<"1: "<< m.cols*m.rows*3;
+    bufferMutex.lock();
+    cv::imencode(".jpg", m, buffer, compression_params);
+    bufferMutex.unlock();
+
+    //qInfo() <<"2: "<< buffer.size();
+    auto end = chrono::steady_clock::now();
+    qInfo() << "Elapsed time in seconds: "
+            << chrono::duration_cast<chrono::milliseconds>(end - start).count()
+            << " ms";
+}
+
+std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>> SpecificWorker::read_and_filter()
+{
     std::vector<rs2::frameset> frame_list(2);
+    std::vector<rs2::points> points(2);
     for (auto &&[i, pipe] : iter::enumerate(pipelines))
     {
         rs2::frameset data = pipe.wait_for_frames();
         frame_list[i] = data;
         depth_list[i] = data.get_depth_frame(); // Find and colorize the depth data
-        bool revert_disparity = false;
-        for (auto&& filter : filters)
-        {
-            if (filter.is_enabled)
-            {
-                depth_list[i] = filter.filter.process(depth_list[i]);
-                if (filter.filter_name == disparity_filter_name)
-                    revert_disparity = true;
-            }
-        }
-        //if (revert_disparity)
-        //    depth_list[i] = disparity_to_depth.process(depth_list[i]);
 
-        rgb_list[i] = data.get_color_frame();            // Find the color data
+        bool revert_disparity = false;
+        for (auto &&filter : filters)
+            if (filter.is_enabled)
+                depth_list[i] = filter.filter.process(depth_list[i]);
+
+        rgb_list[i] = data.get_color_frame(); // Find the color data
         points[i] = pointclouds[i].calculate(depth_list[i]);
         pointclouds[i].map_to(rgb_list[i]);
     }
-
-    m = mosaic(points[0], points[1], frame_list[0],frame_list[1]);
-    cv::imshow("Virtual" , m);
-    cv::waitKey(1);
-
-//    if(rgb_list[0])
-//    {//cdata_left.image.width
-//        cv::Mat image= cv::Mat(left_cam_intr.height, left_cam_intr.width, CV_8UC3, (uchar *) reinterpret_cast<const uint8_t *>(rgb_list[0].get_data()));
-//        //cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
-//        //cv::imshow("Left cam" , image);
-//        cv::waitKey(1);
-//    }
-//    if(rgb_list[1])
-//    {
-//        cv::Mat image= cv::Mat(right_cam_intr.height, right_cam_intr.width, CV_8UC3, (uchar *) reinterpret_cast<const uint8_t *>(rgb_list[1].get_data()));
-//        //cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
-//        //cv::imshow("Right cam" , image);
-//        cv::waitKey(1);
-//    }
+    return std::make_tuple(points, frame_list);
 }
+
+
 cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::points &points_right,
                                  const rs2::frameset &cdata_left, const rs2::frameset &cdata_right) {
     rs2::video_frame left_image = cdata_left.get_color_frame();
     rs2::video_frame right_image = cdata_right.get_color_frame();
-    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(left_cam_intr.width * 2.5, left_cam_intr.height), CV_8UC3);
+    cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(left_cam_intr.width * 2.5, left_cam_intr.height*1.5), CV_8UC3);
     float center_virtual_cols = frame_virtual.cols / 2.0;
     float center_virtual_rows = frame_virtual.rows / 2.0;
-    float frame_virtual_focalx = left_cam_intr.fx;
+    float frame_virtual_lfocalx = left_cam_intr.fx;
+    float frame_virtual_rfocalx = right_cam_intr.fx;
     {
         auto left_ptr = (uint8_t *) left_image.get_data();
         auto left_stride = left_image.get_stride_in_bytes();
-        float coseno = cos(-M_PI / 6.0);
-        float seno = sin(-M_PI / 6.0);
+        float coseno = cos(-M_PI / 7.4);
+        float seno = sin(-M_PI / 7.4);
         float h_offset = 0.1;
         const rs2::vertex *vertices = points_left.get_vertices();
         auto tex_coords = points_left.get_texture_coordinates(); // and texture coordinates, u v coor of rgb image
@@ -155,31 +160,28 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
                 float XV = coseno * vertices[i].x - seno * vertices[i].z + h_offset;
                 float ZV = seno * vertices[i].x + coseno * vertices[i].z;
                 // project
-                int col_virtual = static_cast<int>(fabs(frame_virtual_focalx * XV / ZV + center_virtual_cols));
-                int row_virtual = static_cast<int>(fabs(frame_virtual_focalx * vertices[i].y / ZV + center_virtual_rows));
+                int col_virtual = static_cast<int>(fabs(frame_virtual_lfocalx * XV / ZV + center_virtual_cols));
+                int row_virtual = static_cast<int>(fabs(frame_virtual_lfocalx * vertices[i].y / ZV + center_virtual_rows));
 
                 if (col_virtual >= frame_virtual.cols or row_virtual >= frame_virtual.rows) continue;
 
                 //col_virtual += center_virtual_j/2;
                 //qInfo() << "coor " << vertices[i].x << vertices[i].y << vertices[i].z << col_virtual << row_virtual;
-                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(row_virtual, col_virtual);
 
                 int k = tex_coords[i].v * left_image.get_height();
                 int l = tex_coords[i].u * left_image.get_width();
 
                 if (k < 0 or k >= left_image.get_height() or l < 0 or l > left_image.get_width()) continue;
 
-                color[0] = int(left_ptr[k * left_stride + (3 * l)]    );
-                color[1] = int(left_ptr[k * left_stride + (3 * l) + 1]);
-                color[2] = int(left_ptr[k * left_stride + (3 * l) + 2]);
+                color(left_image,frame_virtual,row_virtual,col_virtual,k,l);
             }
         }
     }
     {
         auto right_ptr = (uint8_t *) right_image.get_data();
         auto right_stride = right_image.get_stride_in_bytes();
-        float coseno = cos(M_PI / 6.0);
-        float seno = sin(M_PI / 6.0);
+        float coseno = cos(M_PI / 7.4);
+        float seno = sin(M_PI / 7.4);
         float h_offset = -0.1;
         const rs2::vertex *vertices = points_right.get_vertices();
         auto tex_coords = points_right.get_texture_coordinates(); // and texture coordinates, u v coor of rgb image
@@ -193,38 +195,59 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
                 float XV = coseno * vertices[i].x - seno * vertices[i].z + h_offset;
                 float ZV = seno * vertices[i].x + coseno * vertices[i].z;
                 // project
-                float col_virtual = fabs(frame_virtual_focalx * XV / ZV + center_virtual_cols);
-                float row_virtual = fabs(frame_virtual_focalx * vertices[i].y / ZV + center_virtual_rows);
+                float col_virtual = fabs(frame_virtual_rfocalx * XV / ZV + center_virtual_cols);
+                float row_virtual = fabs(frame_virtual_rfocalx * vertices[i].y / ZV + center_virtual_rows);
                 //qInfo() << "coor " << vertices[i].x << vertices[i].y << vertices[i].z << col_virtual << row_virtual;
-                if (col_virtual > 1279 or row_virtual > 479) continue;
+                if (col_virtual >= frame_virtual.cols or row_virtual >= frame_virtual.rows) continue;
 
                 int k = tex_coords[i].v * right_image.get_height();
                 int l = tex_coords[i].u * right_image.get_width();
-                if (k < 0 or k > 479 or l < 0 or l > 639) continue;
+                if (k < 0 or k >= right_image.get_height() or l < 0 or l > right_image.get_width()) continue;
 
-                cv::Vec3b &color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), floor(col_virtual));
-                color[0] = int(right_ptr[k * right_stride + (3 * l)]);
-                color[1] = int(right_ptr[k * right_stride + (3 * l) + 1]);
-                color[2] = int(right_ptr[k * right_stride + (3 * l) + 2]);
-                color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), floor(col_virtual));
-                color[0] = int(right_ptr[k * right_stride + (3 * l)]);
-                color[1] = int(right_ptr[k * right_stride + (3 * l) + 1]);
-                color[2] = int(right_ptr[k * right_stride + (3 * l) + 2]);
-                color = frame_virtual.at<cv::Vec3b>(floor(row_virtual), ceil(col_virtual));
-                color[0] = int(right_ptr[k * right_stride + (3 * l)]);
-                color[1] = int(right_ptr[k * right_stride + (3 * l) + 1]);
-                color[2] = int(right_ptr[k * right_stride + (3 * l) + 2]);
-                color = frame_virtual.at<cv::Vec3b>(ceil(row_virtual), ceil(col_virtual));
-                color[0] = int(right_ptr[k * right_stride + (3 * l)]);
-                color[1] = int(right_ptr[k * right_stride + (3 * l) + 1]);
-                color[2] = int(right_ptr[k * right_stride + (3 * l) + 2]);
+                color(right_image,frame_virtual,row_virtual,col_virtual,k,l);
             }
         }
     }
     //cv::medianBlur(frame_virtual, frame_virtual, 3);
+    cv::GaussianBlur(frame_virtual, frame_virtual, cv::Size(13,13),0,0,0);
+
+    //cv::RNG rng(cv::getTickCount());
+    //float min_alpha = 0.1;
+    //float max_alpha = 2.0;
+    float alpha = 4.0; //rng.uniform(min_alpha, max_alpha);
+    float beta = -1.0;
+    frame_virtual.convertTo(frame_virtual, -1, alpha, beta);
+//    float alpha = 1.0f;
+//    int beta = 20;
+//    frame_virtual = alpha*frame_virtual + beta;
+
     return frame_virtual;
 }
 
+void SpecificWorker::color(rs2::video_frame image, cv::Mat frame_v, int row_v, int col_v, int k, int l)
+{
+    auto ptr = (uint8_t *) image.get_data();
+    auto stride = image.get_stride_in_bytes();
+
+    cv::Vec3b &color = frame_v.at<cv::Vec3b>(floor(row_v), floor(col_v));
+    color[0] = int(ptr[k * stride + (3 * l)]);
+    color[1] = int(ptr[k * stride + (3 * l) + 1]);
+    color[2] = int(ptr[k * stride + (3 * l) + 2]);
+    color = frame_v.at<cv::Vec3b>(ceil(row_v), floor(col_v));
+    color[0] = int(ptr[k * stride + (3 * l)]);
+    color[1] = int(ptr[k * stride + (3 * l) + 1]);
+    color[2] = int(ptr[k * stride + (3 * l) + 2]);
+    color = frame_v.at<cv::Vec3b>(floor(row_v), ceil(col_v));
+    color[0] = int(ptr[k * stride + (3 * l)]);
+    color[1] = int(ptr[k * stride + (3 * l) + 1]);
+    color[2] = int(ptr[k * stride + (3 * l) + 2]);
+    color = frame_v.at<cv::Vec3b>(ceil(row_v), ceil(col_v));
+    color[0] = int(ptr[k * stride + (3 * l)]);
+    color[1] = int(ptr[k * stride + (3 * l) + 1]);
+    color[2] = int(ptr[k * stride + (3 * l) + 2]);
+}
+
+/////////////////////////////////////////////////////////////
 int SpecificWorker::startup_check()
 {
     std::cout << "Startup check" << std::endl;
@@ -232,25 +255,52 @@ int SpecificWorker::startup_check()
     return 0;
 }
 
-
 RoboCompCameraRGBDSimple::TRGBD SpecificWorker::CameraRGBDSimple_getAll(std::string camera)
 {
-//implementCODE
+    RoboCompCameraRGBDSimple::TRGBD res;
+    
+    res.image.cameraID=0;
+    res.image.image = m;
+    res.image.depth = m.depth();
+    res.image.height = m.rows;
+    res.image.width = m.cols;
+    res.image.focalx = left_cam_intr.fx;
+    res.image.focaly = left_cam_intr.fy;
+    res.image.alivetime = 9999999999999;
 
+    return res;
 }
 
 RoboCompCameraRGBDSimple::TDepth SpecificWorker::CameraRGBDSimple_getDepth(std::string camera)
 {
 //implementCODE
+    RoboCompCameraRGBDSimple::TDepth dp;
 
+//    dp.depth;
+//    dp.cameraID = 0;
+//    dp.width = left_depth_intr.width + right_depth_intr.width;
+//    dp.height = left_depth_intr.height;
+//    dp.focalx = left_depth_intr.fx;
+//    dp.focaly = left_depth_intr.fy;
+//    dp.alivetime;
+//    dp.depthFactor;
+
+    return dp;
 }
 
 RoboCompCameraRGBDSimple::TImage SpecificWorker::CameraRGBDSimple_getImage(std::string camera)
 {
-//implementCODE
-//    RoboCompCameraRGBDSimple::TImage im;
-//    im.image= r;
-//    return im;
+    std::lock_guard<std::mutex> ml(bufferMutex);
+    RoboCompCameraRGBDSimple::TImage im;
+    im.cameraID=0;
+    im.image = buffer;
+    im.depth = m.depth();
+    im.height = m.rows;
+    im.width = m.cols;
+    im.focalx = left_cam_intr.fx;
+    im.focaly = left_cam_intr.fy;
+    im.alivetime = chrono::duration_cast<chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    return im;
 }
 
 RoboCompLaser::TLaserData SpecificWorker::Laser_getLaserAndBStateData(RoboCompGenericBase::TBaseState &bState)
@@ -270,7 +320,6 @@ RoboCompLaser::TLaserData SpecificWorker::Laser_getLaserData()
 //implementCODE
 
 }
-
 
 //cv::Mat SpecificWorker::mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling )
 //{
