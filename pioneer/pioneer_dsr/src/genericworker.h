@@ -36,6 +36,7 @@
 #include <DifferentialRobot.h>
 #include <FullPoseEstimation.h>
 #include <GenericBase.h>
+#include <Laser.h>
 #include <RSSIStatus.h>
 #include <Ultrasound.h>
 
@@ -44,7 +45,7 @@
 #define BASIC_PERIOD 100
 
 
-using TuplePrx = std::tuple<RoboCompBatteryStatus::BatteryStatusPrxPtr,RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr,RoboCompDifferentialRobot::DifferentialRobotPrxPtr,RoboCompFullPoseEstimation::FullPoseEstimationPrxPtr,RoboCompRSSIStatus::RSSIStatusPrxPtr,RoboCompUltrasound::UltrasoundPrxPtr>;
+using TuplePrx = std::tuple<RoboCompBatteryStatus::BatteryStatusPrxPtr,RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr,RoboCompDifferentialRobot::DifferentialRobotPrxPtr,RoboCompFullPoseEstimation::FullPoseEstimationPrxPtr,RoboCompLaser::LaserPrxPtr,RoboCompRSSIStatus::RSSIStatusPrxPtr,RoboCompUltrasound::UltrasoundPrxPtr>;
 
 
 class GenericWorker : public QMainWindow, public Ui_guiDlg
@@ -64,6 +65,7 @@ public:
 	RoboCompCameraRGBDSimple::CameraRGBDSimplePrxPtr camerargbdsimple_proxy;
 	RoboCompDifferentialRobot::DifferentialRobotPrxPtr differentialrobot_proxy;
 	RoboCompFullPoseEstimation::FullPoseEstimationPrxPtr fullposeestimation_proxy;
+	RoboCompLaser::LaserPrxPtr laser_proxy;
 	RoboCompRSSIStatus::RSSIStatusPrxPtr rssistatus_proxy;
 	RoboCompUltrasound::UltrasoundPrxPtr ultrasound_proxy;
 

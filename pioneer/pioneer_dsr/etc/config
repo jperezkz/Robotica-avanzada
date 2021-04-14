@@ -1,12 +1,13 @@
 CommonBehavior.Endpoints=tcp -p 10300
 
 # Proxies for required interfaces
-BatteryStatusProxy = batterystatus:tcp -h localhost -p 10014
-CameraRGBDSimpleProxy = camerargbdsimple:tcp -h localhost -p 10096
-DifferentialRobotProxy = differentialrobot:tcp -h localhost -p 10004
-FullPoseEstimationProxy = fullposeestimation:tcp -h localhost -p 10216
-RSSIStatusProxy = rssistatus:tcp -h localhost -p 10017
-UltrasoundProxy = ultrasound:tcp -h localhost -p 10015
+BatteryStatusProxy = batterystatus:tcp -h robonuc2.local -p 10014
+CameraRGBDSimpleProxy = camerargbdsimple:tcp -h robonuc2.local -p 10096
+DifferentialRobotProxy = differentialrobot:tcp -h robonuc2.local -p 10004
+FullPoseEstimationProxy = fullposeestimation:tcp -h robonuc2.local -p 10216
+RSSIStatusProxy = rssistatus:tcp -h robonuc2.local -p 10016
+UltrasoundProxy = ultrasound:tcp -h robonuc2.local -p 10017
+LaserProxy = laser:tcp -h robonuc2.local -p 10003
 
 agent_id = 30 # Change id
 agent_name = pioneer_dsr
@@ -14,7 +15,7 @@ tree_view = false
 graph_view = true
 2d_view = false
 3d_view = false
-robot_real = false 
+robot_real = true
 
 Ice.Warn.Connections=0
 Ice.Trace.Network=0

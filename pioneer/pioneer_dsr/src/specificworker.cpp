@@ -59,6 +59,7 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 
 void SpecificWorker::initialize(int period)
 {
+    if(robot_real) qInfo()<< "Hola *********************************************************************************************************";
 	std::cout << "Initialize worker" << std::endl;
 	this->Period = period;
 	if(this->startup_check_flag)
@@ -118,9 +119,11 @@ void SpecificWorker::compute()
     if (robot_real)
     {
         //Llamada a metodo para guardar la imagen virtual del robot
-        auto virtual_frame = compute_virtual_frame();
+        //auto virtual_frame = compute_virtual_frame();
         // get laser data from robot and call update_laser
-        update_virtual(virtual_frame, focalx, focaly);
+        //auto laser = read_laser_from_robot();
+        //update_virtual(virtual_frame, focalx, focaly);
+        //update_laser(laser);
     }
     else // Coppelia
     {
@@ -134,11 +137,23 @@ void SpecificWorker::compute()
 
     //update_rgbd();
     //auto cdata = read_rgb_camera(false);
-    read_battery();
-    read_RSSI();
+    //read_battery();
+    //read_RSSI();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+
+std::vector<SpecificWorker::LaserPoint> SpecificWorker::read_laser_from_robot()
+{
+    std::vector<LaserPoint> laser_data;
+
+    try {
+        auto laser = laser_proxy->getLaserData();
+        std::transform(laser.begin(), laser.end(), std::back_inserter(laser_data), [](const auto &l) {return LaserPoint{l.dist, l.angle}; });
+    }catch (const Ice::Exception &e){ std::cout << e.what() << " No laser_pioneer_data" << std::endl; return {};}
+
+    return laser_data;
+}
 
 void SpecificWorker::update_laser(const std::vector<LaserPoint> &laser_data)
 {
