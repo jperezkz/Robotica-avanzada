@@ -85,12 +85,16 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute()
 {
+
+//    future<int> f1= async([]() {return 123;});
+//    future<string> f2 = f1.then([](future<int> f) {
+//        return f.get().to_string();
+//    });
     auto start = chrono::steady_clock::now();
     const auto &[points, frame_list] = read_and_filter();
     m = mosaic(points[0], points[1], frame_list[0],frame_list[1]);
-
-    cv::imshow("Virtual" , m);
-    cv::waitKey(1);
+//    cv::imshow("Virtual" , m);
+//    cv::waitKey(1);
 
     vector<int> compression_params;
     compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
