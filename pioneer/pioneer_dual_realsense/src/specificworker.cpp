@@ -63,8 +63,11 @@ void SpecificWorker::initialize(int period)
         cfg_right.enable_stream(RS2_STREAM_COLOR, 640, 480, RS2_FORMAT_BGR8, 30);
         rs2::pipeline pipe_right(ctx);
         pipe_right.start(cfg_right);
+        std::cout << "2" << std::endl;
         right_cam_intr = pipe_right.get_active_profile().get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>().get_intrinsics();
+        std::cout << "2" << std::endl;
         right_depth_intr = pipe_right.get_active_profile().get_stream(RS2_STREAM_DEPTH).as<rs2::video_stream_profile>().get_intrinsics();
+        std::cout << "2" << std::endl;
         pipelines.emplace_back(pipe_right);
 
         filters.emplace_back("Decimate", dec_filter);
@@ -73,8 +76,8 @@ void SpecificWorker::initialize(int period)
         filters.emplace_back("Temporal", temp_filter);
         filters.emplace_back("HFilling", holef_filter);
     }
-	catch(...)
-	{ qFatal("Unable to open device, please check config file"); }
+	catch(std::exception &e)
+	{ std::cout<<e.what()<<std::endl; }
 
 	this->Period = 50;
 	if(this->startup_check_flag)
@@ -90,12 +93,15 @@ void SpecificWorker::compute()
 //    future<string> f2 = f1.then([](future<int> f) {
 //        return f.get().to_string();
 //    });
+
     auto start = chrono::steady_clock::now();
     const auto &[points, frame_list] = read_and_filter();
     m = mosaic(points[0], points[1], frame_list[0],frame_list[1]);
-//    cv::imshow("Virtual" , m);
-//    cv::waitKey(1);
-
+    //params["display"].value
+    if (true) {
+        cv::imshow("Virtual", m);
+        cv::waitKey(1); //??
+    }
     vector<int> compression_params;
     compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
     compression_params.push_back(50);
@@ -146,8 +152,8 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
     {
         auto left_ptr = (uint8_t *) left_image.get_data();
         auto left_stride = left_image.get_stride_in_bytes();
-        float coseno = cos(-M_PI / 7.4);
-        float seno = sin(-M_PI / 7.4);
+        float coseno = cos(-M_PI / 7.0);
+        float seno = sin(-M_PI / 7.0);
         float h_offset = 0.1;
         const rs2::vertex *vertices = points_left.get_vertices();
         auto tex_coords = points_left.get_texture_coordinates(); // and texture coordinates, u v coor of rgb image
@@ -180,8 +186,8 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
     {
         auto right_ptr = (uint8_t *) right_image.get_data();
         auto right_stride = right_image.get_stride_in_bytes();
-        float coseno = cos(M_PI / 7.4);
-        float seno = sin(M_PI / 7.4);
+        float coseno = cos(M_PI / 7.0);
+        float seno = sin(M_PI / 7.0);
         float h_offset = -0.1;
         const rs2::vertex *vertices = points_right.get_vertices();
         auto tex_coords = points_right.get_texture_coordinates(); // and texture coordinates, u v coor of rgb image

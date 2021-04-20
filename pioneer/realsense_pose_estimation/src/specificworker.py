@@ -85,6 +85,9 @@ class SpecificWorker(GenericWorker):
         #
 
         # when requested return an average of both sensors.
+
+
+        self.angles = [0.0,0.0,0.0]
         return True
 
 
@@ -147,7 +150,7 @@ class SpecificWorker(GenericWorker):
         ret = RoboCompFullPoseEstimation.FullPoseEuler()
         t = self.tm.get_transform("origin", "slam_sensor")
         rot = t[0:3, 0:3]
-        angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
+        #angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
         ret.x = t[0][3]
         ret.y = t[1][3]
         ret.z = t[2][3]
