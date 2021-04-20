@@ -52,7 +52,7 @@ class SpecificWorker(GenericWorker):
         self.ejecucion = False
         self.posicion_inicial = []
         self.logCogidos = []
-
+        self.bajando = True
     def __del__(self):
         print('SpecificWorker destructor')
 
@@ -126,7 +126,7 @@ class SpecificWorker(GenericWorker):
                 centre.append(i[0])
                 centre.append(i[1])
                 centre.append(i[2])
-            print(centre[0], centre[1])
+            #print(centre[0], centre[1])
         plt.figure(1)
         plt.clf()
         plt.imshow(cimg)
@@ -145,41 +145,74 @@ class SpecificWorker(GenericWorker):
             si moverse en x, y tercero cuadrante:  + +
             si moverse en x, y cuarto cuadrante:  - +
         """
-        x, y = box[0], box[1]
-        if x >= 320:
-            box[0] = -x
-        if y >= 240:
-            box[1] = -y
+        y, x = box[0], box[1]
+        #print(x,y)
+        if y < 320:
+            box[0] = -y
+        if x >= 240:
+            box[1] = -x
         return box
 
 
     def coger(self, detections, image):
         centre = []
+        #pos = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
+        #self.bajando = pos.x > 0.5
+        #print(pos)
         if self.ejecucion == False:
+            """print(self.bajando)
+            if self.bajando:
+                pos.x -= 0.01
+                if pos.x < -0.5:
+                    self.bajando = False
+            else:
+                pos.x += 0.01
+                if pos.x > 0.5:
+                    self.bajando = True
+            self.kinovaarm_proxy.setCenterOfTool(pos, RoboCompKinovaArm.ArmJoints.base)"""
+            """pose = RoboCompCoppeliaUtils.PoseType()
+            pose.x = pos.x
+            pose.y = self.posicion_inicial.y
+            pose.z = self.posicion_inicial.z
+            pose.rx = self.posicion_inicial.rx
+            pose.ry = self.posicion_inicial.ry
+            pose.rz = self.posicion_inicial.rz
+            #print(self.posicion_inicial)
+            self.coppeliautils_proxy.addOrModifyDummy(RoboCompCoppeliaUtils.TargetTypes.Info, "target", pose)"""
             for detection in detections:
-                box = detection.top_y+detection.width/4, detection.left_x+detection.height/4
+                #box = es la posicion a donde se mueve la mano
+                print(detection.top_y)
+                print(detection.left_x)
+                box = detection.top_y+detection.width/4, detection.left_x
+                """box = list(box)
+                box = self.posiciones(box)"""
                 if detection.class_name == 'cup':
                     if 'cup' not in self.logCogidos:
                         #self.posiciones()
                         self.objetos[detection.class_name] = box
                         self.ejecucion = True
-                elif detection.class_name == 'knive':
-                    if 'knive' not in self.logCogidos:
+                elif detection.class_name == 'knife':
+                    if 'knife' not in self.logCogidos:
                         self.objetos[detection.class_name] = box
                         self.ejecucion = True
                 elif detection.class_name == 'spoon':
                     if 'spoon' not in self.logCogidos:
                         self.objetos[detection.class_name] = box
                         self.ejecucion = True
-
         if self.ejecucion == False:
-                self.observar()
-        if "cup" not in self.logCogidos and "cup" in self.objetos.keys():
-            self.cup(image)
-        elif "spoon" not in self.logCogidos and "spoon" in self.objetos.keys():
+            #self.observar()
+            pass
+        """if "cup" not in self.logCogidos and "cup" in self.objetos.keys():
+            self.cup(image)"""
+        if "spoon" not in self.logCogidos and "spoon" in self.objetos.keys():
             self.spoon(image)
+        elif "knife" not in self.logCogidos and "knife" in self.objetos.keys():
+            self.ejecucion = True
+            #self.knife(image)
+            self.lineas(image)
 
     def cup(self,image):
+        print("estoy en cup")
         centre = self.procesarImagen(image)
         if centre or self.centros==True:
             self.centros=True
@@ -190,9 +223,6 @@ class SpecificWorker(GenericWorker):
     def spoon(self, image):
         pos = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
         box=self.objetos["spoon"]
-        #print(box[0]/100)
-        #print(box[1] / 100)
-        #print(pos)
         if pos.x - box[0] / 100<0.1:
             pos.x = pos.x + box[0] / 100
         else:
@@ -200,10 +230,55 @@ class SpecificWorker(GenericWorker):
         pos.y = pos.y - box[1] / 100
         pos.z = 0
         self.kinovaarm_proxy.setCenterOfTool(pos, RoboCompKinovaArm.ArmJoints.base)
+    def knife(self, image):
+        print("estoy en knife")
+        pos = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
+        box = self.objetos["knife"]
+        pose = RoboCompCoppeliaUtils.PoseType()
+        if pos.y < box[1]/100-0.08 or pos.y > box[1]/100+0.08:
+            pose.x = pos.x - box[0]/100000
+            pose.y = pos.y - box[1]/100000
+            pose.z = self.posicion_inicial.z
+        else:
+            pose.x = pos.x - box[0]/100000
+            pose.y = 0
+            pose.z = self.posicion_inicial.z
+        self.coppeliautils_proxy.addOrModifyDummy(RoboCompCoppeliaUtils.TargetTypes.Info, "target", pose)
+
+    def lineas(self,image):
+        color = np.frombuffer(image.image, np.uint8).reshape(image.height, image.width, image.depth)
+        color = cv.medianBlur(color, 5)
+        color = cv.cvtColor(color, cv.COLOR_BGR2GRAY)
+        cimg = cv.cvtColor(color, cv.COLOR_GRAY2BGR)
+        edges = cv.Canny(color, 50, 150, apertureSize=3)
+        lines = cv.HoughLines(edges, 1, np.pi / 180, 200)
+        for rho, theta in lines[0]:
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * (a))
+
+            cv.line(cimg, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+        plt.figure(1)
+        plt.clf()
+        plt.imshow(cimg)
+        plt.title('Front Camera ')
+        plt.pause(.1)
+        plt.imshow(cimg)
 
     def observar(self):
+        pos = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
+        pos.x = pos.x + 5
+        pos.y = pos.y
+        pos.z = 0
+        self.kinovaarm_proxy.setCenterOfTool(pos, RoboCompKinovaArm.ArmJoints.base)
+    def posicionInicial(self):
         try:
-            print("entro")
             pose = RoboCompCoppeliaUtils.PoseType()
             pose.x = self.posicion_inicial.x
             pose.y = self.posicion_inicial.y
@@ -211,36 +286,10 @@ class SpecificWorker(GenericWorker):
             pose.rx = self.posicion_inicial.rx
             pose.ry = self.posicion_inicial.ry
             pose.rz = self.posicion_inicial.rz
-            print(pose)
-            print("--"*100)
             print(self.posicion_inicial)
             self.coppeliautils_proxy.addOrModifyDummy(RoboCompCoppeliaUtils.TargetTypes.Info, "target", pose)
         except:
             pass
-        """tip = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
-        pos = RoboCompKinovaArm.TPose()
-
-        time.sleep(5)
-        self.kinovaarm_proxy.setCenterOfTool(self.posicion_inicial, RoboCompKinovaArm.ArmJoints.base)"""
-        """if tip.z>0.15:
-            pos.x = 0
-            pos.y = 0
-            pos.z = -15
-            #self.kinovaarm_proxy.setPosition(self.posicion_inicial, RoboCompKinovaArm.ArmJoints.base)
-
-
-        else:
-
-            pos.x = tip.x + self.posicion_inicial.x
-            pos.y = tip.y + self.posicion_inicial.y
-
-            #self.kinovaarm_proxy.setCenterOfTool(pos, RoboCompKinovaArm.ArmJoints.base)
-            #pos.x = pos.x - tip.x / 100
-            #pos.y = pos.y - tip.y / 100
-            #pos.z = 0"""
-        #self.kinovaarm_proxy.setCenterOfTool(pos, RoboCompKinovaArm.ArmJoints.base)
-
-
     def mover(self, box):
         pos = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
 
@@ -255,8 +304,8 @@ class SpecificWorker(GenericWorker):
 
         if self.cogido == False:
             if centre:
-                pos.x=tip.x - centre[0]/100
-                pos.y=tip.y - centre[1]/100
+                pos.x=tip.x - (centre[0]-centre[2])/200
+                pos.y=tip.y - (centre[1]-centre[2])/200
                 pos.z=0
             elif tip.z > 0.08:
                 pos.x=0
@@ -281,7 +330,7 @@ class SpecificWorker(GenericWorker):
                 self.cogido=False
                 self.logCogidos.append("cup")
                 self.ejecucion = False
-
+                self.posicionInicial()
         self.kinovaarm_proxy.setCenterOfTool(pos, RoboCompKinovaArm.ArmJoints.base)
 
     ######################
