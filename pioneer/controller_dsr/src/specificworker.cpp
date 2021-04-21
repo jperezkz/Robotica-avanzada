@@ -158,7 +158,7 @@ void SpecificWorker::compute()
         //auto vframe = vframe_t.value();
         auto vframe = cv::Mat(cam_api->get_height(), cam_api->get_width(), CV_8UC3, vframe_t.value().data());
 
-        //project_robot_on_image(robot_node, robot_polygon, vframe, cam_api->get_focal_x());
+        project_robot_on_image(robot_node, robot_polygon, vframe, cam_api->get_focal_x());
         if (auto laser_o = laser_buffer.try_get(); laser_o.has_value() and not vframe.empty())
         {
             const auto &[angles, dists, laser_poly_local, laser_cart_world] = laser_o.value();
@@ -199,11 +199,11 @@ void SpecificWorker::project_robot_on_image(const DSR::Node &robot_node, const Q
     {
         float robot_adv_speed = local_velocity.value().get()[1];   // Y component of linear speed in robot's coordinate frame
         int delta_time = 1;  // 1 sec
-        if (fabs(robot_adv_speed) < 50) return;    // only do if advance velocity is greater than 0
+        if (fabs(robot_adv_speed) < 50) return;    // only do if advance velocity is greater than 50
         // displace robot polygon by offset
         QPolygonF robot_polygon_projected(robot_polygon);
         robot_polygon_projected.translate(0, robot_adv_speed * delta_time);
-        // transform projected polygon to virtal camera coordinate frame and  project into virtual camera
+        // transform projected polygon to virtual camera coordinate frame and project into virtual camera
         std::vector<cv::Point> cv_poly;
         for (const auto &p : robot_polygon_projected)
         {
