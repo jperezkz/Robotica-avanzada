@@ -141,7 +141,7 @@ void SpecificWorker::compute()
     auto vframe = mosaic(cdata_left, cdata_right, 1);
     vframe = project_robot_on_image(robot, vframe, cdata_left.image.focalx);
     //vframe = project_point_on_image(robot, vframe, cdata_left.image.focalx);
-    // project_laser_on_image();
+    //project_laser_on_image();
     auto pix = QPixmap::fromImage(QImage(vframe.data, vframe.cols, vframe.rows, QImage::Format_RGB888));
     label_rgb->setPixmap(pix);
     read_battery();
