@@ -108,19 +108,20 @@ void SpecificWorker::initialize(int period)
 		graph_viewer = std::make_unique<DSR::DSRViewer>(this, G, current_opts, main);
 		setWindowTitle(QString::fromStdString(agent_name + "-") + QString::number(agent_id));
 
-                    try
-    {
-        float x = 3305;
-        float y = -21699;
-        float z = 0;
-        float rx = 0;
-        float ry = 0;
-        float rz = 0;
-        fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
-    }
-    catch(const Ice::Exception &e){};
-		this->Period = period;
-		timer.start(Period);
+		try
+        {
+            float x = 3305;
+            float y = -21699;
+            float z = 0;
+            float rx = 0;
+            float ry = 0;
+            float rz = 0;
+            fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
+        }
+        catch(const Ice::Exception &e){};
+
+        this->Period = period;
+        timer.start(Period);
 	}
 }
 
@@ -132,9 +133,9 @@ void SpecificWorker::compute()
         //Llamada a metodo para guardar la imagen virtual del robot
         auto virtual_frame = compute_virtual_frame();
         // get laser data from robot and call update_laser
-        //auto laser = read_laser_from_robot();
+        auto laser = read_laser_from_robot();
         update_virtual(virtual_frame, focalx, focaly);
-        //update_laser(laser);
+        update_laser(laser);
     }
     else // Coppelia
     {
@@ -486,7 +487,7 @@ void SpecificWorker::update_robot_localization()
     try
     {
         pose = fullposeestimation_proxy->getFullPoseEuler();
-        //qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+        qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
     }
     catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
 
