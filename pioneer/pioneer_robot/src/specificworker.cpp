@@ -329,7 +329,7 @@ void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData dat
 {
     float adv_speed = 0;
     float rot_speed = 0;
-    for(auto  &&[a, b] :  iter::zip(data.axes, data.buttons))
+    for(auto  &a: data.axes)
     {
         if(a.name == "advance" && a.value > 4){
             adv_speed = std::clamp(a.value, -1000.f, 1000.f);
@@ -338,10 +338,6 @@ void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData dat
         if(a.name == "turn")
             rot_speed = std::clamp(a.value, -100.f, 100.f);
         
-        if(b.name == "back") {
-            adv_speed = -50.f; //(std::clamp(-50.f, -1000.f, 1000.f));
-            std::cout << "BACK" << std::endl;
-        }
     }
     
     if(fabs(rot_speed) < 1) rot_speed = 0;
