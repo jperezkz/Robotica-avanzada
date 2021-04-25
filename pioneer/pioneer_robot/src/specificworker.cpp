@@ -331,7 +331,7 @@ void SpecificWorker::JoystickAdapter_sendData(RoboCompJoystickAdapter::TData dat
     float rot_speed = 0;
     for(auto  &a: data.axes)
     {
-        if(a.name == "advance" && a.value > 4){
+        if(a.name == "advance" && fabs(a.value) > 4){
             adv_speed = std::clamp(a.value, -1000.f, 1000.f);
             std::cout << "Advance" << std::endl;
         }
