@@ -235,10 +235,8 @@ class SpecificWorker(GenericWorker):
             #dummy.set_position([pose.x / 1000., pose.y / 1000., pose.z / 1000.], parent_frame_object)
             dummy.set_position([pose.x, pose.y, pose.z], parent_frame_object)
             print(pose.x,pose.y,pose.z)
-            print(dummy.get_position(
-
-            ))
-            #dummy.set_orientation([pose.rx, pose.ry, pose.rz], parent_frame_object)
+            print(dummy.get_position())
+            dummy.set_orientation([pose.rx, pose.ry, pose.rz], parent_frame_object)
 
     #
     # IMPLEMENTATION of getCenterOfTool method from KinovaArm interface
