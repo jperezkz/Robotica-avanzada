@@ -69,9 +69,7 @@ class SpecificWorker(GenericWorker):
     def compute(self):
         if not self.posicion_inicial:
             self.posicion_inicial = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
-        """print("/"*100)
-        print(self.posicion_inicial)
-        print("/"*100)"""
+
         #print(self.posicion_inicial)
         all = self.camerargbdsimple_proxy.getAll(self.camera_name)
         #self.draw_image(all.image)
@@ -208,8 +206,8 @@ class SpecificWorker(GenericWorker):
             self.spoon(image)
         elif "knife" not in self.logCogidos and "knife" in self.objetos.keys():
             self.ejecucion = True
-            #self.knife(image)
-            self.lineas(image)
+            self.knife(image)
+
 
     def cup(self,image):
         print("estoy en cup")
@@ -235,15 +233,44 @@ class SpecificWorker(GenericWorker):
         pos = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
         box = self.objetos["knife"]
         pose = RoboCompCoppeliaUtils.PoseType()
-        if pos.y < box[1]/100-0.08 or pos.y > box[1]/100+0.08:
+        pose.x = pos.x
+        pose.y = pos.y
+        pose.z = pos.z
+        print(pos.rx)
+        print(pos.ry)
+        print(pos.rz)
+        pose.rx = self.posicion_inicial.rx
+        pose.ry = self.posicion_inicial.ry
+        pose.rz = self.posicion_inicial.rz
+        lineas = self.lineas(image)
+        if abs(pos.y) < box[1]/1000-0.18 or abs(pos.y) > box[1]/1000+0.18:
             pose.x = pos.x - box[0]/100000
             pose.y = pos.y - box[1]/100000
             pose.z = self.posicion_inicial.z
-        else:
-            pose.x = pos.x - box[0]/100000
-            pose.y = 0
+        elif abs(pos.x) < box[0]/1000-0.12 or abs(pos.x) > box[0]/1000+0.12:
+            pose.x = pos.x - box[0]/10000
+            pose.y = pos.y
             pose.z = self.posicion_inicial.z
+        elif abs(pos.z) > 0.02:
+            pose.x = pos.x
+            pose.y = pos.y
+            pose.z = pos.z - 0.01
+        elif lineas is not None:
+            if lineas[0][0][1] < np.pi:
+                pose.rz = pos.rz + 0.1
+            else:
+                pose.rz = pos.rz - 0.1
+            """if lineas is not None:
+            if lineas[0][0][1] > np.pi/2 - 0.1 and lineas[0][0][1] < np.pi/2 + 0.1:
+                print("bien orientado wey")
+            else:
+                pose.rx = pos.rx + 0.1
+                print(pose.rx)
+                print(lineas[0][0][1])
+                #pose.rx = float(lineas[0][0][1])
+                print("mal orientado wey")"""
         self.coppeliautils_proxy.addOrModifyDummy(RoboCompCoppeliaUtils.TargetTypes.Info, "target", pose)
+
 
     def lineas(self,image):
         color = np.frombuffer(image.image, np.uint8).reshape(image.height, image.width, image.depth)
@@ -251,25 +278,29 @@ class SpecificWorker(GenericWorker):
         color = cv.cvtColor(color, cv.COLOR_BGR2GRAY)
         cimg = cv.cvtColor(color, cv.COLOR_GRAY2BGR)
         edges = cv.Canny(color, 50, 150, apertureSize=3)
-        lines = cv.HoughLines(edges, 1, np.pi / 180, 200)
-        for rho, theta in lines[0]:
-            a = np.cos(theta)
-            b = np.sin(theta)
-            x0 = a * rho
-            y0 = b * rho
-            x1 = int(x0 + 1000 * (-b))
-            y1 = int(y0 + 1000 * (a))
-            x2 = int(x0 - 1000 * (-b))
-            y2 = int(y0 - 1000 * (a))
+        lines = cv.HoughLines(edges, 1, np.pi / 180, 175)
+        if lines is not None:
+            print(lines)
+            for rho, theta in lines[0]:
+                a = np.cos(theta)
+                b = np.sin(theta)
+                x0 = a * rho
+                y0 = b * rho
+                x1 = int(x0 + 1000 * (-b))
+                y1 = int(y0 + 1000 * (a))
+                x2 = int(x0 - 1000 * (-b))
+                y2 = int(y0 - 1000 * (a))
 
-            cv.line(cimg, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                cv.line(cimg, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
-        plt.figure(1)
-        plt.clf()
-        plt.imshow(cimg)
-        plt.title('Front Camera ')
-        plt.pause(.1)
-        plt.imshow(cimg)
+            plt.figure(1)
+            plt.clf()
+            plt.imshow(cimg)
+            plt.title('Front Camera ')
+            plt.pause(.1)
+            plt.imshow(cimg)
+
+        return lines
 
     def observar(self):
         pos = self.kinovaarm_proxy.getCenterOfTool(RoboCompKinovaArm.ArmJoints.base)
@@ -283,10 +314,10 @@ class SpecificWorker(GenericWorker):
             pose.x = self.posicion_inicial.x
             pose.y = self.posicion_inicial.y
             pose.z = self.posicion_inicial.z
-            pose.rx = self.posicion_inicial.rx
+            pose.ry = self.posicion_inicial.rx
             pose.ry = self.posicion_inicial.ry
             pose.rz = self.posicion_inicial.rz
-            print(self.posicion_inicial)
+            #print(self.posicion_inicial)
             self.coppeliautils_proxy.addOrModifyDummy(RoboCompCoppeliaUtils.TargetTypes.Info, "target", pose)
         except:
             pass
