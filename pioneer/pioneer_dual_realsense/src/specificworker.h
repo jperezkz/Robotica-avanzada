@@ -33,6 +33,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <cppitertools/enumerate.hpp>
 #include <opencv2/opencv.hpp>
+#include <thread>
 
 //struct filter_options
 //{
@@ -128,7 +129,7 @@
 //
 //class Mosaic : public QThread
 //{
-//    rs2::points points[2];
+//    rs2::points points[2];frame
 //    rs2::frame_queue *mosaic_queue;
 //    rs2_intrinsics left_cam_intr, right_cam_intr;
 //    cv::Mat frame;
@@ -308,7 +309,7 @@ private:
     rs2::context ctx;
     rs2_intrinsics left_cam_intr, right_cam_intr, left_depth_intr, right_depth_intr;
     //cv::Mat mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling );
-    std::tuple<cv::Mat, std::vector<LaserPoint>> mosaic(  const rs2::points &points_left, const rs2::points &points_right, const rs2::frameset &cdata_left, const rs2::frameset &cdata_right);
+    std::tuple<cv::Mat, std::vector<LaserPoint>> mosaic(std::future<std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>>> mos);
     std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>> read_and_filter();
     template <typename T>
     bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }

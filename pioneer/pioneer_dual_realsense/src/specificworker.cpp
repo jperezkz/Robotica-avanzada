@@ -92,15 +92,13 @@ void SpecificWorker::compute()
 //    });
 
     auto start = chrono::steady_clock::now();
-    const auto &[points, frame_list] = read_and_filter();
-//const auto &[image, laser]
+    //const auto &[points, frame_list] = read_and_filter();
 
-    std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> tupla;
-    std::future<tupla> futMos = std::async( &SpecificWorker::mosaic(), points[0], points[1], frame_list[0],frame_list[1]);
+    std::future<std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>>> futRF = std::async(&SpecificWorker::read_and_filter, this);
+    //std::future<std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>>>
+    auto futMos = std::async(&SpecificWorker::mosaic, this, std::move(futRF));
+    auto [m, vector_laser] = futMos.get();
     //m = image; vector_laser = laser;
-    //std::future<bool> fut = std::async (is_prime,313222313);
-    //m = mosaic(points[0], points[1], frame_list[0],frame_list[1]);
-    //params["display"].value
     if (print_output) {
         cv::imshow("Virtual", m);
         cv::waitKey(1); //??
@@ -142,8 +140,12 @@ std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>> SpecificWorker:
 }
 
 
-std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::mosaic( const rs2::points &points_left, const rs2::points &points_right,
-                                 const rs2::frameset &cdata_left, const rs2::frameset &cdata_right) {
+std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::mosaic(std::future<std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>>> mos) {
+    auto [points, frame_list] = mos.get();
+    const rs2::points points_left = points[0];
+    const rs2::points points_right = points[1];
+    const rs2::frameset cdata_left = frame_list[0];
+    const rs2::frameset cdata_right = frame_list[1];
     rs2::video_frame left_image = cdata_left.get_color_frame();
     rs2::video_frame right_image = cdata_right.get_color_frame();
     cv::Mat frame_virtual = cv::Mat::zeros(cv::Size(left_cam_intr.width * 2.5, left_cam_intr.height*1.5), CV_8UC3);
