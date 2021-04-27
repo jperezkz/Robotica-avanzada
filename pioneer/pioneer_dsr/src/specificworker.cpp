@@ -130,12 +130,12 @@ void SpecificWorker::compute()
     update_robot_localization();
     if (robot_real)
     {
-        //Llamada a metodo para guardar la imagen virtual del robot
-        auto virtual_frame = compute_virtual_frame();
-        // get laser data from robot and call update_laser
-        auto laser = read_laser_from_robot();
-        update_virtual(virtual_frame, focalx, focaly);
-        update_laser(laser);
+//        //Llamada a metodo para guardar la imagen virtual del robot
+//        auto virtual_frame = compute_virtual_frame();
+//        // get laser data from robot and call update_laser
+//        auto laser = read_laser_from_robot();
+//        update_virtual(virtual_frame, focalx, focaly);
+//        update_laser(laser);
     }
     else // Coppelia
     {
@@ -491,7 +491,7 @@ void SpecificWorker::update_robot_localization()
     try
     {
         pose = fullposeestimation_proxy->getFullPoseEuler();
-        qInfo() << pose.x << pose.y << pose.z << pose.rx << pose.ry << pose.rz;
+        qInfo() << "X:" << pose.x  << "// Y:" << pose.y << "// Z:" << pose.z << "// RX:" << pose.rx << "// RY:" << pose.ry << "// RZ:" << pose.rz;
     }
     catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
 

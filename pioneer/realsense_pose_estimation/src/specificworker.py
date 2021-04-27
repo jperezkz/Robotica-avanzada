@@ -70,16 +70,17 @@ class SpecificWorker(GenericWorker):
         self.tm = TransformManager()
 
         #initial empty translation
-        self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+        self.tm.add_transform("origin", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+                                                                     ([0.0, 0.0, 0.0]),
+                                                                     [0.0, 0.0, 0.0]))
+        self.tm.add_transform("slam_sensor", "measure", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
                                                                     ([0.0,0.0,0.0]),
                                                                      [0.0,0.0,0.0]))
                                                                      
-        self.tm.add_transform("origin", "world", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-                                                                    ([0.0,0.0,0.0]),
-                                                                     [0.0,0.0,0.0]))
+
         # get slam_sensor_0 coordinates in the robot's frame. Read them from config file
         self.tm.add_transform("robot", "slam_sensor",
-                              pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([0, 0, 0]), [0, 0, 0])
+                              pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([0, 0, np.pi/2]), [0, 0, 0])
                               )
         # insert here the second slam sensor
         #
@@ -99,7 +100,7 @@ class SpecificWorker(GenericWorker):
         self.firsttime = True
         data = f.as_pose_frame().get_pose_data()
 
-        angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
+        self.angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
 
         # self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.matrix_from_quaternion
         #                                                                 ([data.rotation.w,
@@ -110,11 +111,11 @@ class SpecificWorker(GenericWorker):
         #                                                                  data.translation.y*1000.0,
         #                                                                  data.translation.z*1000.0]))
 
-        self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-                                                                    (angles),
+        self.tm.add_transform("slam_sensor", "measure", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+                                                                    (self.angles),
                                                                     [data.translation.x*1000.0,
-                                                                     data.translation.y*1000.0,
-                                                                     data.translation.z*1000.0]))
+                                                                     -data.translation.z*1000.0,
+                                                                     data.translation.y*1000.0]))
 
         #self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
                                                                     #(angles),
@@ -124,10 +125,14 @@ class SpecificWorker(GenericWorker):
 
 
         #self.angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
-        
 
-        if self.print:
-            print("\r Device Position: ", data.translation, angles, end="\r")
+        t = self.tm.get_transform("measure", "origin")
+        print("\r Device Position: ", t[0][3], t[1][3], t[2][3],self.angles, end="\r")
+
+        # if self.print:
+        #     print("\r Device Position: ", data.translation.z*1000, data.translation.x*1000, data.translation.y*1000, self.angles, end="\r")
+        # if self.print:
+        #     print("\r Device Position: ", data.translation.z*1000, data.translation.x*1000, data.translation.y*1000, self.angles, end="\r")
 
 
     def quaternion_to_euler_angle(self, w, x, y, z):
@@ -169,9 +174,9 @@ class SpecificWorker(GenericWorker):
         ret.x = t[0][3]
         ret.y = t[1][3]
         ret.z = t[2][3]
-        ret.rx = angles[0]
-        ret.ry = angles[1]
-        ret.rz = angles[2]
+        ret.rx = self.angles[0]
+        ret.ry = self.angles[1]
+        ret.rz = self.angles[2]
          
         return ret
     #
