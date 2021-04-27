@@ -163,6 +163,7 @@ void SpecificWorker::compute()
         {
             const auto &[angles, dists, laser_poly_local, laser_cart_world] = laser_o.value();
             project_laser_on_image(robot_node, laser_poly_local, vframe, cam_api->get_focal_x());
+
         }
         project_path_on_image(path, robot_node, vframe, cam_api->get_focal_x());
 

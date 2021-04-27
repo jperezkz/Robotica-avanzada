@@ -161,6 +161,8 @@ std::vector<SpecificWorker::LaserPoint> SpecificWorker::read_laser_from_robot()
 
     try {
         auto laser = laser_proxy->getLaserData();
+        //for(auto &d : laser)
+        //    qInfo() << d.angle << d.dist;
         std::transform(laser.begin(), laser.end(), std::back_inserter(laser_data), [](const auto &l) {return LaserPoint{l.dist, l.angle}; });
     }catch (const Ice::Exception &e){ std::cout << e.what() << " No laser_pioneer_data" << std::endl; return {};}
 
@@ -182,6 +184,8 @@ void SpecificWorker::update_laser(const std::vector<LaserPoint> &laser_data)
         G->add_or_modify_attrib_local<laser_angles_att>(node.value(), angles);
         G->update_node(node.value());
     }
+    else
+        qWarning() << __FUNCTION__ << "No laser node found";
 }
 std::optional<std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>>> SpecificWorker::compute_mosaic(int subsampling)
 {

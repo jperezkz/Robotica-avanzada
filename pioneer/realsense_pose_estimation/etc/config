@@ -1,9 +1,9 @@
 # Endpoints for implements interfaces
 FullPoseEstimation.Endpoints=tcp -p 10216
 
-device_serial=925122110585
+#device_serial=925122110585
 #serial=905312110667
-#device_serial=925122110807
+device_serial=925122110807
 
 print=true
 
