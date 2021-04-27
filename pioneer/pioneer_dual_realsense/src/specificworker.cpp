@@ -63,11 +63,8 @@ void SpecificWorker::initialize(int period)
         cfg_right.enable_stream(RS2_STREAM_COLOR, 640, 480, RS2_FORMAT_BGR8, 30);
         rs2::pipeline pipe_right(ctx);
         pipe_right.start(cfg_right);
-        std::cout << "2" << std::endl;
         right_cam_intr = pipe_right.get_active_profile().get_stream(RS2_STREAM_COLOR).as<rs2::video_stream_profile>().get_intrinsics();
-        std::cout << "2" << std::endl;
         right_depth_intr = pipe_right.get_active_profile().get_stream(RS2_STREAM_DEPTH).as<rs2::video_stream_profile>().get_intrinsics();
-        std::cout << "2" << std::endl;
         pipelines.emplace_back(pipe_right);
 
         filters.emplace_back("Decimate", dec_filter);
@@ -89,16 +86,22 @@ void SpecificWorker::initialize(int period)
 void SpecificWorker::compute()
 {
 
-//    future<int> f1= async([]() {return 123;});
+//    future<std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>>> f1= async([]() {return read_and_filter();});
 //    future<string> f2 = f1.then([](future<int> f) {
 //        return f.get().to_string();
 //    });
 
     auto start = chrono::steady_clock::now();
     const auto &[points, frame_list] = read_and_filter();
-    m = mosaic(points[0], points[1], frame_list[0],frame_list[1]);
+//const auto &[image, laser]
+
+    std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> tupla;
+    std::future<tupla> futMos = std::async( &SpecificWorker::mosaic(), points[0], points[1], frame_list[0],frame_list[1]);
+    //m = image; vector_laser = laser;
+    //std::future<bool> fut = std::async (is_prime,313222313);
+    //m = mosaic(points[0], points[1], frame_list[0],frame_list[1]);
     //params["display"].value
-    if (true) {
+    if (print_output) {
         cv::imshow("Virtual", m);
         cv::waitKey(1); //??
     }
@@ -127,7 +130,6 @@ std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>> SpecificWorker:
         frame_list[i] = data;
         depth_list[i] = data.get_depth_frame(); // Find and colorize the depth data
 
-        bool revert_disparity = false;
         for (auto &&filter : filters)
             if (filter.is_enabled)
                 depth_list[i] = filter.filter.process(depth_list[i]);
@@ -140,7 +142,7 @@ std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>> SpecificWorker:
 }
 
 
-cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::points &points_right,
+std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>> SpecificWorker::mosaic( const rs2::points &points_left, const rs2::points &points_right,
                                  const rs2::frameset &cdata_left, const rs2::frameset &cdata_right) {
     rs2::video_frame left_image = cdata_left.get_color_frame();
     rs2::video_frame right_image = cdata_right.get_color_frame();
@@ -149,9 +151,16 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
     float center_virtual_rows = frame_virtual.rows / 2.0;
     float frame_virtual_lfocalx = left_cam_intr.fx;
     float frame_virtual_rfocalx = right_cam_intr.fx;
+
+    // laser stuff
+    const int MAX_LASER_BINS = 100;
+    const float TOTAL_HOR_ANGLE = 2.094;  // para 120º
+    using Point = std::tuple< float, float, float>;
+    auto cmp = [](Point a, Point b) { auto &[ax,ay,az] = a; auto &[bx,by,bz] = b; return (ax*ax+ay*ay+az*az) < (bx*bx+by*by+bz*bz);};
+    std::vector<std::set<Point, decltype(cmp) >> hor_bins(MAX_LASER_BINS);
+    rs2::video_frame left_depth = cdata_left.get_depth_frame();
+    if(left_cam_intr.width == left_depth_intr.width and left_cam_intr.height == left_depth_intr.height)
     {
-        auto left_ptr = (uint8_t *) left_image.get_data();
-        auto left_stride = left_image.get_stride_in_bytes();
         float coseno = cos(-M_PI / 7.0);
         float seno = sin(-M_PI / 7.0);
         float h_offset = 0.1;
@@ -165,6 +174,7 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
                 // transform to virtual camera CS at center of both cameras. Assume equal height (Z). Needs angle and translation
                 float XV = coseno * vertices[i].x - seno * vertices[i].z + h_offset;
                 float ZV = seno * vertices[i].x + coseno * vertices[i].z;
+                float YV = vertices[i].y;
                 // project
                 int col_virtual = static_cast<int>(fabs(frame_virtual_lfocalx * XV / ZV + center_virtual_cols));
                 int row_virtual = static_cast<int>(fabs(frame_virtual_lfocalx * vertices[i].y / ZV + center_virtual_rows));
@@ -180,12 +190,22 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
                 if (k < 0 or k >= left_image.get_height() or l < 0 or l > left_image.get_width()) continue;
 
                 color(left_image,frame_virtual,row_virtual,col_virtual,k,l);
+
+                // laser computation
+                if(YV<-0.2) continue;
+                // accumulate in bins of equal horizontal angle from optical axis
+                float hor_angle = atan2(XV, ZV) ;
+                // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
+                int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
+                if(angle_index >= 100  or angle_index < 0) continue;
+                hor_bins[angle_index].emplace(std::make_tuple(XV,YV,ZV));
             }
         }
     }
+
+    rs2::video_frame right_depth = cdata_right.get_depth_frame();
+    if(right_cam_intr.width == right_depth_intr.width and right_cam_intr.height == right_depth_intr.height)
     {
-        auto right_ptr = (uint8_t *) right_image.get_data();
-        auto right_stride = right_image.get_stride_in_bytes();
         float coseno = cos(M_PI / 7.0);
         float seno = sin(M_PI / 7.0);
         float h_offset = -0.1;
@@ -200,6 +220,8 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
                 // transform to virtual camera CS at center of both cameras. Assume equal height (Z). Needs angle and translation
                 float XV = coseno * vertices[i].x - seno * vertices[i].z + h_offset;
                 float ZV = seno * vertices[i].x + coseno * vertices[i].z;
+                float YV = vertices[i].y;
+
                 // project
                 float col_virtual = fabs(frame_virtual_rfocalx * XV / ZV + center_virtual_cols);
                 float row_virtual = fabs(frame_virtual_rfocalx * vertices[i].y / ZV + center_virtual_rows);
@@ -211,23 +233,45 @@ cv::Mat SpecificWorker::mosaic( const rs2::points &points_left, const rs2::point
                 if (k < 0 or k >= right_image.get_height() or l < 0 or l > right_image.get_width()) continue;
 
                 color(right_image,frame_virtual,row_virtual,col_virtual,k,l);
+
+            // laser computation
+             if(YV<-0.2) continue;
+             qInfo() << YV ;
+             // accumulate in bins of equal horizontal angle from optical axis
+            float hor_angle = atan2(XV, ZV) ;
+            // map from +-MAX_ANGLE to 0-MAX_LASER_BINS
+            int angle_index = (int)((MAX_LASER_BINS/TOTAL_HOR_ANGLE) * hor_angle + (MAX_LASER_BINS/2));
+            if(angle_index >= 100 or angle_index < 0) continue;
+            hor_bins[angle_index].emplace(std::make_tuple(XV,YV,ZV));
             }
         }
     }
-    //cv::medianBlur(frame_virtual, frame_virtual, 3);
-    cv::GaussianBlur(frame_virtual, frame_virtual, cv::Size(13,13),0,0,0);
 
-    //cv::RNG rng(cv::getTickCount());
-    //float min_alpha = 0.1;
-    //float max_alpha = 2.0;
-    float alpha = 4.0; //rng.uniform(min_alpha, max_alpha);
+    //tratamiento imagen
+    cv::GaussianBlur(frame_virtual, frame_virtual, cv::Size(13,13),0,0,0);
+    float alpha = 4.0;
     float beta = -1.0;
     frame_virtual.convertTo(frame_virtual, -1, alpha, beta);
-//    float alpha = 1.0f;
-//    int beta = 20;
-//    frame_virtual = alpha*frame_virtual + beta;
 
-    return frame_virtual;
+    // laser computation
+    std::vector<LaserPoint> laser_data(MAX_LASER_BINS);
+    uint i=0;
+    for(auto &bin : hor_bins)
+    {
+        if (bin.size() > 0)
+        {
+            const auto &[X, Y, Z] = *bin.cbegin();
+            laser_data[i] = LaserPoint{sqrt(X * X + Y * Y + Z * Z),
+                                       (i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+        } else{
+            laser_data[i] = LaserPoint{0.f, (i - MAX_LASER_BINS / 2.f) / (MAX_LASER_BINS / TOTAL_HOR_ANGLE)};
+        }
+        i++;
+    }
+//    auto laser_poly = filter_laser(laser_data);
+//    draw_laser(&scene, laser_poly);
+
+    return std::make_tuple(frame_virtual,laser_data);
 }
 
 void SpecificWorker::color(rs2::video_frame image, cv::Mat frame_v, int row_v, int col_v, int k, int l)
@@ -324,7 +368,13 @@ RoboCompLaser::LaserConfData SpecificWorker::Laser_getLaserConfData()
 RoboCompLaser::TLaserData SpecificWorker::Laser_getLaserData()
 {
 //implementCODE
-
+    RoboCompLaser::TLaserData l;
+    //std::transform(vector_laser.begin(),vector_laser.end(),std::back_inserter(l),[](const auto ldata){return RoboCompLaser::TData{ldata.dist,ldata.angle};});
+    for(auto &v: vector_laser){
+        l.emplace_back(RoboCompLaser::TData{v.angle, v.dist*1000});
+    }
+    qInfo() << l.size();
+    return l;
 }
 
 //cv::Mat SpecificWorker::mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling )
@@ -481,17 +531,6 @@ RoboCompLaser::TLaserData SpecificWorker::Laser_getLaserData()
 //    //std::cout << "It took " << duration.count() << "ms" << std::endl;
 //    //before = myclock::now();   // so it is remembered across QTimer calls to compute()
 //
-
-
-
-
-
-
-
-
-
-
-
 //    //qInfo() << frame_virtual.step[0] * frame_virtual.rows;;
 //    //vector<int> compression_params;
 //    //compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);

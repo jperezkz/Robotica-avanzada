@@ -98,23 +98,36 @@ class SpecificWorker(GenericWorker):
         # Cast the frame to pose_frame and get its data
         self.firsttime = True
         data = f.as_pose_frame().get_pose_data()
-        
-        #with self.lock:
-        self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.matrix_from_quaternion
-                                                                        ([data.rotation.w,
-                                                                          data.rotation.x,
-                                                                          data.rotation.y,
-                                                                          data.rotation.z]),
-                                                                        [data.translation.x*1000.0,
-                                                                         data.translation.y*1000.0,
-                                                                         data.translation.z*1000.0]))
 
-        
-        self.angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
+        angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
+
+        # self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.matrix_from_quaternion
+        #                                                                 ([data.rotation.w,
+        #                                                                   data.rotation.x,
+        #                                                                   data.rotation.y,
+        #                                                                   data.rotation.z]),
+        #                                                                 [data.translation.x*1000.0,
+        #                                                                  data.translation.y*1000.0,
+        #                                                                  data.translation.z*1000.0]))
+
+        self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+                                                                    (angles),
+                                                                    [data.translation.x*1000.0,
+                                                                     data.translation.y*1000.0,
+                                                                     data.translation.z*1000.0]))
+
+        #self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+                                                                    #(angles),
+                                                                    #[data.translation.x*1000.0,
+                                                                     #-data.translation.z*1000.0,
+                                                                     #data.translation.y*1000.0]))
+
+
+        #self.angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
         
 
         if self.print:
-            print("\r Device Position: ", data.translation, data.rotation, end="\r")
+            print("\r Device Position: ", data.translation, angles, end="\r")
 
 
     def quaternion_to_euler_angle(self, w, x, y, z):
@@ -149,14 +162,16 @@ class SpecificWorker(GenericWorker):
     def FullPoseEstimation_getFullPoseEuler(self):
         ret = RoboCompFullPoseEstimation.FullPoseEuler()
         t = self.tm.get_transform("origin", "slam_sensor")
+        #angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
+
         rot = t[0:3, 0:3]
-        #angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
+        angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
         ret.x = t[0][3]
         ret.y = t[1][3]
         ret.z = t[2][3]
-        ret.rx = self.angles[0]
-        ret.ry = self.angles[1]
-        ret.rz = self.angles[2]
+        ret.rx = angles[0]
+        ret.ry = angles[1]
+        ret.rz = angles[2]
          
         return ret
     #

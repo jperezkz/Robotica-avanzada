@@ -289,11 +289,13 @@ public slots:
 	void initialize(int period);
 
 private:
+    struct LaserPoint{ float dist; float angle;};
     vector<uchar> buffer;
     cv::Mat m;
+    std::vector<LaserPoint> vector_laser;
     //
 	std::shared_ptr < InnerModel > innerModel;
-	bool startup_check_flag;
+    bool startup_check_flag;
     mutable std::mutex bufferMutex;
 
     // Declare RealSense pipeline, encapsulating the actual device and sensors
@@ -306,11 +308,11 @@ private:
     rs2::context ctx;
     rs2_intrinsics left_cam_intr, right_cam_intr, left_depth_intr, right_depth_intr;
     //cv::Mat mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling );
-    cv::Mat mosaic(  const rs2::points &points_left, const rs2::points &points_right, const rs2::frameset &cdata_left, const rs2::frameset &cdata_right);
+    std::tuple<cv::Mat, std::vector<LaserPoint>> mosaic(  const rs2::points &points_left, const rs2::points &points_right, const rs2::frameset &cdata_left, const rs2::frameset &cdata_right);
     std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>> read_and_filter();
     template <typename T>
     bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
-    struct LaserPoint{ float dist; float angle;};
+
     void color(rs2::video_frame image, cv::Mat frame_v, int row_v, int col_v, int k, int l);
 
     //hilos
