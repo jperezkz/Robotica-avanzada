@@ -6,7 +6,7 @@ Laser.Endpoints=tcp -p 10003
 
 device_serial_left=049522250171
 device_serial_right=046322251148
-display=true
+display=false
 
 
 Ice.Warn.Connections=0

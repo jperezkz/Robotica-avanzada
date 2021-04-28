@@ -293,6 +293,7 @@ private:
     struct LaserPoint{ float dist; float angle;};
     vector<uchar> buffer;
     cv::Mat m;
+    //std::future<std::tuple<cv::Mat, std::vector<SpecificWorker::LaserPoint>>> futMos;
     std::vector<LaserPoint> vector_laser;
     //
 	std::shared_ptr < InnerModel > innerModel;
@@ -309,7 +310,8 @@ private:
     rs2::context ctx;
     rs2_intrinsics left_cam_intr, right_cam_intr, left_depth_intr, right_depth_intr;
     //cv::Mat mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling );
-    std::tuple<cv::Mat, std::vector<LaserPoint>> mosaic(std::future<std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>>> mos);
+    std::tuple<cv::Mat, std::vector<LaserPoint>> mosaic(const rs2::points points_left, const rs2::points points_right, const rs2::frameset cdata_left, const rs2::frameset cdata_right);
+
     std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>> read_and_filter();
     template <typename T>
     bool is_in_bounds(const T& value, const T& low, const T& high) { return !(value < low) && (value < high); }
