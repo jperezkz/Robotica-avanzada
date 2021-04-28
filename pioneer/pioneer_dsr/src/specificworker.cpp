@@ -59,7 +59,6 @@ bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 
 void SpecificWorker::initialize(int period)
 {
-    if(robot_real) qInfo()<< "Hola *********************************************************************************************************";
 	std::cout << "Initialize worker" << std::endl;
 	this->Period = period;
 	if(this->startup_check_flag)
@@ -130,12 +129,12 @@ void SpecificWorker::compute()
     update_robot_localization();
     if (robot_real)
     {
-//        //Llamada a metodo para guardar la imagen virtual del robot
-//        auto virtual_frame = compute_virtual_frame();
-//        // get laser data from robot and call update_laser
-//        auto laser = read_laser_from_robot();
-//        update_virtual(virtual_frame, focalx, focaly);
-//        update_laser(laser);
+        //Llamada a metodo para guardar la imagen virtual del robot
+        auto virtual_frame = compute_virtual_frame();
+        // get laser data from robot and call update_laser
+        auto laser = read_laser_from_robot();
+        update_virtual(virtual_frame, focalx, focaly);
+        update_laser(laser);
     }
     else // Coppelia
     {
@@ -499,20 +498,20 @@ void SpecificWorker::update_robot_localization()
     {
         if( auto parent = G->get_parent_node(robot.value()); parent.has_value())
         {
-            if (are_different(std::vector < float > {pose.x, pose.y, pose.rz},
-                              std::vector < float > {last_state.x, last_state.y, last_state.rz},
+            if (are_different(std::vector < float > {pose.x, pose.y, pose.ry},
+                              std::vector < float > {last_state.x, last_state.y, last_state.ry},
                               std::vector < float > {1, 1, 0.05}))
             {
                 auto edge = rt->get_edge_RT(parent.value(), robot->id()).value();
-                G->modify_attrib_local<rt_rotation_euler_xyz_att>(edge, std::vector < float > {0.0, 0.0, pose.rz});
+                G->modify_attrib_local<rt_rotation_euler_xyz_att>(edge, std::vector < float > {0.0, 0.0, pose.ry});
                 G->modify_attrib_local<rt_translation_att>(edge, std::vector < float > {pose.x, pose.y, 0.0});
                 G->modify_attrib_local<rt_translation_velocity_att>(edge, std::vector<float>{pose.vx, pose.vy, pose.vz});
                 G->modify_attrib_local<rt_rotation_euler_xyz_velocity_att>(edge, std::vector<float>{pose.vrx, pose.vry, pose.vrz});
                 // linear velocities are WRT world axes, so local speed has to be computed WRT to the robot's moving frame
-                float side_velocity = -sin(pose.rz) * pose.vx + cos(pose.rz) * pose.vy;
-                float adv_velocity = -cos(pose.rz) * pose.vx + sin(pose.rz) * pose.vy;
+                float side_velocity = -sin(pose.ry) * pose.vx + cos(pose.ry) * pose.vy;
+                float adv_velocity = -cos(pose.ry) * pose.vx + sin(pose.ry) * pose.vy;
                 G->insert_or_assign_edge(edge);
-                G->add_or_modify_attrib_local<robot_local_linear_velocity_att>(robot.value(), std::vector<float>{adv_velocity, side_velocity, pose.rz});
+                G->add_or_modify_attrib_local<robot_local_linear_velocity_att>(robot.value(), std::vector<float>{adv_velocity, side_velocity, pose.ry});
                 G->update_node(robot.value());
                 last_state = pose;
             }

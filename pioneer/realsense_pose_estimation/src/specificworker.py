@@ -127,8 +127,8 @@ class SpecificWorker(GenericWorker):
         # t = self.tm.get_transform("measure", "origin")
         # print("\r Device Position: ", t[0][3], t[1][3], t[2][3], self.angles, end="\r")
         #print(data.translation)
-        if self.print:
-            print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
+        #if self.print:
+        print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
 
 
     def quaternion_to_euler_angle(self, w, x, y, z):
@@ -174,8 +174,8 @@ class SpecificWorker(GenericWorker):
         # ret.ry = self.angles[1]
         # ret.rz = self.angles[2]
              
-        ret.x = -self.data.translation.x*1000
-        ret.y = self.data.translation.z*1000
+        ret.x = -self.data.translation.x*1000 + 3305
+        ret.y = self.data.translation.z*1000 - 21699
         ret.z = self.data.translation.y*1000
         ret.rx = self.angles[0]
         ret.ry = self.angles[1]
