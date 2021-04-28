@@ -101,7 +101,6 @@ void SpecificWorker::compute()
 
     auto [m,vector_laser] = mosaic(points[0],points[1],frame_list[0],frame_list[1]);
     cv::resize(m,m,cv::Size(1600,900));
-    qInfo()<<"cols: "<<m.cols<<"/ rows: "<<m.rows;
 
     if (print_output) {
         cv::imshow("Virtual", m);

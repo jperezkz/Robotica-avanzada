@@ -127,8 +127,8 @@ class SpecificWorker(GenericWorker):
         # t = self.tm.get_transform("measure", "origin")
         # print("\r Device Position: ", t[0][3], t[1][3], t[2][3], self.angles, end="\r")
         #print(data.translation)
-        if self.print:
-            print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
+        #if self.print:
+        print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
 
 
     def quaternion_to_euler_angle(self, w, x, y, z):
@@ -174,12 +174,14 @@ class SpecificWorker(GenericWorker):
         # ret.ry = self.angles[1]
         # ret.rz = self.angles[2]
              
-        ret.x = -self.data.translation.x*1000
-        ret.y = self.data.translation.z*1000
+        ret.x = -self.data.translation.x*1000 + 3305
+        ret.y = self.data.translation.z*1000 - 21699
         ret.z = self.data.translation.y*1000
         ret.rx = self.angles[0]
         ret.ry = self.angles[1]
         ret.rz = self.angles[2]
+        
+        print("\r Device Position: ", -self.data.translation.x, self.data.translation.z, self.data.translation.y, self.angles, end="\r")
 
         return ret
     #
@@ -211,9 +213,12 @@ class SpecificWorker(GenericWorker):
     #
     def FullPoseEstimation_setInitialPose(self, x, y, z, rx, ry, rz):
 
-        self.tm.add_transform("origin", "world",
-                               pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]), [x, y, z])
-                             )
+        #self.tm.add_transform("origin", "world",
+                               #pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]), [x, y, z])
+                             #)
+        self.data.translation.x = x;
+        self.data.translation.y = y;
+        self.data.translation.z = z;
 
     # ===================================================================
     # ===================================================================
