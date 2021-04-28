@@ -67,21 +67,21 @@ class SpecificWorker(GenericWorker):
             sys.exit(-1)
 
         # Transform managet
-        self.tm = TransformManager()
-
-        #initial empty translation
-        self.tm.add_transform("origin", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-                                                                     ([0.0, 0.0, 0.0]),
-                                                                     [0.0, 0.0, 0.0]))
-        self.tm.add_transform("slam_sensor", "measure", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-                                                                    ([0.0,0.0,0.0]),
-                                                                     [0.0,0.0,0.0]))
-                                                                     
-
-        # get slam_sensor_0 coordinates in the robot's frame. Read them from config file
-        self.tm.add_transform("robot", "slam_sensor",
-                              pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([0, 0, np.pi/2]), [0, 0, 0])
-                              )
+        # self.tm = TransformManager()
+        #
+        # #initial empty translation
+        # self.tm.add_transform("origin", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+        #                                                              ([0.0, 0.0, 0.0]),
+        #                                                              [0.0, 0.0, 0.0]))
+        # self.tm.add_transform("slam_sensor", "measure", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+        #                                                             ([0.0,0.0,0.0]),
+        #                                                              [0.0,0.0,0.0]))
+        #
+        #
+        # # get slam_sensor_0 coordinates in the robot's frame. Read them from config file
+        # self.tm.add_transform("robot", "slam_sensor",
+        #                       pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([0, 0, 0]), [0, 0, 0])
+        #                       )
         # insert here the second slam sensor
         #
 
@@ -98,9 +98,9 @@ class SpecificWorker(GenericWorker):
         f = frames.first_or_default(rs.stream.pose)
         # Cast the frame to pose_frame and get its data
         self.firsttime = True
-        data = f.as_pose_frame().get_pose_data()
+        self.data = f.as_pose_frame().get_pose_data()
 
-        self.angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
+        self.angles = self.quaternion_to_euler_angle(self.data.rotation.w, self.data.rotation.x, self.data.rotation.y, self.data.rotation.z)
 
         # self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.matrix_from_quaternion
         #                                                                 ([data.rotation.w,
@@ -111,28 +111,24 @@ class SpecificWorker(GenericWorker):
         #                                                                  data.translation.y*1000.0,
         #                                                                  data.translation.z*1000.0]))
 
-        self.tm.add_transform("slam_sensor", "measure", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-                                                                    (self.angles),
-                                                                    [data.translation.x*1000.0,
-                                                                     -data.translation.z*1000.0,
-                                                                     data.translation.y*1000.0]))
-
+        # self.tm.add_transform("slam_sensor", "measure", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
+        #                                                             (self.angles),
+        #                                                             [data.translation.x*1000.0,
+        #                                                              -data.translation.z*1000.0,
+        #                                                              data.translation.y*1000.0]))
+        #
         #self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
                                                                     #(angles),
                                                                     #[data.translation.x*1000.0,
                                                                      #-data.translation.z*1000.0,
                                                                      #data.translation.y*1000.0]))
-
-
         #self.angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
 
-        t = self.tm.get_transform("measure", "origin")
-        print("\r Device Position: ", t[0][3], t[1][3], t[2][3],self.angles, end="\r")
-
-        # if self.print:
-        #     print("\r Device Position: ", data.translation.z*1000, data.translation.x*1000, data.translation.y*1000, self.angles, end="\r")
-        # if self.print:
-        #     print("\r Device Position: ", data.translation.z*1000, data.translation.x*1000, data.translation.y*1000, self.angles, end="\r")
+        # t = self.tm.get_transform("measure", "origin")
+        # print("\r Device Position: ", t[0][3], t[1][3], t[2][3], self.angles, end="\r")
+        #print(data.translation)
+        if self.print:
+            print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
 
 
     def quaternion_to_euler_angle(self, w, x, y, z):
@@ -166,18 +162,25 @@ class SpecificWorker(GenericWorker):
     #
     def FullPoseEstimation_getFullPoseEuler(self):
         ret = RoboCompFullPoseEstimation.FullPoseEuler()
-        t = self.tm.get_transform("origin", "slam_sensor")
+        #t = self.tm.get_transform("measure", "origin")
         #angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
 
-        rot = t[0:3, 0:3]
-        angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
-        ret.x = t[0][3]
-        ret.y = t[1][3]
-        ret.z = t[2][3]
+        # rot = t[0:3, 0:3]
+        # angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
+        # ret.x = t[0][3]
+        # ret.y = t[1][3]
+        # ret.z = t[2][3]
+        # ret.rx = self.angles[0]
+        # ret.ry = self.angles[1]
+        # ret.rz = self.angles[2]
+             
+        ret.x = -self.data.translation.x*1000
+        ret.y = self.data.translation.z*1000
+        ret.z = self.data.translation.y*1000
         ret.rx = self.angles[0]
         ret.ry = self.angles[1]
         ret.rz = self.angles[2]
-         
+
         return ret
     #
     # IMPLEMENTATION of getFullPoseMatrix method from FullPoseEstimation interface
