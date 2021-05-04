@@ -122,8 +122,7 @@ class SpecificWorker(GenericWorker):
     def compute(self):
         #frames = self.pipeline.wait_for_frames()
         #f = frames.first_or_default(rs.stream.pose)
-        self.data_list = []
-        self.data_angles = []
+
         for key in self.cameras_dict:
             frames = self.cameras_dict[key][2].wait_for_frames()
             f = frames.first_or_default(rs.stream.pose)
