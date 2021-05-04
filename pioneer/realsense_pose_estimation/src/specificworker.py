@@ -50,16 +50,44 @@ class SpecificWorker(GenericWorker):
 
     def setParams(self, params):
 
-        self.device_serial = params["device_serial"]
+        self.num_cameras = params["num_cameras"]
         self.print = params["print"] == "true"
-        print("Serial number: ", self.device_serial)
+        self.cameras_list = {}
+        name_lst = []
+
+        for i in self.num_cameras :
+            device_serial = params["device_serial_"+i]
+            name_lst.append(params["name_"+i])
+            rx = params["rx_"+i]
+            ry = params["ry_"+i]
+            rz = params["rz_"+i]
+            tx = params["tx_"+i]
+            ty = params["ty_"+i]
+            tz = params["tz_"+i]
+            self.cameras_list[name_lst[i]].append()
+
         # realsense configuration
         try:
-            config = rs.config()
-            config.enable_device(self.device_serial)
-            config.enable_stream(rs.stream.pose)
-            self.pipeline = rs.pipeline()
-            self.pipeline.start(config)
+            if self.side :
+                print("HOLA");
+                config = rs.config()
+                config.enable_device(self.device_serial_side)
+                config.enable_stream(rs.stream.pose)
+                pipeline_side = rs.pipeline()
+                pipeline_side.start(config)
+                self.cameras_list.append(pipeline_side)
+
+            if self.back:
+                config = rs.config()
+                config.enable_device(self.device_serial_back)
+                config.enable_stream(rs.stream.pose)
+                pipeline_back = rs.pipeline()
+                pipeline_back.start(config)
+                self.cameras_list.append(pipeline_back)
+
+            for i in self.num_cameras :
+                config = rs.config()
+                config.enable_device()
 
         except Exception as e:
             print("Error initializing camera")
@@ -94,23 +122,33 @@ class SpecificWorker(GenericWorker):
 
     @QtCore.Slot()
     def compute(self):
-        frames = self.pipeline.wait_for_frames()
-        f = frames.first_or_default(rs.stream.pose)
+        #frames = self.pipeline.wait_for_frames()
+        #f = frames.first_or_default(rs.stream.pose)
+        self.data_list = []
+        self.data_angles = []
+        for frames in self.cameras_list :
+            frame = frames.wait_for_frames()
+            f = frame.first_or_default (rs.stream.pose)
+            self.data_list.append(f.as_pose_frame().get_pose_data())
+
+
         # Cast the frame to pose_frame and get its data
         self.firsttime = True
-        self.data = f.as_pose_frame().get_pose_data()
+        #self.data = f.as_pose_frame().get_pose_data()
 
-        self.angles = self.quaternion_to_euler_angle(self.data.rotation.w, self.data.rotation.x, self.data.rotation.y, self.data.rotation.z)
 
-        # self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.matrix_from_quaternion
-        #                                                                 ([data.rotation.w,
-        #                                                                   data.rotation.x,
-        #                                                                   data.rotation.y,
-        #                                                                   data.rotation.z]),
-        #                                                                 [data.translation.x*1000.0,
-        #                                                                  data.translation.y*1000.0,
-        #                                                                  data.translation.z*1000.0]))
+        for data in self.data_list :
+            tm.add_transform("world", "slam_sensor", pytr.transform_from_pq([data.translation.x * 1000.0,
+                                                                             -data.translation.z * 1000.0,
+                                                                             data.translation.y * 1000.0,
+                                                                             data.rotation.w,
+                                                                             data.rotation.x,
+                                                                             data.rotation.y,
+                                                                             data.rotation.z]))
 
+            self.data_angles.append(self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z))
+
+<<<<<<< HEAD
         # self.tm.add_transform("slam_sensor", "measure", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
         #                                                             (self.angles),
         #                                                             [data.translation.x*1000.0,
@@ -129,7 +167,13 @@ class SpecificWorker(GenericWorker):
         #print(data.translation)
         #if self.print:
         print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
+=======
+>>>>>>> 64bf305ca6261c5ca8305d649f3f95e57582b85e
 
+        i = 0
+        for data in self.data_list :
+            print("\r Device Position: ", i , " Datos: ", -data.translation.x*1000, data.translation.z*1000, data.translation.y*1000, end="\r")
+            i = i + 1
 
     def quaternion_to_euler_angle(self, w, x, y, z):
 
