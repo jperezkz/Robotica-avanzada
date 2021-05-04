@@ -54,16 +54,18 @@ class SpecificWorker(GenericWorker):
         self.print = params["print"] == "true"
         self.cameras_dict = {}
 
-        for i in self.num_cameras :
-            device_serial = params["device_serial_"+i]
-            self.name = params["name_"+i]
+        for i in range(int(self.num_cameras)) :
+            device_serial = params["device_serial_"+str(i)]
+            self.name = params["name_"+str(i)]
 
-            rx = params["rx_"+i]
-            ry = params["ry_"+i]
-            rz = params["rz_"+i]
-            tx = params["tx_"+i]
-            ty = params["ty_"+i]
-            tz = params["tz_"+i]
+            rx = float(params["rx_"+str(i)])
+            ry = float(params["ry_"+str(i)])
+            rz = np.radians(float(params["rz_"+str(i)]))
+            tx = float (params["tx_"+str(i)])
+            ty = float(params["ty_"+str(i)])
+            tz = float(params["tz_"+str(i)])
+
+
 
             #Transform
             tm = TransformManager()
@@ -135,6 +137,7 @@ class SpecificWorker(GenericWorker):
                                                                              data.rotation.x,
                                                                              data.rotation.y,
                                                                              data.rotation.z]))
+
             self.cameras_dict[key].append(self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z))
 
         # DICT = [device_serial, tm, pipeline, data, angles]
@@ -161,10 +164,14 @@ class SpecificWorker(GenericWorker):
         #if self.print:
         #print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
 
-
         for key in self.cameras_dict :
             data = self.cameras_dict[key][3]
-            print("\r", key ," Position: ", " Datos: ", data.translation.x*1000, -data.translation.z*1000, data.translation.y*1000, end="\r")
+            t = self.cameras_dict[key][1].get_transform("world", "origin")
+            q = pyrot.quaternion_from_matrix(t[0:3, 0:3])
+            print(pytr.transform(t, [0, 0, 0, 1])[0:3], self.quaternion_to_euler_angle(q[0], q[1], q[2], q[3]), data.mapper_confidence,
+                  data.tracker_confidence)
+            #print("\r", key ," Position: ", " Datos: ", data.translation.x*1000, -data.translation.z*1000, data.translation.y*1000, end="\r")
+            data_list = pytr.transform(t,[0,0,0,1])[0:3]
 
     def quaternion_to_euler_angle(self, w, x, y, z):
 
