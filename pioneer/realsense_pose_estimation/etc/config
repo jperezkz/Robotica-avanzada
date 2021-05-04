@@ -1,12 +1,30 @@
 # Endpoints for implements interfaces
 FullPoseEstimation.Endpoints=tcp -p 10216
 
-device_serial_back=925122110585
-#serial=905312110667
-device_serial_side=925122110807
-num_cameras = 2
+num_cameras=2
 
+device_serial_0=925122110807
+name_0="camera_side"
+rx_0=0
+ry_0=0
+rz_0=0
+tx_0=0
+ty_0=0
+tz_0=0
+
+side=true
+back=false
+
+device_serial_1=925122110585
+name_1="camera_back"
+rx_1=0
+ry_1=0
+rz_1=0
+tx_1=0
+ty_1=0
+tz_1=0
 print=false
+
 
 # This property is used by the clients to connect to IceStorm.
 TopicManager.Proxy=IceStorm/TopicManager:default -p 9999
