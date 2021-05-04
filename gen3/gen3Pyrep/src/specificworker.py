@@ -45,8 +45,6 @@ class TimeControl:
         self.start_print = time.time()  # it doesn't exist yet, so initialize it
         self.period = period_
 
-
-
     def wait(self):
         elapsed = time.time() - self.start
         if elapsed < self.period:
@@ -69,7 +67,6 @@ class SpecificWorker(GenericWorker):
     def setParams(self, params):
         
         SCENE_FILE = '../etc/gen3-robolab.ttt'
-
         self.pr = PyRep()
         self.pr.launch(SCENE_FILE, headless=False)
         self.pr.start()
@@ -96,7 +93,6 @@ class SpecificWorker(GenericWorker):
         self.joystick_newdata = []
         self.last_received_data_time = 0
 
-
     def compute(self):
         tc = TimeControl(0.05)
 
@@ -112,7 +108,6 @@ class SpecificWorker(GenericWorker):
 
             tc.wait()
 
-
     ###########################################
     def read_camera(self, cam):
         image_float = cam["handle"].capture_rgb()
@@ -126,16 +121,11 @@ class SpecificWorker(GenericWorker):
                                                        focalx=cam["focal"], focaly=cam["focal"],
                                                        alivetime=time.time(), depthFactor=1.0, depth=depth.tobytes())
 
-        # try:
-        #    self.camerargbdsimplepub_proxy.pushRGBD(cam["rgb"], cam["depth"])
-        # except Ice.Exception as e:
-        #    print(e)
-
     ###########################################
     ### JOYSITCK read and move the robot
     ###########################################
     def read_joystick(self):
-        if self.joystick_newdata: #and (time.time() - self.joystick_newdata[1]) > 0.1:
+        if self.joystick_newdata:
             print(self.joystick_newdata)
             self.update_joystick(self.joystick_newdata[0])
             self.joystick_newdata = None
@@ -143,14 +133,12 @@ class SpecificWorker(GenericWorker):
         else:
             elapsed = time.time() - self.last_received_data_time
             if elapsed > 2 and elapsed < 3:
-                #self.robot.set_base_angular_velocites([0, 0, 0])
                 pass
     
     def update_joystick(self, datos):
         adv = advR = 0.0
         rot = rotR = 0.0
         side = sideR = 0.0
-        #linear_vel, ang_vel = self.robot_object.get_velocity()
         print(datos.buttons)
         for x in datos.buttons:
             if x.name == "mode":
@@ -159,8 +147,6 @@ class SpecificWorker(GenericWorker):
                     self.bloqueo=True
                 else:
                     self.bloqueo=False
-        #datos.buttons.clear()
-        #print(datos.buttons)
         for x in datos.axes:
             print(x.name + "" + str(x.value))
             if x.name == "X_axis":
@@ -173,14 +159,12 @@ class SpecificWorker(GenericWorker):
                 side = x.value if np.abs(x.value) > 1 else 0
                 sideR = x.value if np.abs(x.value) > 1 else 0
             if x.name == "gripper":
-
                 if x.value > 1:
                     self.pr.script_call("open@RG2", 1)
                     print("abriendo")
                 if x.value < -1:
                     print("cerrando")
                     self.pr.script_call("close@RG2", 1)
-
             dummy = Dummy("target")
             parent_frame_object = None
             position = dummy.get_position()
@@ -237,10 +221,6 @@ class SpecificWorker(GenericWorker):
             print(pose.x,pose.y,pose.z)
             print(dummy.get_position())
             dummy.set_orientation([pose.rx, pose.ry, pose.rz], parent_frame_object)
-
-    #
-    # IMPLEMENTATION of getCenterOfTool method from KinovaArm interface
-    #
     def KinovaArm_getCenterOfTool(self, referencedTo):
         ret = RoboCompKinovaArm.TPose()
         parent_frame_object = Shape('gen3')
@@ -255,9 +235,6 @@ class SpecificWorker(GenericWorker):
         ret.rz = rot[2]
         return ret
 
-    #
-    # IMPLEMENTATION of openGripper method from KinovaArm interface
-    #
     def KinovaArm_openGripper(self):
         #self.pr.script_call("open@RG2", 1)
         print("Opening gripper")
@@ -282,20 +259,3 @@ class SpecificWorker(GenericWorker):
         parent_frame_object = Shape('gen3')
         position = target.get_position(parent_frame_object)
         target.set_position([pose.x, pose.y, pose.z], parent_frame_object)
-    #
-    # IMPLEMENTATION of setGripper method from KinovaArm interface
-    #
-    def KinovaArm_setGripper(self, pos):
-
-        #
-        # write your CODE here
-        #
-        pass
-
-    # ===================================================================
-    # ===================================================================
-
-    ######################
-    # From the RoboCompKinovaArm you can use this types:
-    # RoboCompKinovaArm.TPose
-
