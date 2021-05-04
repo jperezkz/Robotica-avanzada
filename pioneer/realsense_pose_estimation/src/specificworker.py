@@ -37,7 +37,7 @@ class SpecificWorker(GenericWorker):
         self.Period = 50
         self.lock = threading.Lock()
         self.firsttime = False
-        
+
         if startup_check:
             self.startup_check()
         else:
@@ -118,10 +118,10 @@ class SpecificWorker(GenericWorker):
         #                                                              data.translation.y*1000.0]))
         #
         #self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-                                                                    #(angles),
-                                                                    #[data.translation.x*1000.0,
-                                                                     #-data.translation.z*1000.0,
-                                                                     #data.translation.y*1000.0]))
+        #(angles),
+        #[data.translation.x*1000.0,
+        #-data.translation.z*1000.0,
+        #data.translation.y*1000.0]))
         #self.angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
 
         # t = self.tm.get_transform("measure", "origin")
@@ -132,17 +132,17 @@ class SpecificWorker(GenericWorker):
 
 
     def quaternion_to_euler_angle(self, w, x, y, z):
-        
+
         #print(w,x,y,z)
         qx = x
-        qy = y 
-        qz = z 
+        qy = y
+        qz = z
         qw = w
-        
+
         a1 = np.arctan2(2*qy*qw-2*qx*qz, 1- 2*qy*qy - 2*qz*qz)
         a2 = np.arcsin(2*qx*qy + 2*qz*qw)
         a0 = np.arctan2(2*qx*qw-2*qy*qz , 1 - 2*qx*qx - 2*qz*qz)
-        
+
         if np.isclose(qx*qy + qz*qw, 0.5):
             a1 = 2.0 * np.arctan2(qx,qw)
             a0 = 0.0
@@ -173,14 +173,14 @@ class SpecificWorker(GenericWorker):
         # ret.rx = self.angles[0]
         # ret.ry = self.angles[1]
         # ret.rz = self.angles[2]
-             
+
         ret.x = -self.data.translation.x*1000 + 3305
         ret.y = self.data.translation.z*1000 - 21699
         ret.z = self.data.translation.y*1000
         ret.rx = self.angles[0]
         ret.ry = self.angles[1]
         ret.rz = self.angles[2]
-        
+
         print("\r Device Position: ", -self.data.translation.x, self.data.translation.z, self.data.translation.y, self.angles, end="\r")
 
         return ret
@@ -214,8 +214,8 @@ class SpecificWorker(GenericWorker):
     def FullPoseEstimation_setInitialPose(self, x, y, z, rx, ry, rz):
 
         #self.tm.add_transform("origin", "world",
-                               #pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]), [x, y, z])
-                             #)
+        #pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]), [x, y, z])
+        #)
         self.data.translation.x = x;
         self.data.translation.y = y;
         self.data.translation.z = z;
