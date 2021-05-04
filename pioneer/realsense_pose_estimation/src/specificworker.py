@@ -50,16 +50,35 @@ class SpecificWorker(GenericWorker):
 
     def setParams(self, params):
 
-        self.device_serial = params["device_serial"]
-        self.print = params["print"] == "true"
-        print("Serial number: ", self.device_serial)
+        self.num_cameras = params["num_cameras"]
+        self.print = params ["print"] == "true"
+        print("Number of cameras: " , self.num_cameras)
+
+        if(self.num_cameras > 1):
+            ######### BACK CAMERA #########
+            self.device_serial_back = params["device_serial_back"]
+            print("Serial number: ", self.device_serial_back)
+
+            ######### SIDE CAMERA #########
+            self.device_serial_side = params["device_serial_side"]
+            print("Serial number: ", self.device_serial_side
+            self.cameras_list = []
+
         # realsense configuration
         try:
             config = rs.config()
-            config.enable_device(self.device_serial)
+            config.enable_device(self.device_serial_back)
             config.enable_stream(rs.stream.pose)
-            self.pipeline = rs.pipeline()
-            self.pipeline.start(config)
+            pipeline_back = rs.pipeline()
+            pipeline_back.start(config)
+            self.cameras_list.append(pipeline_back)
+
+            config = rs.config()
+            config.enable_device(self.device_serial_side)
+            config.enable_stream(rs.stream.pose)
+            pipeline_side = rs.pipeline()
+            pipeline_side.start(config)
+            self.cameras_list.append(pipeline_side)
 
         except Exception as e:
             print("Error initializing camera")
@@ -94,14 +113,25 @@ class SpecificWorker(GenericWorker):
 
     @QtCore.Slot()
     def compute(self):
-        frames = self.pipeline.wait_for_frames()
-        f = frames.first_or_default(rs.stream.pose)
+        #frames = self.pipeline.wait_for_frames()
+        #f = frames.first_or_default(rs.stream.pose)
+        self.data_list = []
+        self.data_angles = []
+        for frames in self.cameras_list :
+            frame = frames.wait_for_frames()
+            f = frame.first_or_default (rs.stream.pose)
+            self.data_list.append(f.as_pose_frame().get_pose_data())
+
+
         # Cast the frame to pose_frame and get its data
         self.firsttime = True
-        self.data = f.as_pose_frame().get_pose_data()
+        #self.data = f.as_pose_frame().get_pose_data()
 
-        self.angles = self.quaternion_to_euler_angle(self.data.rotation.w, self.data.rotation.x, self.data.rotation.y, self.data.rotation.z)
 
+        for data in self.data_list :
+            self.data_angles.append(self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z))
+
+        #self.angles = self.quaternion_to_euler_angle(self.data.rotation.w, self.data.rotation.x, self.data.rotation.y, self.data.rotation.z)
         # self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.matrix_from_quaternion
         #                                                                 ([data.rotation.w,
         #                                                                   data.rotation.x,
@@ -128,9 +158,13 @@ class SpecificWorker(GenericWorker):
         # print("\r Device Position: ", t[0][3], t[1][3], t[2][3], self.angles, end="\r")
         #print(data.translation)
         #if self.print:
-        print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
+        #print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
 
-
+        i = 0
+        for data,angles in self.data_list, self.data_angles :
+            print("\r Device Position: ", i , " Datos: ", -data.translation.x*1000, data.translation.z*1000, data.translation.y*1000, angles, end="\r")
+            i = i + 1
+            
     def quaternion_to_euler_angle(self, w, x, y, z):
         
         #print(w,x,y,z)
