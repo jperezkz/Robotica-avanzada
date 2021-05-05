@@ -57,7 +57,6 @@ class SpecificWorker(GenericWorker):
         for i in range(int(self.num_cameras)) :
             device_serial = params["device_serial_"+str(i)]
             self.name = params["name_"+str(i)]
-
             rx = float(params["rx_"+str(i)])
             ry = float(params["ry_"+str(i)])
             rz = np.radians(float(params["rz_"+str(i)]))
@@ -81,18 +80,29 @@ class SpecificWorker(GenericWorker):
 
         # realsense configuration
         try:
-            for i in self.num_cameras:
+            for key in self.cameras_dict:
                 config = rs.config()
-                config.enable_device(self.cameras_dict[self.name][0])
+                config.enable_device(self.cameras_dict[key][0])
                 config.enable_stream(rs.stream.pose)
                 pipeline = rs.pipeline()
                 pipeline.start(config)
-                self.cameras_dict[self.name].append(pipeline)
+                self.cameras_dict[key].append(pipeline)
 
         except Exception as e:
             print("Error initializing camera")
             print(e)
             sys.exit(-1)
+
+        data_list=[]
+        angle_list = []
+        mapper_value = 0
+        tracker_value = 0
+        for key in self.cameras_dict:
+
+            self.cameras_dict[key].append(data_list)
+            self.cameras_dict[key].append(angle_list)
+            self.cameras_dict[key].append(mapper_value)
+            self.cameras_dict[key].append(tracker_value)
 
         # Transform managet
         # self.tm = TransformManager()
@@ -129,7 +139,7 @@ class SpecificWorker(GenericWorker):
             frames = self.cameras_dict[key][2].wait_for_frames()
             f = frames.first_or_default(rs.stream.pose)
             data = f.as_pose_frame().get_pose_data()
-            self.cameras_dict[key].append(data)
+            self.cameras_dict[key][3] = data
             self.cameras_dict[key][1].add_transform("world", "slam_sensor", pytr.transform_from_pq([data.translation.x * 1000.0,
                                                                              -data.translation.z * 1000.0,
                                                                              data.translation.y * 1000.0,
@@ -138,9 +148,10 @@ class SpecificWorker(GenericWorker):
                                                                              data.rotation.y,
                                                                              data.rotation.z]))
 
-            self.cameras_dict[key].append(self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z))
+            self.cameras_dict[key][4] = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
 
-        # DICT = [device_serial, tm, pipeline, data, angles]
+
+        # DICT = [device_serial, tm, pipeline, data, angles, mapper_confidence, tracker_confidence]
 
         # Cast the frame to pose_frame and get its data
         self.firsttime = True
@@ -164,14 +175,48 @@ class SpecificWorker(GenericWorker):
         #if self.print:
         #print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
 
+
+
+
         for key in self.cameras_dict :
             data = self.cameras_dict[key][3]
             t = self.cameras_dict[key][1].get_transform("world", "origin")
             q = pyrot.quaternion_from_matrix(t[0:3, 0:3])
-            print(pytr.transform(t, [0, 0, 0, 1])[0:3], self.quaternion_to_euler_angle(q[0], q[1], q[2], q[3]), data.mapper_confidence,
-                  data.tracker_confidence)
-            #print("\r", key ," Position: ", " Datos: ", data.translation.x*1000, -data.translation.z*1000, data.translation.y*1000, end="\r")
-            data_list = pytr.transform(t,[0,0,0,1])[0:3]
+            #print(pytr.transform(t, [0, 0, 0, 1])[0:3], self.quaternion_to_euler_angle(q[0], q[1], q[2], q[3]), data.mapper_confidence,
+                  #data.tracker_confidence)
+            self.cameras_dict[key][3] = pytr.transform(t,[0,0,0,1])[0:3]
+            self.cameras_dict[key][4] = self.quaternion_to_euler_angle(q[0], q[1], q[2], q[3])
+            self.cameras_dict[key][5] = data.mapper_confidence
+            self.cameras_dict[key][6] = data.tracker_confidence
+            #print("TAMAÑO", len(self.cameras_dict[key]))
+            #print(self.cameras_dict[key][3], self.cameras_dict[key][4], self.cameras_dict[key][5], self.cameras_dict[key][6])
+
+
+
+
+        #CHECKING CAMERAS
+        ret = RoboCompFullPoseEstimation.FullPoseEuler()
+        sigma = 0
+        #CALCULATE ADDITION BOTH DATA'S CAMERA
+        for key in self.cameras_dict:
+            ret.x = ret.x + self.cameras_dict[key][3][0] * self.cameras_dict[key][6]
+            ret.y = ret.y + self.cameras_dict[key][3][1] * self.cameras_dict[key][6]
+            ret.z = ret.z + self.cameras_dict[key][3][2] * self.cameras_dict[key][6]
+            ret.rx = ret.rx + self.cameras_dict[key][4][0] * self.cameras_dict[key][6]
+            ret.ry = ret.ry + self.cameras_dict[key][4][1] * self.cameras_dict[key][6]
+            ret.rz = ret.rz + self.cameras_dict[key][4][2] * self.cameras_dict[key][6]
+            sigma = sigma + self.cameras_dict[key][6]
+        #CALCULATE AVERAGE OF POSITION
+        ret.x = ret.x / sigma
+        ret.y = ret.y / sigma
+        ret.z = ret.z / sigma
+
+        #CALCULATE AVERAGE OF ANGLES
+        ret.rx = ret.rx / sigma
+        ret.ry = ret.ry / sigma
+        ret.rz = ret.rz / sigma
+
+        print(ret.x, ret.y, ret.z, ret.rx, ret.ry, ret.rz)
 
     def quaternion_to_euler_angle(self, w, x, y, z):
 
@@ -203,7 +248,28 @@ class SpecificWorker(GenericWorker):
     # IMPLEMENTATION of getFullPoseEuler method from FullPoseEstimation interface
     #
     def FullPoseEstimation_getFullPoseEuler(self):
+
         ret = RoboCompFullPoseEstimation.FullPoseEuler()
+        sigma = 0
+        #CALCULATE ADDITION BOTH DATA'S CAMERA
+        for key in self.cameras_dict:
+            ret.x = ret.x + self.cameras_dict[key][3][0] * self.cameras_dict[key][6]
+            ret.y = ret.y + self.cameras_dict[key][3][1] * self.cameras_dict[key][6]
+            ret.z = ret.z + self.cameras_dict[key][3][2] * self.cameras_dict[key][6]
+            ret.rx = ret.rx + self.cameras_dict[key][4][0] * self.cameras_dict[key][6]
+            ret.ry = ret.ry + self.cameras_dict[key][4][1] * self.cameras_dict[key][6]
+            ret.rz = ret.rz + self.cameras_dict[key][4][2] * self.cameras_dict[key][6]
+            sigma = sigma + self.cameras_dict[key][6]
+        #CALCULATE AVERAGE OF POSITION
+        ret.x = ret.x / sigma
+        ret.y = ret.y / sigma
+        ret.z = ret.z / sigma
+
+        #CALCULATE AVERAGE OF ANGLES
+        ret.rx = ret.rx / sigma
+        ret.ry = ret.ry / sigma
+        ret.rz = ret.rz / sigma
+
         #t = self.tm.get_transform("measure", "origin")
         #angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
 
@@ -216,14 +282,14 @@ class SpecificWorker(GenericWorker):
         # ret.ry = self.angles[1]
         # ret.rz = self.angles[2]
 
-        ret.x = -self.data.translation.x*1000 + 3305
-        ret.y = self.data.translation.z*1000 - 21699
-        ret.z = self.data.translation.y*1000
-        ret.rx = self.angles[0]
-        ret.ry = self.angles[1]
-        ret.rz = self.angles[2]
+        # ret.x = -self.data.translation.x*1000 + 3305
+        # ret.y = self.data.translation.z*1000 - 21699
+        # ret.z = self.data.translation.y*1000
+        # ret.rx = self.angles[0]
+        # ret.ry = self.angles[1]
+        # ret.rz = self.angles[2]
 
-        print("\r Device Position: ", -self.data.translation.x, self.data.translation.z, self.data.translation.y, self.angles, end="\r")
+        print("\r Device Position: ", ret.x, ret.y, ret.z, ret.rx, ret.ry,ret.rz, end="\r")
 
         return ret
     #
@@ -258,9 +324,14 @@ class SpecificWorker(GenericWorker):
         #self.tm.add_transform("origin", "world",
         #pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]), [x, y, z])
         #)
-        self.data.translation.x = x;
-        self.data.translation.y = y;
-        self.data.translation.z = z;
+
+        for key in self.cameras_dict:
+            self.cameras_dict[key][3][0] = x
+            self.cameras_dict[key][3][1] = y
+            self.cameras_dict[key][3][2] = z
+            self.cameras_dict[key][4][0] = rx
+            self.cameras_dict[key][4][1] = ry
+            self.cameras_dict[key][4][2] = rz
 
     # ===================================================================
     # ===================================================================
