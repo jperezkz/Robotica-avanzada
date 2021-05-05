@@ -195,28 +195,28 @@ class SpecificWorker(GenericWorker):
 
 
         #CHECKING CAMERAS
-        ret = RoboCompFullPoseEstimation.FullPoseEuler()
-        sigma = 0
-        #CALCULATE ADDITION BOTH DATA'S CAMERA
-        for key in self.cameras_dict:
-            ret.x = ret.x + self.cameras_dict[key][3][0] * self.cameras_dict[key][6]
-            ret.y = ret.y + self.cameras_dict[key][3][1] * self.cameras_dict[key][6]
-            ret.z = ret.z + self.cameras_dict[key][3][2] * self.cameras_dict[key][6]
-            ret.rx = ret.rx + self.cameras_dict[key][4][0] * self.cameras_dict[key][6]
-            ret.ry = ret.ry + self.cameras_dict[key][4][1] * self.cameras_dict[key][6]
-            ret.rz = ret.rz + self.cameras_dict[key][4][2] * self.cameras_dict[key][6]
-            sigma = sigma + self.cameras_dict[key][6]
-        #CALCULATE AVERAGE OF POSITION
-        ret.x = ret.x / sigma
-        ret.y = ret.y / sigma
-        ret.z = ret.z / sigma
-
-        #CALCULATE AVERAGE OF ANGLES
-        ret.rx = ret.rx / sigma
-        ret.ry = ret.ry / sigma
-        ret.rz = ret.rz / sigma
-
-        print(ret.x, ret.y, ret.z, ret.rx, ret.ry, ret.rz)
+        # ret = RoboCompFullPoseEstimation.FullPoseEuler()
+        # sigma = 0
+        # #CALCULATE ADDITION BOTH DATA'S CAMERA
+        # for key in self.cameras_dict:
+        #     ret.x = ret.x + self.cameras_dict[key][3][0] * self.cameras_dict[key][6]
+        #     ret.y = ret.y + self.cameras_dict[key][3][1] * self.cameras_dict[key][6]
+        #     ret.z = ret.z + self.cameras_dict[key][3][2] * self.cameras_dict[key][6]
+        #     ret.rx = ret.rx + self.cameras_dict[key][4][0] * self.cameras_dict[key][6]
+        #     ret.ry = ret.ry + self.cameras_dict[key][4][1] * self.cameras_dict[key][6]
+        #     ret.rz = ret.rz + self.cameras_dict[key][4][2] * self.cameras_dict[key][6]
+        #     sigma = sigma + self.cameras_dict[key][6]
+        # #CALCULATE AVERAGE OF POSITION
+        # ret.x = ret.x / sigma
+        # ret.y = ret.y / sigma
+        # ret.z = ret.z / sigma
+        #
+        # #CALCULATE AVERAGE OF ANGLES
+        # ret.rx = ret.rx / sigma
+        # ret.ry = ret.ry / sigma
+        # ret.rz = ret.rz / sigma
+        #
+        # print(sigma, ret.x, ret.y, ret.z, ret.rx, ret.ry, ret.rz)
 
     def quaternion_to_euler_angle(self, w, x, y, z):
 
@@ -261,8 +261,8 @@ class SpecificWorker(GenericWorker):
             ret.rz = ret.rz + self.cameras_dict[key][4][2] * self.cameras_dict[key][6]
             sigma = sigma + self.cameras_dict[key][6]
         #CALCULATE AVERAGE OF POSITION
-        ret.x = ret.x / sigma
-        ret.y = ret.y / sigma
+        ret.x = ret.x / sigma + 3305
+        ret.y = ret.y / sigma - 21699
         ret.z = ret.z / sigma
 
         #CALCULATE AVERAGE OF ANGLES
@@ -325,13 +325,18 @@ class SpecificWorker(GenericWorker):
         #pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]), [x, y, z])
         #)
 
+
         for key in self.cameras_dict:
-            self.cameras_dict[key][3][0] = x
-            self.cameras_dict[key][3][1] = y
-            self.cameras_dict[key][3][2] = z
-            self.cameras_dict[key][4][0] = rx
-            self.cameras_dict[key][4][1] = ry
-            self.cameras_dict[key][4][2] = rz
+            # self.cameras_dict[key][1].add_transform("robot", "origin",
+            #                  pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]),
+            #                                      [x, y, z]))
+
+            # self.cameras_dict[key][3][0] = x
+            # self.cameras_dict[key][3][1] = y
+            # self.cameras_dict[key][3][2] = z
+            # self.cameras_dict[key][4][0] = rx
+            # self.cameras_dict[key][4][1] = ry
+            # self.cameras_dict[key][4][2] = rz
 
     # ===================================================================
     # ===================================================================
