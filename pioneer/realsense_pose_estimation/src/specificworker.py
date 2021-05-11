@@ -301,7 +301,7 @@ class SpecificWorker(GenericWorker):
         for key in self.cameras_dict:
              self.cameras_dict[key][1].add_transform("robot", "origin",
                               pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]),
-<<<<<<< HEAD
+
                                                  [x, y, z]))
 
             # self.cameras_dict[key][3][0] = x
@@ -310,10 +310,7 @@ class SpecificWorker(GenericWorker):
             # self.cameras_dict[key][4][0] = rx
             # self.cameras_dict[key][4][1] = ry
             # self.cameras_dict[key][4][2] = rz
-=======
-                                                  [x, y, z]))
 
->>>>>>> 89b2e65f03eb94440e7dcb6f7fa51c5fd520353b
 
     # ===================================================================
     # ===================================================================

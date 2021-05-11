@@ -107,17 +107,20 @@ void SpecificWorker::initialize(int period)
 		graph_viewer = std::make_unique<DSR::DSRViewer>(this, G, current_opts, main);
 		setWindowTitle(QString::fromStdString(agent_name + "-") + QString::number(agent_id));
 
-		try
-        {
-            float x = 3305;
-            float y = -21699;
-            float z = 0;
-            float rx = 0;
-            float ry = 0;
-            float rz = 0;
-            fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
+		if(robot_real)
+		{
+		    qInfo() << "Robot real";
+            try {
+                float x = 3305;
+                float y = -21699;
+                float z = 0;
+                float rx = 0;
+                float ry = 0;
+                float rz = 0;
+                fullposeestimation_proxy->setInitialPose(x, y, z, rx, ry, rz);
+            }
+            catch (const Ice::Exception &e) { std::cout << e.what() << std::endl; };
         }
-        catch(const Ice::Exception &e){};
 
         this->Period = period;
         timer.start(Period);
@@ -490,7 +493,7 @@ void SpecificWorker::update_robot_localization()
     try
     {
         pose = fullposeestimation_proxy->getFullPoseEuler();
-        qInfo() << "X:" << pose.x  << "// Y:" << pose.y << "// Z:" << pose.z << "// RX:" << pose.rx << "// RY:" << pose.ry << "// RZ:" << pose.rz;
+        //qInfo() << "X:" << pose.x  << "// Y:" << pose.y << "// Z:" << pose.z << "// RX:" << pose.rx << "// RY:" << pose.ry << "// RZ:" << pose.rz;
     }
     catch(const Ice::Exception &e){ std::cout << e.what() <<  __FUNCTION__ << std::endl;};
 
@@ -498,20 +501,20 @@ void SpecificWorker::update_robot_localization()
     {
         if( auto parent = G->get_parent_node(robot.value()); parent.has_value())
         {
-            if (are_different(std::vector < float > {pose.x, pose.y, pose.ry},
-                              std::vector < float > {last_state.x, last_state.y, last_state.ry},
+            if (are_different(std::vector < float > {pose.x, pose.y, pose.rz},
+                              std::vector < float > {last_state.x, last_state.y, last_state.rz},
                               std::vector < float > {1, 1, 0.05}))
             {
                 auto edge = rt->get_edge_RT(parent.value(), robot->id()).value();
-                G->modify_attrib_local<rt_rotation_euler_xyz_att>(edge, std::vector < float > {0.0, 0.0, pose.ry});
+                G->modify_attrib_local<rt_rotation_euler_xyz_att>(edge, std::vector < float > {0.0, 0.0, pose.rz});
                 G->modify_attrib_local<rt_translation_att>(edge, std::vector < float > {pose.x, pose.y, 0.0});
                 G->modify_attrib_local<rt_translation_velocity_att>(edge, std::vector<float>{pose.vx, pose.vy, pose.vz});
                 G->modify_attrib_local<rt_rotation_euler_xyz_velocity_att>(edge, std::vector<float>{pose.vrx, pose.vry, pose.vrz});
                 // linear velocities are WRT world axes, so local speed has to be computed WRT to the robot's moving frame
-                float side_velocity = -sin(pose.ry) * pose.vx + cos(pose.ry) * pose.vy;
-                float adv_velocity = -cos(pose.ry) * pose.vx + sin(pose.ry) * pose.vy;
+                float side_velocity = -sin(pose.rz) * pose.vx + cos(pose.rz) * pose.vy;
+                float adv_velocity = -cos(pose.rz) * pose.vx + sin(pose.rz) * pose.vy;
                 G->insert_or_assign_edge(edge);
-                G->add_or_modify_attrib_local<robot_local_linear_velocity_att>(robot.value(), std::vector<float>{adv_velocity, side_velocity, pose.ry});
+                G->add_or_modify_attrib_local<robot_local_linear_velocity_att>(robot.value(), std::vector<float>{adv_velocity, side_velocity, pose.rz});
                 G->update_node(robot.value());
                 last_state = pose;
             }
@@ -603,7 +606,7 @@ void SpecificWorker::ramer_douglas_peucker(const std::vector<Point> &pointList, 
 ///////////////////////////////////////////////////////////////////
 void SpecificWorker:: add_or_assign_node_slot(std::uint64_t, const std::string &type)
 {
-    if (type == differentialrobot_type)
+    if (type == differentialrobot_type_name)
     {
         if (auto robot = G->get_node(robot_name); robot.has_value())
         {

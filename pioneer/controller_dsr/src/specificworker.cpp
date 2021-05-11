@@ -326,7 +326,7 @@ void SpecificWorker::draw_path(std::vector<Eigen::Vector3d> &path, QGraphicsScen
 ////////////////////////////////////////////////////////////////////////////////////////////
 void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::string &type)
 {
-    if(type == rgbd_type and id == cam_api->get_id())
+    if(type == rgbd_type_name and id == cam_api->get_id())
     {
 //        if(auto rgb_vector = cam_api->get_rgb_image(); rgb_vector.has_value())
 //        {
@@ -345,7 +345,7 @@ void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::
                 virtual_camera_buffer.put(std::move(g_image.value().get()));
             }
     }
-    else if (type == laser_type)    // Laser node updated
+    else if (type == laser_type_name)    // Laser node updated
     {
         //qInfo() << __FUNCTION__ << " laser node change";
         if( auto node = G->get_node(id); node.has_value())
@@ -376,7 +376,7 @@ void SpecificWorker::add_or_assign_node_slot(const std::uint64_t id, const std::
             }
         }
     }
-    else if (type == path_to_target_type)
+    else if (type == path_to_target_type_name)
     {
         if( auto path_to_target_node = G->get_node(id); path_to_target_node.has_value())
         {
@@ -424,9 +424,9 @@ void SpecificWorker::new_target_from_mouse(int pos_x, int pos_y, std::uint64_t i
     // Check if there is not 'intention' node yet in G
     if(auto robot = G->get_node(robot_name); robot.has_value())
     {
-        if (auto intention_nodes = G->get_nodes_by_type(intention_type); intention_nodes.empty())
+        if (auto intention_nodes = G->get_nodes_by_type(intention_type_name); intention_nodes.empty())
         {
-            DSR::Node intention_node(agent_id, intention_type);
+            DSR::Node intention_node(agent_id, intention_type_name);
             G->add_or_modify_attrib_local<parent_att>(intention_node, robot.value().id());
             G->add_or_modify_attrib_local<level_att>(intention_node, G->get_node_level(robot.value()).value() + 1);
             G->add_or_modify_attrib_local<pos_x_att>(intention_node, (float) -90);
