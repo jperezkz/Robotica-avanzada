@@ -188,10 +188,6 @@ class SpecificWorker(GenericWorker):
             self.cameras_dict[key][4] = self.quaternion_to_euler_angle(q[0], q[1], q[2], q[3])
             self.cameras_dict[key][5] = data.mapper_confidence
             self.cameras_dict[key][6] = data.tracker_confidence
-            #print("TAMAÑO", len(self.cameras_dict[key]))
-            #print(self.cameras_dict[key][3], self.cameras_dict[key][4], self.cameras_dict[key][5], self.cameras_dict[key][6])
-
-
 
 
         #CHECKING CAMERAS
@@ -261,33 +257,14 @@ class SpecificWorker(GenericWorker):
             ret.rz = ret.rz + self.cameras_dict[key][4][2] * self.cameras_dict[key][6]
             sigma = sigma + self.cameras_dict[key][6]
         #CALCULATE AVERAGE OF POSITION
-        ret.x = ret.x / sigma + 3305
-        ret.y = ret.y / sigma - 21699
+        ret.x = ret.x / sigma
+        ret.y = ret.y / sigma
         ret.z = ret.z / sigma
 
         #CALCULATE AVERAGE OF ANGLES
         ret.rx = ret.rx / sigma
         ret.ry = ret.ry / sigma
         ret.rz = ret.rz / sigma
-
-        #t = self.tm.get_transform("measure", "origin")
-        #angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
-
-        # rot = t[0:3, 0:3]
-        # angles = pyrot.extrinsic_euler_xyz_from_active_matrix(rot)
-        # ret.x = t[0][3]
-        # ret.y = t[1][3]
-        # ret.z = t[2][3]
-        # ret.rx = self.angles[0]
-        # ret.ry = self.angles[1]
-        # ret.rz = self.angles[2]
-
-        # ret.x = -self.data.translation.x*1000 + 3305
-        # ret.y = self.data.translation.z*1000 - 21699
-        # ret.z = self.data.translation.y*1000
-        # ret.rx = self.angles[0]
-        # ret.ry = self.angles[1]
-        # ret.rz = self.angles[2]
 
         print("\r Device Position: ", ret.x, ret.y, ret.z, ret.rx, ret.ry,ret.rz, end="\r")
 
@@ -321,14 +298,10 @@ class SpecificWorker(GenericWorker):
     #
     def FullPoseEstimation_setInitialPose(self, x, y, z, rx, ry, rz):
 
-        #self.tm.add_transform("origin", "world",
-        #pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]), [x, y, z])
-        #)
-
-
         for key in self.cameras_dict:
              self.cameras_dict[key][1].add_transform("robot", "origin",
                               pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([rx, ry, rz]),
+<<<<<<< HEAD
                                                  [x, y, z]))
 
             # self.cameras_dict[key][3][0] = x
@@ -337,6 +310,10 @@ class SpecificWorker(GenericWorker):
             # self.cameras_dict[key][4][0] = rx
             # self.cameras_dict[key][4][1] = ry
             # self.cameras_dict[key][4][2] = rz
+=======
+                                                  [x, y, z]))
+
+>>>>>>> 89b2e65f03eb94440e7dcb6f7fa51c5fd520353b
 
     # ===================================================================
     # ===================================================================
