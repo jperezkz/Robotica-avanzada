@@ -148,11 +148,6 @@ void SpecificWorker::compute()
             update_laser(laser);
         }
     }
-
-    //update_rgbd();
-    //auto cdata = read_rgb_camera(false);
-    //read_battery();
-    //read_RSSI();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
