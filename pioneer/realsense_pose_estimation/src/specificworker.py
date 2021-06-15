@@ -57,16 +57,15 @@ class SpecificWorker(GenericWorker):
         for i in range(int(self.num_cameras)) :
             device_serial = params["device_serial_"+str(i)]
             self.name = params["name_"+str(i)]
-            rx = float(params["rx_"+str(i)])
-            ry = float(params["ry_"+str(i)])
+            rx = np.radians(float(params["rx_"+str(i)]))
+            ry = np.radians(float(params["ry_"+str(i)]))
             rz = np.radians(float(params["rz_"+str(i)]))
             tx = float (params["tx_"+str(i)])
             ty = float(params["ty_"+str(i)])
             tz = float(params["tz_"+str(i)])
-
-
-
-            #Transform
+            
+            # Transforms:   world -> slam_sensor -> robot -> origin 
+            #                  (measure)     (sensor pose) (robot base wrt world origin)
             tm = TransformManager()
             tm.add_transform("robot", "origin",
                              pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([0.0, 0.0, 0.0]),
@@ -104,115 +103,56 @@ class SpecificWorker(GenericWorker):
             self.cameras_dict[key].append(mapper_value)
             self.cameras_dict[key].append(tracker_value)
 
-        # Transform managet
-        # self.tm = TransformManager()
-        #
-        # #initial empty translation
-        # self.tm.add_transform("origin", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-        #                                                              ([0.0, 0.0, 0.0]),
-        #                                                              [0.0, 0.0, 0.0]))
-        # self.tm.add_transform("slam_sensor", "measure", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-        #                                                             ([0.0,0.0,0.0]),
-        #                                                              [0.0,0.0,0.0]))
-        #
-        #
-        # # get slam_sensor_0 coordinates in the robot's frame. Read them from config file
-        # self.tm.add_transform("robot", "slam_sensor",
-        #                       pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz([0, 0, 0]), [0, 0, 0])
-        #                       )
-        # insert here the second slam sensor
-        #
-
-        # when requested return an average of both sensors.
-
-
-        self.angles = [0.0,0.0,0.0]
         return True
 
 
     @QtCore.Slot()
     def compute(self):
-        #frames = self.pipeline.wait_for_frames()
-        #f = frames.first_or_default(rs.stream.pose)
-
         for key in self.cameras_dict:
             frames = self.cameras_dict[key][2].wait_for_frames()
             f = frames.first_or_default(rs.stream.pose)
             data = f.as_pose_frame().get_pose_data()
-            self.cameras_dict[key][3] = data
+            #self.cameras_dict[key][3] = data
             self.cameras_dict[key][1].add_transform("world", "slam_sensor", pytr.transform_from_pq([data.translation.x * 1000.0,
-                                                                             -data.translation.z * 1000.0,
-                                                                             data.translation.y * 1000.0,
-                                                                             data.rotation.w,
-                                                                             data.rotation.x,
-                                                                             data.rotation.y,
-                                                                             data.rotation.z]))
+                                                                                                    -data.translation.z * 1000.0,
+                                                                                                    data.translation.y * 1000.0,
+                                                                                                    data.rotation.w,
+                                                                                                    data.rotation.x,
+                                                                                                    data.rotation.y,
+                                                                                                    data.rotation.z]))
 
-            self.cameras_dict[key][4] = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
-
-
-        # DICT = [device_serial, tm, pipeline, data, angles, mapper_confidence, tracker_confidence]
-
-        # Cast the frame to pose_frame and get its data
-        self.firsttime = True
-
-        # self.tm.add_transform("slam_sensor", "measure", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-        #                                                             (self.angles),
-        #                                                             [data.translation.x*1000.0,
-        #                                                              -data.translation.z*1000.0,
-        #                                                              data.translation.y*1000.0]))
-        #
-        #self.tm.add_transform("world", "robot", pytr.transform_from(pyrot.active_matrix_from_intrinsic_euler_xyz
-        #(angles),
-        #[data.translation.x*1000.0,
-        #-data.translation.z*1000.0,
-        #data.translation.y*1000.0]))
-        #self.angles = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
-
-        # t = self.tm.get_transform("measure", "origin")
-        # print("\r Device Position: ", t[0][3], t[1][3], t[2][3], self.angles, end="\r")
-        #print(data.translation)
-        #if self.print:
-        #print("\r Device Position: ", -self.data.translation.x*1000, self.data.translation.z*1000, self.data.translation.y*1000, self.angles, end="\r")
-
-
-
-
-        for key in self.cameras_dict :
-            data = self.cameras_dict[key][3]
+    
             t = self.cameras_dict[key][1].get_transform("world", "origin")
-            q = pyrot.quaternion_from_matrix(t[0:3, 0:3])
-            #print(pytr.transform(t, [0, 0, 0, 1])[0:3], self.quaternion_to_euler_angle(q[0], q[1], q[2], q[3]), data.mapper_confidence,
-                  #data.tracker_confidence)
             self.cameras_dict[key][3] = pytr.transform(t,[0,0,0,1])[0:3]
-            self.cameras_dict[key][4] = self.quaternion_to_euler_angle(q[0], q[1], q[2], q[3])
+            self.cameras_dict[key][4] = self.quaternion_to_euler_angle(data.rotation.w, data.rotation.x, data.rotation.y, data.rotation.z)
             self.cameras_dict[key][5] = data.mapper_confidence
             self.cameras_dict[key][6] = data.tracker_confidence
+            
 
-
-        #CHECKING CAMERAS
-        # ret = RoboCompFullPoseEstimation.FullPoseEuler()
-        # sigma = 0
-        # #CALCULATE ADDITION BOTH DATA'S CAMERA
-        # for key in self.cameras_dict:
-        #     ret.x = ret.x + self.cameras_dict[key][3][0] * self.cameras_dict[key][6]
-        #     ret.y = ret.y + self.cameras_dict[key][3][1] * self.cameras_dict[key][6]
-        #     ret.z = ret.z + self.cameras_dict[key][3][2] * self.cameras_dict[key][6]
-        #     ret.rx = ret.rx + self.cameras_dict[key][4][0] * self.cameras_dict[key][6]
-        #     ret.ry = ret.ry + self.cameras_dict[key][4][1] * self.cameras_dict[key][6]
-        #     ret.rz = ret.rz + self.cameras_dict[key][4][2] * self.cameras_dict[key][6]
-        #     sigma = sigma + self.cameras_dict[key][6]
-        # #CALCULATE AVERAGE OF POSITION
-        # ret.x = ret.x / sigma
-        # ret.y = ret.y / sigma
-        # ret.z = ret.z / sigma
-        #
-        # #CALCULATE AVERAGE OF ANGLES
-        # ret.rx = ret.rx / sigma
-        # ret.ry = ret.ry / sigma
-        # ret.rz = ret.rz / sigma
-        #
-        # print(sigma, ret.x, ret.y, ret.z, ret.rx, ret.ry, ret.rz)
+        # print
+        if self.print:
+            ret = RoboCompFullPoseEstimation.FullPoseEuler()
+            sigma = 0
+            #CALCULATE ADDITION BOTH DATA'S CAMERA
+            for key in self.cameras_dict:
+                ret.x = ret.x + self.cameras_dict[key][3][0] * self.cameras_dict[key][6]
+                ret.y = ret.y + self.cameras_dict[key][3][1] * self.cameras_dict[key][6]
+                ret.z = ret.z + self.cameras_dict[key][3][2] * self.cameras_dict[key][6]
+                ret.rx = ret.rx + self.cameras_dict[key][4][0] * self.cameras_dict[key][6]
+                ret.ry = ret.ry + self.cameras_dict[key][4][1] * self.cameras_dict[key][6]
+                ret.rz = ret.rz + self.cameras_dict[key][4][2] * self.cameras_dict[key][6]
+                sigma = sigma + self.cameras_dict[key][6]
+            #CALCULATE AVERAGE OF POSITION
+            ret.x = ret.x / sigma
+            ret.y = ret.y / sigma
+            ret.z = ret.z / sigma
+            
+            #CALCULATE AVERAGE OF ANGLES
+            ret.rx = ret.rx / sigma
+            ret.ry = ret.ry / sigma
+            ret.rz = ret.rz / sigma
+            
+            print(sigma, ret.x, ret.y, ret.z, ret.rx, ret.ry, ret.rz)
 
     def quaternion_to_euler_angle(self, w, x, y, z):
 
@@ -232,8 +172,9 @@ class SpecificWorker(GenericWorker):
         if np.isclose(qx*qy + qz*qw, -0.5):
             a1 = -2.0 * np.arctan2(qx,qw)
             a0 = 0.0
-        return a0,a1,a2
-
+        #return a0,a1,a2
+        return a0,a2,a1
+    
     def startup_check(self):
         QTimer.singleShot(200, QApplication.instance().quit)
 
@@ -261,13 +202,12 @@ class SpecificWorker(GenericWorker):
         ret.y = ret.y / sigma
         ret.z = ret.z / sigma
 
-        #CALCULATE AVERAGE OF ANGLES
+        #CALCULATE AVERAGE OF ANGLES  (CHECK -PI to PI transition !!!!)
         ret.rx = ret.rx / sigma
         ret.ry = ret.ry / sigma
         ret.rz = ret.rz / sigma
 
         print("\r Device Position: ", ret.x, ret.y, ret.z, ret.rx, ret.ry,ret.rz, end="\r")
-
         return ret
     #
     # IMPLEMENTATION of getFullPoseMatrix method from FullPoseEstimation interface
