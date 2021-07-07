@@ -290,6 +290,13 @@ public slots:
 	void initialize(int period);
 
 private:
+    struct CONSTANTS
+    {
+        float laser_down_cut_threshold = -0.2;
+        float semi_distance_to_center = 0.0625;
+        float rotated_angle = M_PI/5.5;
+    };
+    CONSTANTS consts;
     struct LaserPoint{ float dist; float angle;};
     vector<uchar> buffer;
     cv::Mat m;
@@ -311,6 +318,7 @@ private:
     rs2_intrinsics left_cam_intr, right_cam_intr, left_depth_intr, right_depth_intr;
     //cv::Mat mosaic( const rs2::frameset &cdata_left, const rs2::frameset &cdata_right, unsigned short subsampling );
     std::tuple<cv::Mat, std::vector<LaserPoint>> mosaic(const rs2::points points_left, const rs2::points points_right, const rs2::frameset cdata_left, const rs2::frameset cdata_right);
+    std::tuple<cv::Mat, std::vector<LaserPoint>> mosaicDOS(const rs2::points points_left, const rs2::points points_right, const rs2::frameset cdata_left, const rs2::frameset cdata_right);
 
     std::tuple<std::vector<rs2::points>, std::vector<rs2::frameset>> read_and_filter();
     template <typename T>

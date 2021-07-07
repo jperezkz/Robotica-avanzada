@@ -257,7 +257,9 @@ void SpecificWorker::fillSonarDistances(){
         robot->lock();
         for (int i = 0; i < numSonars; i++){
             sonar[i] = robot->getSonarReading(i)->getRange();
+            //std::cout << __FUNCTION__ << "DistanceSonar" << sonar[i] << std::endl;
         }
+
         robot->unlock();
     } catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}
     
@@ -270,6 +272,7 @@ void SpecificWorker::fillSonarPose(){
             ArPose aux =  robot->getSonarReading(i)->getSensorPosition();
             sonarPose[i].x = aux.getX();
             sonarPose[i].y = aux.getY();
+            //std::cout << __FUNCTION__ << "PoseSonarXY " << sonarPose[i].x << sonarPose[i].y << std::endl;
         }
     robot->unlock();
     } catch(const Ice::Exception &e) { std::cout << e.what() << std::endl;}

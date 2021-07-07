@@ -82,7 +82,7 @@ private:
 
 	// Pioneer
     const float MAX_ADV = 1000.f;
-    const float MAX_ROT = 1.f;
+    const float MAX_ROT = 30.f;
     bool ejecución=true;
 
 	// Aria
